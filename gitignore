@@ -1,0 +1,35 @@
+# Secrets — jangan pernah di-commit
+.env
+.env.*
+!.env.example
+**/google-services.json
+**/GoogleService-Info.plist
+supabase/.env
+*.keystore
+*.jks
+key.properties
+
+# Flutter / Dart
+app/.dart_tool/
+app/build/
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/.packages
+app/android/.gradle/
+app/android/local.properties
+app/ios/Pods/
+app/ios/.symlinks/
+
+# Supabase
+supabase/.branches/
+supabase/.temp/
+
+# Node / Deno
+node_modules/
+
+# OS & editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
