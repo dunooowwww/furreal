@@ -2,7 +2,7 @@
 
 > Dokumen ini adalah spesifikasi teknis untuk membangun MVP furreal.
 > Baca bagian yang relevan dengan milestone yang sedang dikerjakan saja.
-> Versi produk: PRD v0.2 · Diperbarui: 13 Okt 2026
+> Versi produk: PRD v0.3 · Diperbarui: 13 Okt 2026
 
 ---
 
@@ -19,7 +19,7 @@ bernama yang dibagikan ke circle teman. Koleksi berpusat pada **individu hewan**
 | Lapisan | Teknologi |
 |---|---|
 | Aplikasi | Flutter (Dart), Android saja untuk MVP |
-| Auth | Supabase Auth (Google Sign-In + email magic link) |
+| Auth | Supabase Auth: kode OTP 6 digit lewat email. Google Sign-In ditunda (lihat catatan di §4) |
 | Database | Supabase Postgres + Row Level Security (RLS) |
 | Storage | Supabase Storage, bucket private `catch-photos` |
 | Server logic | Supabase Edge Functions (TypeScript/Deno) |
@@ -61,10 +61,15 @@ furreal/
 
 Mockup referensi: canvas "Catch UI" (nama lama, isinya prototype furreal) (5 layar). Layar 0 belum dimockup, buat sederhana.
 
+> **Catatan auth (v0.3):** MVP memakai kode OTP 6 digit lewat email (bukan magic link) supaya bisa dites
+> di lokal lewat Mailpit dan tidak butuh deep link. Google Sign-In ditunda; kode auth disusun per
+> metode login sehingga Google bisa ditambahkan tanpa mengubah alur lain.
+
 | # | Layar | Isi utama |
 |---|---|---|
-| 0a | Login | Tombol Google Sign-In + magic link email |
-| 0b | Circle | Buat circle (dapat kode undangan 6 karakter) atau gabung via kode |
+| 0a | Login | Isi email → isi kode OTP 6 digit yang dikirim ke email. Google Sign-In ditunda |
+| 0a' | Username | Setelah login pertama: pilih username (unik) + nama tampilan |
+| 0b | Circle | Buat circle (dapat kode undangan 6 karakter) atau gabung via kode. User boleh ikut beberapa circle; minimal satu untuk masuk beranda |
 | 1 | Beranda | Logo, streak, kartu "daily drop" + sisa waktu tepat-waktu, status circle hari ini, tangkapan kemarin, tab bar |
 | 2 | Kamera | Viewfinder kamera belakang, ambil foto belakang lalu depan berurutan, tanpa akses galeri |
 | 3 | Hasil tangkapan | Kartu foto + jenis hewan + kartu kepribadian AI, input nama, pilihan "hewan baru / ketemu lagi", label area, tombol posting |
@@ -156,7 +161,7 @@ Kerjakan **satu milestone per sesi**. Setiap milestone selesai = test lulus + `f
 | # | Milestone | Selesai jika |
 |---|---|---|
 | M0 | Scaffold | Struktur repo sesuai §3, `docs/PLAN.md`, app Flutter kosong jalan di emulator, Supabase lokal jalan |
-| M1 | Auth & circle | Login Google/magic link, profil dibuat otomatis, buat & gabung circle via kode, RLS test lulus |
+| M1 | Auth & circle | Login kode OTP email (bisa dites lokal lewat Mailpit), profil dibuat otomatis + pilih username, buat & gabung circle via kode, RLS test lulus |
 | M2 | Kamera & catch | Foto belakang lalu depan, tanpa galeri, upload ke storage, baris `catches` tersimpan, satu catch per hari ditegakkan |
 | M3 | AI | `identify-animal` jalan dengan respons di-mock di test; layar Hasil tangkapan menampilkan jenis, kandidat, dan kartu kepribadian |
 | M4 | Feed | Feed circle hari ini, label tepat waktu/telat, reaksi & komentar, hanya anggota circle yang bisa melihat |
