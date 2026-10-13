@@ -2,14 +2,14 @@
 
 > Dokumen ini adalah spesifikasi teknis untuk membangun MVP furreal.
 > Baca bagian yang relevan dengan milestone yang sedang dikerjakan saja.
-> Versi produk: PRD v0.3 · Diperbarui: 13 Okt 2026
+> Versi produk: PRD v0.4 · Diperbarui: 13 Okt 2026
 
 ---
 
 ## 1. Ringkasan produk
 
 furreal adalah aplikasi Android untuk mengoleksi hewan dan peliharaan dengan ritme harian ala BeReal:
-setiap hari satu notifikasi, satu foto real-time (kamera belakang + depan), dan satu kartu hewan
+setiap hari satu notifikasi, dua foto real-time (foto hewan + foto lo/selfie reaksi), dan satu kartu hewan
 bernama yang dibagikan ke circle teman. Koleksi berpusat pada **individu hewan** ("Milo"), bukan spesies.
 
 **Target MVP:** 2–3 circle kampus (15–30 orang), uji 14 hari lewat Google Play closed testing.
@@ -71,7 +71,7 @@ Mockup referensi: canvas "Catch UI" (nama lama, isinya prototype furreal) (5 lay
 | 0a' | Username | Setelah login pertama: pilih username (unik) + nama tampilan |
 | 0b | Circle | Buat circle (dapat kode undangan 6 karakter) atau gabung via kode. User boleh ikut beberapa circle; minimal satu untuk masuk beranda |
 | 1 | Beranda | Logo, streak, kartu "daily drop" + sisa waktu tepat-waktu, status circle hari ini, tangkapan kemarin, tab bar |
-| 2 | Kamera | Viewfinder kamera belakang, ambil foto belakang lalu depan berurutan, tanpa akses galeri |
+| 2 | Kamera | Gelap, full screen. 2 langkah berurutan: "1/2 · foto hewan" (default kamera belakang) lalu "2/2 · foto lo" (selfie/reaksi, default kamera depan). Tombol ganti kamera di tiap langkah, jadi kamera mana pun boleh untuk foto mana pun. Tanpa akses galeri. Izin kamera ditolak → layar penjelasan + tombol buka pengaturan |
 | 3 | Hasil tangkapan | Kartu foto + jenis hewan + kartu kepribadian AI, input nama, pilihan "hewan baru / ketemu lagi", label area, tombol posting |
 | 4 | Feed circle | Kartu catch anggota circle hari ini, label tepat waktu/telat, reaksi suka & lucu, komentar |
 | 5 | Koleksi | Statistik (hewan, jenis, streak), filter semua/peliharaan/liar, grid kartu hewan dengan jumlah pertemuan |
@@ -98,7 +98,7 @@ animals         (id uuid PK, owner_id uuid → profiles, name text, kind text ch
                  animal_type text, encounter_count int default 1, first_seen_at timestamptz,
                  last_seen_at timestamptz)
 catches         (id uuid PK, user_id uuid → profiles, animal_id uuid → animals,
-                 back_photo_path text, front_photo_path text,
+                 animal_photo_path text, selfie_photo_path text,
                  ai_type text, ai_confidence numeric, ai_candidates jsonb, ai_personality text,
                  area_label text, location_hidden bool default false,
                  is_late bool, catch_date date, created_at timestamptz,
@@ -115,21 +115,21 @@ daily_drops     (drop_date date PK, sent_at timestamptz)
 - **Tanggal catch** memakai zona waktu `Asia/Jakarta`.
 - **Lokasi:** JANGAN simpan koordinat. App mengubah lokasi menjadi label area (contoh: "sekitar Depok, Sleman") di HP, lalu hanya `area_label` yang dikirim.
 - **Streak** diperbarui oleh trigger Postgres saat insert `catches`: +1 kalau `last_catch_date` = kemarin, reset ke 1 kalau terlewat.
-- **is_late** dihitung di server: `true` kalau `created_at` > `daily_drops.sent_at` + 1 jam.
+- **is_late** dihitung di server: `true` kalau `created_at` > `daily_drops.sent_at` + 1 jam. Kalau `daily_drops` belum punya baris hari ini (atau `sent_at` masih kosong), `is_late` = false.
 - **Ketemu lagi:** user memilih `animal_id` yang sudah ada miliknya → `encounter_count` +1, `last_seen_at` diperbarui (trigger).
 
 ### Aturan RLS (wajib dites)
 - `profiles`: user membaca profil sendiri dan profil anggota circle yang sama; hanya bisa mengubah milik sendiri.
 - `circles` / `circle_members`: hanya anggota yang bisa membaca. Gabung lewat fungsi RPC `join_circle(invite_code)`.
-- `animals`, `catches`: pemilik bisa CRUD miliknya; anggota circle yang sama hanya bisa membaca.
+- `animals`, `catches`: pemilik bisa CRUD miliknya (catch + hewan baru dibuat atomik lewat RPC `create_catch`; kolom hasil server seperti `catch_date`, `is_late`, `user_id` tidak bisa diubah user); anggota circle yang sama hanya bisa membaca.
 - `reactions`, `comments`: bisa dibuat dan dibaca jika user berbagi circle dengan pemilik catch; hanya bisa menghapus milik sendiri.
-- Storage `catch-photos`: path `{user_id}/{catch_id}/back.jpg` dan `front.jpg`. Upload hanya ke folder sendiri; baca hanya jika berbagi circle. Akses lewat signed URL.
+- Storage `catch-photos`: path `{user_id}/{catch_id}/animal.jpg` dan `selfie.jpg`. Upload hanya ke folder sendiri; baca hanya jika berbagi circle. Akses lewat signed URL.
 - Buat helper SQL `shares_circle(a uuid, b uuid) returns boolean` untuk dipakai di semua policy.
 
 ## 6. Edge Functions
 
 ### 6.1 `identify-animal`
-- **Input:** `POST { "catch_id": uuid }` dengan JWT user. Foto belakang sudah ada di storage.
+- **Input:** `POST { "catch_id": uuid }` dengan JWT user. Foto hewan (`animal.jpg`) sudah ada di storage.
 - **Proses:** cek pemilik catch → unduh foto dengan service role → kirim ke Claude (`claude-haiku-5-5`) → validasi JSON → simpan ke kolom `ai_*` → kembalikan hasil.
 - **Output:**
   ```json
@@ -162,7 +162,7 @@ Kerjakan **satu milestone per sesi**. Setiap milestone selesai = test lulus + `f
 |---|---|---|
 | M0 | Scaffold | Struktur repo sesuai §3, `docs/PLAN.md`, app Flutter kosong jalan di emulator, Supabase lokal jalan |
 | M1 | Auth & circle | Login kode OTP email (bisa dites lokal lewat Mailpit), profil dibuat otomatis + pilih username, buat & gabung circle via kode, RLS test lulus |
-| M2 | Kamera & catch | Foto belakang lalu depan, tanpa galeri, upload ke storage, baris `catches` tersimpan, satu catch per hari ditegakkan |
+| M2 | Kamera & catch | Foto hewan lalu foto lo (bisa ganti kamera), tanpa galeri, upload ke storage, baris `catches` tersimpan, satu catch per hari ditegakkan |
 | M3 | AI | `identify-animal` jalan dengan respons di-mock di test; layar Hasil tangkapan menampilkan jenis, kandidat, dan kartu kepribadian |
 | M4 | Feed | Feed circle hari ini, label tepat waktu/telat, reaksi & komentar, hanya anggota circle yang bisa melihat |
 | M5 | Koleksi & streak | Grid koleksi + filter, "ketemu lagi" menambah `encounter_count`, streak terupdate via trigger |
@@ -172,7 +172,7 @@ Kerjakan **satu milestone per sesi**. Setiap milestone selesai = test lulus + `f
 ## 8. Kebutuhan non-fungsional
 
 - **Keaslian:** catch hanya dari kamera dalam app; tidak ada akses galeri untuk catch.
-- **Privasi:** tanpa koordinat; foto depan hanya terlihat anggota circle; tidak ada mode publik.
+- **Privasi:** tanpa koordinat; foto lo (selfie) hanya terlihat anggota circle; tidak ada mode publik.
 - **Kesejahteraan hewan:** layar onboarding berisi pedoman: jangan kejar, pegang, atau ganggu hewan demi foto.
 - **Performa:** kompres foto ke lebar maksimal 1280px, JPEG kualitas ~80 sebelum upload.
 - **Keamanan:** tidak ada secret di kode app; anon key Supabase boleh di app, service role key TIDAK pernah.
