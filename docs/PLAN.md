@@ -6,7 +6,7 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
 
 - [ ] **M0 — Scaffold** — kode selesai; `flutter analyze` & `flutter test` lulus. Belum terverifikasi: app di emulator, `supabase start`, `supabase test db` (lihat catatan M0).
 - [ ] **M1 — Auth & circle** — kode selesai; `flutter analyze` bersih, `flutter test` 12/12, pgTAP 26/26 (di Postgres 16 lokal dengan tiruan skema auth). Belum terverifikasi: `npx supabase test db` di stack Supabase asli, dan login OTP end-to-end lewat Mailpit (lihat catatan M1).
-- [ ] M2 — Kamera & catch
+- [ ] **M2 — Kamera & catch** — kode selesai; `flutter analyze` bersih, `flutter test` 27/27, pgTAP 57/57 (Postgres 16 lokal dengan tiruan skema auth + storage). Belum terverifikasi: `npx supabase test db` di stack asli, dan alur kamera/upload/lokasi di HP atau emulator (lihat catatan M2).
 - [ ] M3 — AI
 - [ ] M4 — Feed
 - [ ] M5 — Koleksi & streak
@@ -44,3 +44,29 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
 - **Font:** file statis Bricolage Grotesque (700/800), Geist (400/500/600), Geist Mono (400/500) di-bundle di `app/assets/google_fonts/` (+ lisensi OFL, terdaftar di `LicenseRegistry`). `allowRuntimeFetching = false`. `google_fonts` dikunci ke ^8 karena v9 memakai paket `material_ui` yang `TextTheme`-nya tidak kompatibel dengan `flutter/material`.
 - **Test:** widget test pakai fake repository (`test/helpers/fakes.dart`); unit test untuk `redirectFor`. Supabase client hanya disentuh lewat `supabaseClientProvider`.
 - **Verifikasi di sesi cloud:** image Docker Supabase masih diblokir, jadi pgTAP dijalankan di Postgres 16 + pgTAP dari apt dengan tiruan minimal `auth.users`, `auth.uid()`, dan role `anon`/`authenticated`. Hasilnya lulus, tapi tetap perlu `npx supabase test db` di stack asli (Postgres 17 + skema auth lengkap).
+
+### M2 (13 Okt 2026)
+- **Kamera 2 langkah:** "1/2 · foto hewan" (default kamera belakang), lalu "2/2 · foto lo" (default kamera depan). Tombol ganti kamera ada di kedua langkah. Layar gelap mengikuti prototype "Kamera"; label langkah menggantikan timer, yang baru ada di M6. Tanpa akses galeri. Kalau izin ditolak: layar penjelasan + "buka pengaturan" (`Geolocator.openAppSettings`, tanpa paket baru) + "coba lagi". Kamera dibuka ulang saat app kembali dari background.
+- **Skema:** kolom langsung bernama `animal_photo_path` / `selfie_photo_path`, karena tabel `catches` baru dibuat di migrasi M2 (`20261013150000_catches.sql`), jadi tidak perlu rename. File storage: `{user_id}/{catch_id}/animal.jpg` & `selfie.jpg`. PRD naik ke v0.4.
+- **Simpan catch:** id catch dibuat di HP (`shared/uuid.dart`), foto dikompres, diupload (upsert), lalu RPC `create_catch` membuat hewan baru + catch secara atomik. Kalau RPC gagal, foto yang sudah terupload dihapus lagi.
+  - `catch_date` = `jakarta_today()` di server.
+  - Satu catch per hari dijaga oleh `unique (user_id, catch_date)` + error `FR001` → "kamu udah catch hari ini. besok lagi ya!".
+  - `FR002` muncul kalau kedua foto belum ada di storage.
+  - `is_late` = false kalau `daily_drops` hari ini belum ada. Tabel `daily_drops` sudah dibuat (kosong, read-only untuk user); M6 yang mengisinya.
+- **Kompres:** `flutter_image_compress` (disetujui; native Android). Sisi pendek diskalakan ke maks 1280 dan JPEG kualitas 80. Rotasi mengikuti EXIF, lalu EXIF dibuang. Kamera dikunci potret (`lockCaptureOrientation`, manifest, `SystemChrome`), jadi sisi pendek = lebar. Resolusi kamera `veryHigh` (~1080p). Kompres tidak bisa jalan di `flutter test`, jadi di test di-mock lewat repository.
+- **Hak akses (PRD: pemilik CRUD):**
+  - Insert catch/hewan hanya lewat RPC.
+  - Pemilik boleh menghapus catch & hewannya, mengubah `area_label`/`location_hidden` catch, dan `name`/`kind` hewan.
+  - Kolom hasil server (`catch_date`, `is_late`, `user_id`, path foto, `ai_*`) tidak bisa diubah user.
+  - Konsekuensi yang disadari: user bisa hapus lalu catch ulang di hari yang sama.
+- **Storage `catch-photos`:** bucket private, JPEG saja, maks 5 MB.
+  - Upload/timpa/hapus hanya `{uid}/{uuid}/(animal|selfie).jpg` di folder sendiri.
+  - Baca untuk pemilik atau anggota satu circle.
+  - Helper: `is_own_catch_photo_path`, `can_read_catch_photo`.
+- **Hapus catch hari ini (debug):** tombol di beranda hanya kalau `kDebugMode`. Memakai jalur hapus biasa (foto → catch → hewan), jadi tidak perlu fungsi khusus di database.
+- **Lokasi:** izin `ACCESS_COARSE_LOCATION` saja, `LocationAccuracy.low`, timeout 10 detik.
+  - Placemark diubah jadi "sekitar {kecamatan}, {kabupaten}" (awalan Kecamatan/Kabupaten/Kota dibuang). Koordinat tidak pernah keluar dari `GeoAreaLocator`.
+  - Izin ditolak / GPS mati / geocoder gagal / toggle "sembunyikan" → `area_label` null, `location_hidden` true.
+- **Manifest:** tambah `CAMERA`, `ACCESS_COARSE_LOCATION`, `INTERNET` (manifest utama; sebelumnya hanya ada di debug/profile, padahal rilis butuh). `RECORD_AUDIO` & `WRITE_EXTERNAL_STORAGE` bawaan plugin kamera dibuang. Activity dikunci potret.
+- **Layar hasil versi M2:** foto hewan + thumbnail selfie, chip "hewan baru", "kasih nama", pilihan peliharaan/liar (menggantikan "hewan baru / ketemu lagi" di prototype; "ketemu lagi" di M5), baris area + toggle sembunyikan, tombol "posting ke circle". Jenis hewan & kartu kepribadian AI di M3.
+- **Perlu dicek di stack Supabase asli:** `create_catch` membaca `storage.objects` sebagai pemilik fungsi (`postgres`). Di tiruan lokal `postgres` adalah superuser. Kalau di Supabase asli RLS storage menghalangi `postgres`, `create_catch` akan selalu `FR002`. Test `npx supabase test db` akan menunjukkannya.

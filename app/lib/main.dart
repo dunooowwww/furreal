@@ -11,6 +11,7 @@ import 'app/missing_config_app.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
 
   // Font sudah di-bundle; jangan unduh dari internet saat runtime.
   GoogleFonts.config.allowRuntimeFetching = false;

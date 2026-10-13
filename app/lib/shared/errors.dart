@@ -15,8 +15,15 @@ String friendlyError(Object error) {
     }
     return 'gagal masuk. coba lagi ya.';
   }
+  if (error is StorageException) {
+    return 'upload foto gagal. cek koneksi lalu coba lagi.';
+  }
   if (error is PostgrestException) {
     switch (error.code) {
+      case 'FR001':
+        return 'kamu udah catch hari ini. besok lagi ya!';
+      case 'FR002':
+        return 'foto belum ke-upload. coba posting lagi.';
       case '23505':
         return 'username sudah dipakai. coba yang lain.';
       case 'P0002':
