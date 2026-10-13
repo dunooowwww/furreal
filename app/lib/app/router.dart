@@ -4,6 +4,9 @@ import 'package:go_router/go_router.dart';
 
 import '../features/auth/ui/login_screen.dart';
 import '../features/auth/ui/username_screen.dart';
+import '../features/camera/data/captured_photos.dart';
+import '../features/camera/ui/camera_screen.dart';
+import '../features/catch_result/ui/catch_result_screen.dart';
 import '../features/circles/ui/circle_screen.dart';
 import '../features/home/ui/home_screen.dart';
 import 'session.dart';
@@ -15,6 +18,8 @@ class Routes {
   static const username = '/username';
   static const circle = '/circle';
   static const home = '/home';
+  static const camera = '/camera';
+  static const catchResult = '/catch/result';
 }
 
 /// Arahkan user ke layar yang sesuai tahap onboarding-nya.
@@ -72,6 +77,18 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Routes.home,
         builder: (context, state) => const HomeScreen(),
+      ),
+      GoRoute(
+        path: Routes.camera,
+        builder: (context, state) => const CameraScreen(),
+      ),
+      GoRoute(
+        path: Routes.catchResult,
+        // Tanpa foto dari kamera (mis. app dipulihkan), kembali ke beranda.
+        redirect: (context, state) =>
+            state.extra is CapturedPhotos ? null : Routes.home,
+        builder: (context, state) =>
+            CatchResultScreen(photos: state.extra! as CapturedPhotos),
       ),
     ],
   );
