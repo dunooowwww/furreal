@@ -11,15 +11,15 @@ Spesifikasi lengkap: `docs/PRD.md`. Rencana kerja: `docs/PLAN.md`.
 
 ## Menjalankan
 ```bash
-supabase start                      # Supabase lokal (butuh Docker)
-supabase db reset                   # terapkan migrasi
-supabase functions serve            # Edge Functions lokal
+npx supabase start                  # Supabase lokal (butuh Docker)
+npx supabase db reset               # terapkan migrasi
+npx supabase functions serve        # Edge Functions lokal
 cd app && flutter run --dart-define-from-file=.env.local
 ```
 
 ## Test
 ```bash
-supabase test db                    # test RLS (pgTAP)
+npx supabase test db                # test RLS (pgTAP)
 cd app && flutter analyze && flutter test
 ```
 

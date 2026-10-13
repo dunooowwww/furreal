@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 /// Design tokens dari PRD §4.
 class FurrealColors {
@@ -15,15 +16,52 @@ class FurrealShape {
   static const minTouchTarget = 44.0;
 }
 
+/// Font di-bundle di `assets/google_fonts/` (tanpa unduh saat runtime).
+class FurrealText {
+  static TextStyle display({double? fontSize}) =>
+      GoogleFonts.bricolageGrotesque(
+        fontWeight: FontWeight.w800,
+        fontSize: fontSize,
+        color: FurrealColors.ink,
+      );
+
+  static TextStyle mono({double? fontSize, FontWeight? fontWeight}) =>
+      GoogleFonts.geistMono(
+        fontSize: fontSize,
+        fontWeight: fontWeight,
+        color: FurrealColors.ink,
+      );
+}
+
 ThemeData buildTheme() {
   const border = BorderSide(
     color: FurrealColors.ink,
     width: FurrealShape.borderWidth,
   );
+  const minSize = Size(
+    FurrealShape.minTouchTarget,
+    FurrealShape.minTouchTarget,
+  );
+  const fieldBorder = OutlineInputBorder(
+    borderRadius: BorderRadius.all(Radius.circular(FurrealShape.cardRadius)),
+    borderSide: border,
+  );
 
-  return ThemeData(
-    useMaterial3: true,
+  final base = ThemeData(useMaterial3: true);
+  final bodyText = GoogleFonts.geistTextTheme(base.textTheme)
+      .apply(bodyColor: FurrealColors.ink, displayColor: FurrealColors.ink);
+  final textTheme = bodyText.copyWith(
+    displayLarge: FurrealText.display(fontSize: 57),
+    displayMedium: FurrealText.display(fontSize: 45),
+    displaySmall: FurrealText.display(fontSize: 36),
+    headlineMedium: FurrealText.display(fontSize: 28),
+    headlineSmall: FurrealText.display(fontSize: 24),
+    titleLarge: FurrealText.display(fontSize: 22),
+  );
+
+  return base.copyWith(
     scaffoldBackgroundColor: FurrealColors.background,
+    textTheme: textTheme,
     colorScheme: const ColorScheme.light(
       primary: FurrealColors.ink,
       onPrimary: FurrealColors.background,
@@ -34,9 +72,11 @@ ThemeData buildTheme() {
       surfaceContainerHighest: FurrealColors.surface,
       onSurfaceVariant: FurrealColors.textSecondary,
       outline: FurrealColors.ink,
+      error: Color(0xFFB00020),
     ),
     cardTheme: const CardThemeData(
       elevation: 0,
+      margin: EdgeInsets.zero,
       color: FurrealColors.background,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.all(
@@ -45,16 +85,34 @@ ThemeData buildTheme() {
         side: border,
       ),
     ),
+    inputDecorationTheme: const InputDecorationTheme(
+      border: fieldBorder,
+      enabledBorder: fieldBorder,
+      focusedBorder: fieldBorder,
+      contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+    ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         backgroundColor: FurrealColors.accent,
         foregroundColor: FurrealColors.ink,
         elevation: 0,
-        minimumSize: const Size(
-          FurrealShape.minTouchTarget,
-          FurrealShape.minTouchTarget,
-        ),
+        minimumSize: minSize,
         shape: const StadiumBorder(side: border),
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: FurrealColors.ink,
+        minimumSize: minSize,
+        shape: const StadiumBorder(),
+        side: border,
+      ),
+    ),
+    textButtonTheme: TextButtonThemeData(
+      style: TextButton.styleFrom(
+        foregroundColor: FurrealColors.ink,
+        minimumSize: minSize,
+        shape: const StadiumBorder(),
       ),
     ),
   );
