@@ -31,7 +31,7 @@ bernama yang dibagikan ke circle teman. Koleksi berpusat pada **individu hewan**
 
 **Paket Flutter:** `supabase_flutter`, `camera`, `firebase_core`, `firebase_messaging`,
 `firebase_analytics`, `firebase_crashlytics`, `geolocator`, `geocoding`, `go_router`,
-`flutter_riverpod`, `google_fonts`, `cached_network_image`.
+`flutter_riverpod`, `google_fonts`, `cached_network_image`, `flutter_image_compress` (kompres foto, ditambahkan v0.4).
 Jangan tambah paket lain tanpa alasan yang jelas.
 
 ## 3. Struktur repo
