@@ -4,7 +4,7 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
 
 ## Status
 
-- [x] **M0 — Scaffold**
+- [ ] **M0 — Scaffold** — kode selesai; `flutter analyze` & `flutter test` lulus. Belum terverifikasi: app di emulator, `supabase start`, `supabase test db` (lihat catatan M0).
 - [ ] M1 — Auth & circle
 - [ ] M2 — Kamera & catch
 - [ ] M3 — AI
@@ -26,3 +26,4 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
 - **Test DB:** `supabase/tests/00_rls_enabled_test.sql` gagal jika ada tabel di schema `public` tanpa RLS. Penjaga untuk semua migrasi berikutnya.
 - **Folder Edge Functions** `identify-animal/` dan `send-daily-drop/` masih kosong (`.gitkeep`); diisi di M3 dan M6.
 - **Slash command** `/milestone` dipindah ke `.claude/commands/milestone.md`.
+- **Belum terverifikasi di sesi cloud:** Android SDK (dl.google.com) dan image Docker Supabase (ghcr.io / public.ecr.aws) diblokir kebijakan jaringan, jadi `flutter run` di emulator, `supabase start`, dan `supabase test db` perlu dijalankan di mesin lokal. Centang M0 setelah ketiganya jalan.
