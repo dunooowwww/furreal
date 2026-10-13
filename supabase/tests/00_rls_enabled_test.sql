@@ -1,5 +1,7 @@
 -- Penjaga: setiap tabel di schema public WAJIB mengaktifkan RLS (PRD §5).
 begin;
+create extension if not exists pgtap with schema extensions;
+set local search_path = public, extensions;
 select plan(1);
 
 select is_empty(
