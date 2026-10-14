@@ -69,7 +69,7 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
   - Izin ditolak / GPS mati / geocoder gagal / toggle "sembunyikan" → `area_label` null, `location_hidden` true.
 - **Manifest:** tambah `CAMERA`, `ACCESS_COARSE_LOCATION`, `INTERNET` (manifest utama; sebelumnya hanya ada di debug/profile, padahal rilis butuh). `RECORD_AUDIO` & `WRITE_EXTERNAL_STORAGE` bawaan plugin kamera dibuang. Activity dikunci potret.
 - **Layar hasil versi M2:** foto hewan + thumbnail selfie, chip "hewan baru", "kasih nama", pilihan peliharaan/liar (menggantikan "hewan baru / ketemu lagi" di prototype; "ketemu lagi" di M5), baris area + toggle sembunyikan, tombol "posting ke circle". Jenis hewan & kartu kepribadian AI di M3.
-- **Perlu dicek di stack Supabase asli:** `create_catch` membaca `storage.objects` sebagai pemilik fungsi (`postgres`). Di tiruan lokal `postgres` adalah superuser. Kalau di Supabase asli RLS storage menghalangi `postgres`, `create_catch` akan selalu `FR002`. Test `npx supabase test db` akan menunjukkannya.
+- **Terverifikasi di stack Supabase asli (14 Okt):** `create_catch` berhasil membaca `storage.objects` sebagai pemilik fungsi (test `npx supabase test db` user sampai catch tersimpan), jadi risiko selalu `FR002` tidak terjadi.
 
 ### M3 (14 Okt 2026)
 - **Alur baru:** foto di-upload begitu layar hasil terbuka, lalu `identify-animal` dipanggil dengan `catch_id` (baris `catches` belum ada).
@@ -96,3 +96,9 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
   - AI gagal/timeout/jatah habis/tidak ada hewan → pesan ramah + input jenis manual; jenis & kepribadian opsional, posting tetap jalan. Upload gagal → layar "coba lagi"/"foto ulang".
   - Timeout klien 20 detik.
 - **Test:** Deno (validator, giliran mock, format request tiap provider dengan `fetch` palsu, handler dengan dependensi palsu) tanpa API asli; widget test alur AI dengan repository palsu; pgTAP untuk akses, batas harian, dan penyalinan hasil AI.
+
+### Perbaikan test storage (14 Okt 2026)
+- Supabase Storage asli memasang trigger `storage.protect_delete`: semua `DELETE` langsung ke `storage.objects` lewat SQL ditolak ("Use the Storage API instead"). Test `02`/`03` sempat memakai `DELETE` SQL sehingga gagal di `npx supabase test db`.
+- Test sekarang tidak menghapus file storage lewat SQL. Aturan hapus/timpa foto dicek lewat helper `is_own_catch_photo_path` (yang dipakai policy-nya) + cek bahwa policy DELETE memakai helper itu.
+- Tiruan lokal (Postgres 16) ikut diberi trigger serupa supaya kasus ini tertangkap di sesi cloud.
+- App sudah benar: hapus foto (batal posting, tombol debug) lewat Storage API (`storage.from(...).remove`). Hapus akun di M7 juga harus lewat Storage API, bukan SQL.
