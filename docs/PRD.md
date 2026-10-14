@@ -2,7 +2,7 @@
 
 > Dokumen ini adalah spesifikasi teknis untuk membangun MVP furreal.
 > Baca bagian yang relevan dengan milestone yang sedang dikerjakan saja.
-> Versi produk: PRD v0.4 · Diperbarui: 13 Okt 2026
+> Versi produk: PRD v0.5 · Diperbarui: 13 Okt 2026
 
 ---
 
@@ -23,7 +23,7 @@ bernama yang dibagikan ke circle teman. Koleksi berpusat pada **individu hewan**
 | Database | Supabase Postgres + Row Level Security (RLS) |
 | Storage | Supabase Storage, bucket private `catch-photos` |
 | Server logic | Supabase Edge Functions (TypeScript/Deno) |
-| AI | Claude API, model `claude-haiku-5-5`, dipanggil HANYA dari Edge Function |
+| AI | Lewat satu adapter di Edge Function (`supabase/functions/_shared/ai/`), provider dipilih dari env: `mock` (default dev), `anthropic` (Claude API, `claude-haiku-5-5`), atau `openai_compatible` (mis. Sumopod, model wajib mendukung gambar). Dipanggil HANYA dari Edge Function |
 | Notifikasi | Firebase Cloud Messaging (FCM HTTP v1) |
 | Jadwal | `pg_cron` di Supabase yang memanggil Edge Function |
 | Metrik & crash | Firebase Analytics + Crashlytics |
@@ -100,6 +100,7 @@ animals         (id uuid PK, owner_id uuid → profiles, name text, kind text ch
 catches         (id uuid PK, user_id uuid → profiles, animal_id uuid → animals,
                  animal_photo_path text, selfie_photo_path text,
                  ai_type text, ai_confidence numeric, ai_candidates jsonb, ai_personality text,
+                 personality text,                      -- kartu kepribadian final (bisa diedit user)
                  area_label text, location_hidden bool default false,
                  is_late bool, catch_date date, created_at timestamptz,
                  UNIQUE (user_id, catch_date))          -- satu catch per user per hari
@@ -129,8 +130,8 @@ daily_drops     (drop_date date PK, sent_at timestamptz)
 ## 6. Edge Functions
 
 ### 6.1 `identify-animal`
-- **Input:** `POST { "catch_id": uuid }` dengan JWT user. Foto hewan (`animal.jpg`) sudah ada di storage.
-- **Proses:** cek pemilik catch → unduh foto dengan service role → kirim ke Claude (`claude-haiku-5-5`) → validasi JSON → simpan ke kolom `ai_*` → kembalikan hasil.
+- **Input:** `POST { "catch_id": uuid }` dengan JWT user. Foto hewan `{user_id}/{catch_id}/animal.jpg` sudah di-upload; baris `catches` belum dibuat (dibuat saat posting). Hanya foto hewan yang dikirim ke AI, tidak pernah selfie.
+- **Proses:** cek JWT & path milik user → cek batas harian → unduh foto hewan dengan service role → kirim ke provider AI lewat adapter → validasi JSON → simpan di tabel server `ai_identifications` → kembalikan hasil. Saat posting, RPC `create_catch` menyalin hasil AI terakhir untuk catch itu ke kolom `catches.ai_*` (jadi `ai_*` selalu hasil asli AI, tidak bisa diisi dari app).
 - **Output:**
   ```json
   {
@@ -146,8 +147,14 @@ daily_drops     (drop_date date PK, sent_at timestamptz)
   - `personality` maksimal 2 kalimat, lucu, ramah, bahasa Indonesia santai, huruf kecil.
   - Jangan menyebut, menebak, atau mendeskripsikan identitas manusia di foto.
   - Jangan memberi saran medis atau kesehatan hewan.
-- **Batasan:** timeout 15 detik, maksimal 5 panggilan per user per hari, `ANTHROPIC_API_KEY` hanya dari secrets Supabase.
+- **Batasan:** timeout 15 detik, maksimal 5 panggilan per user per hari (zona Asia/Jakarta, hanya untuk provider asli; mode `mock` tanpa batas), `AI_API_KEY` hanya dari secrets Supabase.
+- **Adapter & env:** `AI_PROVIDER` (`mock` | `anthropic` | `openai_compatible`, default `mock`), `AI_BASE_URL`, `AI_MODEL`, `AI_API_KEY`. Ganti provider cukup lewat env, tanpa ubah kode.
+  - `mock`: tanpa API; hasil tiruan bergiliran (kucing, ayam, burung) lengkap dengan kartu kepribadian, delay ~1,5 detik.
+  - `anthropic`: Claude Messages API, default model `claude-haiku-5-5`, base URL default `https://api.anthropic.com`; JSON dipaksa lewat structured outputs.
+  - `openai_compatible`: endpoint `{AI_BASE_URL}/chat/completions` format OpenAI (mis. Sumopod); `AI_BASE_URL` (biasanya diakhiri `/v1`) dan `AI_MODEL` wajib; model harus menerima input gambar.
+- **Error:** `{ "error": { "code", "message" } }` dengan kode `unauthorized`, `bad_request`, `rate_limited`, `photo_not_found`, `timeout`, `invalid_ai_response`, `ai_unavailable`, `ai_not_configured`.
 - Kalau gagal: kembalikan error yang jelas; app tetap bisa lanjut dengan input jenis manual.
+- **Hasil akhir user:** jenis yang dipilih/dikoreksi user disimpan di `animals.animal_type`; kartu kepribadian yang bisa diedit user disimpan di `catches.personality` (yang tampil di feed). `catches.ai_*` tetap hasil asli AI.
 
 ### 6.2 `send-daily-drop`
 - Dipanggil `pg_cron` setiap hari pukul 09:55 WIB; memilih waktu acak antara 10:00–20:00 WIB yang sama untuk semua user, lalu mengirim notifikasi FCM "waktunya catch!" pada waktu itu dan mengisi `daily_drops`.
@@ -188,7 +195,8 @@ Rarity spesies, pengenalan otomatis individu hewan, leaderboard, peta, event mus
 |---|---|---|
 | `SUPABASE_URL`, `SUPABASE_ANON_KEY` | `app/` via `--dart-define` | Boleh di app |
 | `SUPABASE_SERVICE_ROLE_KEY` | Secrets Edge Function | Jangan pernah di app atau repo |
-| `ANTHROPIC_API_KEY` | Secrets Edge Function | Jangan pernah di app atau repo |
+| `AI_PROVIDER`, `AI_BASE_URL`, `AI_MODEL` | Secrets/env Edge Function | Pilih provider AI; default `mock` |
+| `AI_API_KEY` | Secrets Edge Function | Key provider AI (Anthropic/Sumopod/dll.). Jangan pernah di app atau repo |
 | `FCM_SERVICE_ACCOUNT_JSON` | Secrets Edge Function | Jangan pernah di app atau repo |
 | `google-services.json` | `app/android/app/` | Masuk `.gitignore` |
 
@@ -197,5 +205,5 @@ Sediakan `.env.example` tanpa nilai asli.
 ## 11. Testing
 
 - **RLS:** pgTAP di `supabase/tests/`, jalankan `supabase test db`. Wajib ada test "user di luar circle tidak bisa membaca catch".
-- **Edge Functions:** test Deno dengan respons Claude dan FCM di-mock.
+- **Edge Functions:** test Deno dengan respons AI (provider `mock` atau `fetch` palsu) dan FCM di-mock; jangan pernah memanggil API asli di test.
 - **Flutter:** widget test untuk alur kamera → hasil tangkapan → posting, dan untuk koleksi.
