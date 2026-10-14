@@ -2,7 +2,7 @@
 
 > Dokumen ini adalah spesifikasi teknis untuk membangun MVP furreal.
 > Baca bagian yang relevan dengan milestone yang sedang dikerjakan saja.
-> Versi produk: PRD v0.5 · Diperbarui: 13 Okt 2026
+> Versi produk: PRD v0.6 · Diperbarui: 13 Okt 2026
 
 ---
 
@@ -73,7 +73,7 @@ Mockup referensi: canvas "Catch UI" (nama lama, isinya prototype furreal) (5 lay
 | 1 | Beranda | Logo, streak, kartu "daily drop" + sisa waktu tepat-waktu, status circle hari ini, tangkapan kemarin, tab bar |
 | 2 | Kamera | Gelap, full screen. 2 langkah berurutan: "1/2 · foto hewan" (default kamera belakang) lalu "2/2 · foto lo" (selfie/reaksi, default kamera depan). Tombol ganti kamera di tiap langkah, jadi kamera mana pun boleh untuk foto mana pun. Tanpa akses galeri. Izin kamera ditolak → layar penjelasan + tombol buka pengaturan |
 | 3 | Hasil tangkapan | Kartu foto + jenis hewan + kartu kepribadian AI, input nama, pilihan "hewan baru / ketemu lagi", label area, tombol posting |
-| 4 | Feed circle | Kartu catch anggota circle hari ini, label tepat waktu/telat, reaksi suka & lucu, komentar |
+| 4 | Feed circle | Header "feed" + pilihan circle (kalau ikut >1 circle) + "hari ini · x dari y udah catch". Banner "lo belum catch hari ini" + tombol kamera (feed tetap terlihat). Kartu catch anggota circle hari ini (Asia/Jakarta), terbaru dulu: avatar & nama, waktu relatif, label tepat waktu/telat, foto hewan + selfie kecil, nama, jenis, "first catch"/"ketemu ke-Nx", kartu kepribadian. Reaksi suka & lucu (toggle optimistis), komentar di bottom sheet (maks 300, hapus milik sendiri). Pull-to-refresh, tanpa realtime |
 | 5 | Koleksi | Statistik (hewan, jenis, streak), filter semua/peliharaan/liar, grid kartu hewan dengan jumlah pertemuan |
 
 ### Design tokens (dari mockup)
@@ -126,6 +126,8 @@ daily_drops     (drop_date date PK, sent_at timestamptz)
 - `reactions`, `comments`: bisa dibuat dan dibaca jika user berbagi circle dengan pemilik catch; hanya bisa menghapus milik sendiri.
 - Storage `catch-photos`: path `{user_id}/{catch_id}/animal.jpg` dan `selfie.jpg`. Upload hanya ke folder sendiri; baca hanya jika berbagi circle. Akses lewat signed URL.
 - Buat helper SQL `shares_circle(a uuid, b uuid) returns boolean` untuk dipakai di semua policy.
+- Feed lewat RPC `circle_feed(circle_id)` (security invoker, RLS tetap berlaku) dan komentar lewat `catch_comments(catch_id)`. Helper `can_see_catch(catch_id)` dipakai policy reaksi & komentar.
+- **Data development:** `supabase/scripts/seed_dev_feed.ts` membuat user contoh, satu circle, dan catch hari ini (dengan foto, reaksi, komentar) di Supabase lokal saja.
 
 ## 6. Edge Functions
 
