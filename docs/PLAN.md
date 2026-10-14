@@ -11,7 +11,7 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
 - [ ] **M4 — Feed** — kode selesai; `flutter analyze` bersih, `flutter test` 52/52, `deno test` 28/28, pgTAP 106/106 (Postgres 16 lokal dengan tiruan skema auth + storage, termasuk `protect_delete`). pgTAP lulus di stack asli (14 Okt). Belum terverifikasi: skrip seed dan feed di HP/emulator (lihat catatan M4).
 - [ ] **M5 — Koleksi & streak** — kode selesai; `flutter analyze` bersih, `flutter test` 63/63, `deno test` 28/28, pgTAP 134/134 (Postgres 16 lokal dengan tiruan skema auth + storage). pgTAP lulus di stack asli (14 Okt). Belum terverifikasi: skrip `seed_dev_streak.ts` dan alur di HP/emulator (lihat catatan M5).
 - [ ] **M6 — Notifikasi & metrik** — kode selesai; `flutter analyze` bersih, `flutter test` 82/82, `deno test` 45/45, pgTAP 167/167 di stack Supabase asli (Docker lokal). Cron → `pg_net` → `send-daily-drop` → drop turun sudah terbukti di lokal. Belum terverifikasi: notifikasi sampai di HP, Analytics DebugView & Crashlytics (butuh proyek Firebase + HP; lihat catatan M6).
-- [ ] M7 — Siap rilis
+- [ ] **M7 — Siap rilis** — kode selesai; `flutter analyze` bersih, `flutter test` 92/92, `deno test` 53/53, pgTAP 185/185 di stack asli, hapus akun terbukti end-to-end di lokal, AAB rilis ter-build dengan keystore uji. Belum: keystore asli, email kontak, hosting kebijakan privasi, setup Play Console (lihat `docs/RELEASE.md`).
 
 ## Catatan keputusan
 
@@ -201,3 +201,30 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
   - Isi Vault `daily_drop_url` (`https://<ref>.supabase.co/functions/v1/send-daily-drop`) & `daily_drop_secret` (acak panjang).
   - `secrets set DAILY_DROP_SECRET` dengan nilai yang sama.
   - Aktifkan ekstensi `pg_cron` & `pg_net` (migrasi sudah `create extension if not exists`).
+
+### M7 (14 Okt 2026)
+- **Branch:** `m7-siap-rilis` dibuat dari `m6-notifikasi` (PR M6 belum di-merge).
+- **Pedoman kesejahteraan hewan (keputusan: setelah username, sebelum circle):**
+  - Kolom `profiles.guidelines_accepted_at` (bisa dibaca, tidak bisa diubah langsung) + RPC `accept_guidelines()` (waktu server, idempoten).
+  - Status sesi baru `needsGuidelines` → `/guidelines`. User lama juga melihatnya sekali.
+  - 4 aturan: jangan dikejar, jangan dipegang/digendong, jangan dipancing/diganggu, hormati pemilik peliharaan. Tombol "gue janji".
+- **Hapus akun** (`20261015090000_release.sql` + Edge Function `delete-account`, `verify_jwt = true`):
+  - Hanya akun pemilik JWT; tidak ada parameter user id.
+  - `account_photo_paths(user)` (service role) → foto dihapus per 100 lewat Storage API. Path di luar `{uid}/` → berhenti.
+  - Lalu `auth.admin.deleteUser`; semua tabel ikut terhapus lewat FK cascade (sudah ada sejak M1–M6). Trigger `circle_members_delete_empty_circle` menghapus circle yang tidak punya anggota lagi.
+  - `storage.objects` tidak punya FK ke `auth.users`: tanpa langkah foto, file akan yatim. Itulah alasan foto dihapus dulu (dan ketahuan saat test lokal).
+  - Foto gagal dihapus → akun belum dihapus (bisa dicoba lagi).
+  - App: layar akun (ikon di header beranda) → "hapus akun" → bottom sheet, wajib ketik username → function → sesi lokal dibuang → login + snackbar. Tombol "keluar" pindah dari beranda ke layar akun.
+  - Terverifikasi end-to-end di lokal: user nyata + 2 foto + circle → 200, foto/user/profil/circle hilang.
+  - Permintaan lewat email (Play Console mewajibkan URL hapus akun di luar app): `supabase/scripts/admin_delete_account.ts <email> [--yes]` (lokal/produksi, service role dari env).
+- **Kebijakan privasi** (keputusan: teks di app + HTML di repo, hosting nanti):
+  - `app/lib/features/account/data/privacy_policy.dart` dan `docs/privacy-policy.html`, isi sama (ubah keduanya bersamaan).
+  - Kontak masih `[EMAIL KONTAK]` (keputusan: diisi sendiri sebelum rilis).
+  - Bisa dibuka dari layar login (sebelum daftar) dan layar akun. `/privacy` boleh dibuka di tahap sesi mana pun.
+  - Teks ini templat buatan AI, bukan nasihat hukum. Baca ulang sebelum dipublikasikan.
+- **Signing rilis:**
+  - `android/key.properties` + keystore (di-.gitignore), contoh `android/key.properties.example`.
+  - Tanpa `key.properties`, build rilis memakai kunci debug + warning (cukup untuk `flutter run --release`, tidak bisa diupload).
+  - AAB rilis dites dengan keystore uji sementara di scratchpad (bukan di repo; `key.properties` uji dihapus setelah build).
+- **Checklist rilis:** `docs/RELEASE.md` (Supabase produksi, Vault, SMTP sendiri, Firebase, keystore, versionCode, Play Console closed testing, Data safety).
+- **Belum:** ikon launcher masih default Flutter (perlu PNG manual, atau paket `flutter_launcher_icons` yang di luar PRD §2).

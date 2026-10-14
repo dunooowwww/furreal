@@ -1,0 +1,68 @@
+<!doctype html>
+<!-- Kebijakan privasi furreal untuk URL Play Console. Teks yang sama ada di
+     app/lib/features/account/data/privacy_policy.dart: ubah keduanya bersamaan.
+     GANTI [EMAIL KONTAK] sebelum dipublikasikan. -->
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>kebijakan privasi · furreal</title>
+  <style>
+    :root { --bg: #ffffff; --ink: #111111; --muted: #555555; --accent: #d4ff3a; }
+    body { margin: 0; background: var(--bg); color: var(--ink);
+      font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+    main { max-width: 680px; margin: 0 auto; padding: 40px 16px 64px; }
+    h1 { font-size: 40px; line-height: 1; margin: 0 0 8px; }
+    h1 span { background: var(--accent); padding: 0 6px; }
+    h2 { font-size: 20px; margin: 32px 0 8px; }
+    .meta { font-family: ui-monospace, monospace; font-size: 13px; color: var(--muted);
+      letter-spacing: .5px; text-transform: uppercase; }
+    ul { padding-left: 20px; }
+    li { margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1><span>furreal</span></h1>
+  <h2 style="margin-top:16px">kebijakan privasi</h2>
+  <p class="meta">berlaku sejak 14 oktober 2026</p>
+
+  <h2>ringkasan</h2>
+  <p>furreal itu app buat koleksi hewan yang lo temuin tiap hari, dibagi ke circle teman. kami cuma ngumpulin data yang perlu buat app ini jalan, tidak menjual data, dan tidak punya mode publik.</p>
+
+  <h2>data yang kami kumpulkan</h2>
+  <ul>
+    <li>email: buat login dengan kode OTP.</li>
+    <li>username &amp; nama tampilan: yang dilihat teman circle-mu.</li>
+    <li>foto hewan &amp; foto lo (selfie): diambil langsung dari kamera app, tanpa akses galeri.</li>
+    <li>isi catch: nama, jenis, dan kartu kepribadian hewan, peliharaan/liar, komentar, dan reaksi.</li>
+    <li>label area perkiraan (mis. "sekitar Depok, Sleman"). lokasi GPS diubah jadi label di HP-mu; koordinat tidak pernah dikirim atau disimpan. label ini bisa disembunyikan per catch.</li>
+    <li>token notifikasi: buat ngirim notifikasi daily drop ke HP-mu.</li>
+    <li>data pemakaian &amp; crash: event seperti "catch dibuat", "reaksi", "gabung circle" (Firebase Analytics) dan laporan crash (Firebase Crashlytics), tanpa email atau username.</li>
+  </ul>
+
+  <h2>siapa yang bisa melihat</h2>
+  <p>catch, foto (termasuk selfie), komentar, dan reaksimu hanya bisa dilihat anggota circle yang sama denganmu. tidak ada profil atau feed publik.</p>
+
+  <h2>AI</h2>
+  <p>foto hewan (bukan selfie) dikirim ke penyedia AI pihak ketiga untuk menebak jenis hewan dan menulis kartu kepribadian. AI diminta tidak mengenali atau mendeskripsikan manusia di foto. jenis dan kepribadian bisa lo ubah sebelum posting.</p>
+
+  <h2>pihak ketiga yang memproses data</h2>
+  <ul>
+    <li>Supabase: database, login, dan penyimpanan foto.</li>
+    <li>Google Firebase: notifikasi (Cloud Messaging), Analytics, Crashlytics.</li>
+    <li>penyedia AI: identifikasi jenis hewan dari foto hewan.</li>
+  </ul>
+
+  <h2>penyimpanan &amp; hapus akun</h2>
+  <p>data disimpan selama akunmu aktif. lewat menu akun → "hapus akun", profil, catch, hewan, komentar, reaksi, streak, dan semua fotomu dihapus permanen dan tidak bisa dikembalikan. data pemakaian anonim di Firebase mengikuti masa simpan Firebase.</p>
+  <p id="hapus-akun">nggak bisa buka app-nya lagi? kirim email ke [EMAIL KONTAK] dari email akunmu dengan judul "hapus akun furreal". akunmu kami hapus dengan cara yang sama dalam 30 hari.</p>
+
+  <h2>anak-anak</h2>
+  <p>furreal tidak ditujukan untuk anak di bawah 13 tahun.</p>
+
+  <h2>perubahan &amp; kontak</h2>
+  <p>kalau kebijakan ini berubah, versi terbaru ada di app dan halaman ini. pertanyaan atau permintaan soal datamu: [EMAIL KONTAK].</p>
+</main>
+</body>
+</html>

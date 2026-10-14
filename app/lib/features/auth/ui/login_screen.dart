@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../../app/router.dart';
 import '../../../app/theme.dart';
 import '../../../shared/errors.dart';
 import '../../../shared/widgets/busy_button.dart';
@@ -165,6 +167,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
               ],
             ErrorText(_error),
+            const SizedBox(height: 24),
+            Center(
+              child: TextButton(
+                onPressed: () => context.push(Routes.privacy),
+                child: const Text('kebijakan privasi'),
+              ),
+            ),
           ],
         ),
       ),

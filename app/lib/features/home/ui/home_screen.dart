@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
-import '../../../app/session.dart';
 import '../../../app/theme.dart';
 import '../../../shared/errors.dart';
 import '../../auth/state/auth_providers.dart';
@@ -58,6 +57,19 @@ class HomeScreen extends ConsumerWidget {
                     ),
                   ),
                   const _StreakChip(),
+                  const SizedBox(width: 8),
+                  IconButton(
+                    tooltip: 'akun',
+                    onPressed: () => context.push(Routes.account),
+                    icon: const Icon(Icons.person_outline),
+                    style: IconButton.styleFrom(
+                      fixedSize: const Size.square(FurrealShape.minTouchTarget),
+                      side: const BorderSide(
+                        color: FurrealColors.ink,
+                        width: FurrealShape.borderWidth,
+                      ),
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 4),
@@ -77,11 +89,6 @@ class HomeScreen extends ConsumerWidget {
               OutlinedButton(
                 onPressed: () => context.push(Routes.circle),
                 child: const Text('buat / gabung circle lain'),
-              ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: () => ref.read(signOutProvider)(),
-                child: const Text('keluar'),
               ),
             ],
           ),

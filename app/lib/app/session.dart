@@ -5,7 +5,13 @@ import '../features/circles/state/circle_providers.dart';
 import '../features/notifications/state/notification_providers.dart';
 
 /// Tahap onboarding user. Menentukan layar mana yang boleh dibuka.
-enum SessionStatus { signedOut, needsUsername, needsCircle, ready }
+enum SessionStatus {
+  signedOut,
+  needsUsername,
+  needsGuidelines,
+  needsCircle,
+  ready,
+}
 
 final sessionStatusProvider = FutureProvider<SessionStatus>((ref) async {
   final userId = await ref.watch(authUserIdProvider.future);
@@ -13,6 +19,9 @@ final sessionStatusProvider = FutureProvider<SessionStatus>((ref) async {
 
   final profile = await ref.watch(myProfileProvider.future);
   if (profile?.username == null) return SessionStatus.needsUsername;
+  if (profile?.guidelinesAcceptedAt == null) {
+    return SessionStatus.needsGuidelines;
+  }
 
   final circles = await ref.watch(myCirclesProvider.future);
   return circles.isEmpty ? SessionStatus.needsCircle : SessionStatus.ready;

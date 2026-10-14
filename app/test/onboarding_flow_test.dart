@@ -47,6 +47,11 @@ void main() {
     await enter(tester, 'username', 'Alice_2');
     await tapText(tester, 'simpan');
 
+    // pedoman kesejahteraan hewan
+    expect(find.text('sebelum mulai catch'), findsOneWidget);
+    expect(find.text('jangan dikejar'), findsOneWidget);
+    await tapText(tester, 'gue janji');
+
     // circle
     expect(find.text('circle-mu'), findsOneWidget);
     await enter(tester, 'circle-name', 'kos ceria');
@@ -60,6 +65,7 @@ void main() {
     expect(find.text('halo, alice'), findsOneWidget);
     expect(find.text('kos ceria'), findsOneWidget);
 
+    await tapFinder(tester, find.byTooltip('akun'));
     await tapText(tester, 'keluar');
     expect(find.text('kirim kode'), findsOneWidget);
   });

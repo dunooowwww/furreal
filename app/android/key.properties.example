@@ -1,0 +1,7 @@
+# Salin ke android/key.properties (di-.gitignore) lalu isi. JANGAN commit file asli.
+# storeFile relatif terhadap folder android/. Simpan keystore & password di tempat
+# aman (password manager): kehilangan kunci upload = harus reset lewat Play Console.
+storeFile=upload-keystore.jks
+storePassword=
+keyAlias=upload
+keyPassword=

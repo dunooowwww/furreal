@@ -22,6 +22,8 @@ SUPABASE_SERVICE_ROLE_KEY=... deno run -A supabase/scripts/seed_dev_streak.ts em
 # daily drop (lokal saja): turun sekarang (butuh functions serve), --lock untuk mengunci kamera, --status
 SUPABASE_SERVICE_ROLE_KEY=... deno run -A supabase/scripts/seed_dev_drop.ts
 # Windows dengan package.json di folder home: tambahkan --node-modules-dir=none setelah `deno run -A`
+# build rilis: android/key.properties + keystore (lihat docs/RELEASE.md)
+cd app && flutter build appbundle --release --dart-define-from-file=.env.prod
 ```
 
 Daily drop dijadwalkan `pg_cron` (09:55 WIB + dispatch tiap menit) lewat `pg_net` ke `send-daily-drop`.
