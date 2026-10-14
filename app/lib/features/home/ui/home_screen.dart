@@ -164,7 +164,11 @@ class _TodayCardState extends ConsumerState<_TodayCard> {
     ),
     const SizedBox(height: 14),
     Text(
-      [caught.animalName, caught.kind?.label].nonNulls.join(' · '),
+      [
+        caught.animalName,
+        caught.animalType,
+        caught.kind?.label,
+      ].nonNulls.join(' · '),
       style: FurrealText.display(fontSize: 20)
           .copyWith(fontWeight: FontWeight.w700),
     ),

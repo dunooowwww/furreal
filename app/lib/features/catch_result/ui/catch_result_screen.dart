@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -7,12 +8,14 @@ import '../../../app/theme.dart';
 import '../../../shared/errors.dart';
 import '../../../shared/widgets/error_text.dart';
 import '../../camera/data/captured_photos.dart';
+import '../data/ai_identification.dart';
 import '../data/area_locator.dart';
 import '../data/catch_repository.dart';
 import '../state/catch_providers.dart';
 
-/// Hasil tangkapan versi M2: foto, nama, peliharaan/liar, area, posting.
-/// Jenis hewan & kartu kepribadian AI menyusul di M3.
+enum _Phase { uploading, identifying, uploadFailed, ready }
+
+/// Hasil tangkapan: upload foto → AI kenali hewan → user koreksi → posting.
 class CatchResultScreen extends ConsumerStatefulWidget {
   const CatchResultScreen({super.key, required this.photos});
 
@@ -23,7 +26,22 @@ class CatchResultScreen extends ConsumerStatefulWidget {
 }
 
 class _CatchResultScreenState extends ConsumerState<CatchResultScreen> {
+  // Disimpan supaya tetap bisa dipakai di dispose().
+  late final CatchRepository _repository = ref.read(catchRepositoryProvider);
   final _name = TextEditingController();
+  final _manualType = TextEditingController();
+  final _personality = TextEditingController();
+
+  _Phase _phase = _Phase.uploading;
+  PreparedCatch? _prepared;
+  bool _posted = false;
+  String? _uploadError;
+
+  AiIdentification? _ai;
+  AiFailure? _aiFailure;
+  String? _pickedType;
+  bool _manual = false;
+
   AnimalKind _kind = AnimalKind.pet;
   AreaResult? _area;
   bool _hideLocation = false;
@@ -34,11 +52,17 @@ class _CatchResultScreenState extends ConsumerState<CatchResultScreen> {
   void initState() {
     super.initState();
     _locate();
+    _prepareAndIdentify();
   }
 
   @override
   void dispose() {
+    // Batal posting (foto ulang, tutup, back): buang foto yang sudah ter-upload.
+    final prepared = _prepared;
+    if (prepared != null && !_posted) _repository.discard(prepared);
     _name.dispose();
+    _manualType.dispose();
+    _personality.dispose();
     super.dispose();
   }
 
@@ -47,12 +71,75 @@ class _CatchResultScreenState extends ConsumerState<CatchResultScreen> {
     if (mounted) setState(() => _area = area);
   }
 
+  Future<void> _prepareAndIdentify() async {
+    setState(() {
+      _phase = _Phase.uploading;
+      _uploadError = null;
+    });
+    final PreparedCatch prepared;
+    try {
+      prepared = await _repository.prepare(widget.photos);
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _phase = _Phase.uploadFailed;
+          _uploadError = friendlyError(e);
+        });
+      }
+      return;
+    }
+    if (!mounted) {
+      _repository.discard(prepared);
+      return;
+    }
+    setState(() {
+      _prepared = prepared;
+      _phase = _Phase.identifying;
+    });
+
+    AiIdentification? ai;
+    AiFailure? failure;
+    try {
+      ai = await _repository.identify(prepared);
+    } on AiFailure catch (e) {
+      failure = e;
+    } catch (_) {
+      failure = const AiFailure('ai_unavailable');
+    }
+    if (!mounted) return;
+    setState(() {
+      _ai = ai;
+      _aiFailure = failure;
+      _pickedType = ai?.animalType;
+      _manual = ai?.animalType == null;
+      _personality.text = ai?.personality ?? '';
+      _phase = _Phase.ready;
+    });
+  }
+
+  bool get _aiFoundAnimal => _ai?.animalType != null;
+
+  String? get _finalType {
+    final type = (_manual ? _manualType.text : _pickedType)?.trim();
+    return (type == null || type.isEmpty) ? null : type.toLowerCase();
+  }
+
+  String? get _aiMessage {
+    if (_aiFailure case final failure?) return failure.message;
+    if (!_aiFoundAnimal) {
+      return 'AI nggak nemu hewan di foto ini. isi jenisnya sendiri ya.';
+    }
+    return null;
+  }
+
   String? get _areaLabel => switch (_area) {
     AreaFound(:final label) when !_hideLocation => label,
     _ => null,
   };
 
   Future<void> _post() async {
+    final prepared = _prepared;
+    if (prepared == null) return;
     final name = _name.text.trim();
     if (name.isEmpty) {
       setState(() => _error = 'kasih nama dulu hewannya.');
@@ -64,18 +151,19 @@ class _CatchResultScreenState extends ConsumerState<CatchResultScreen> {
     });
     try {
       final areaLabel = _areaLabel;
-      await ref
-          .read(catchRepositoryProvider)
-          .submit(
-            NewCatch(
-              animalPhoto: widget.photos.animal,
-              selfiePhoto: widget.photos.selfie,
-              animalName: name,
-              kind: _kind,
-              areaLabel: areaLabel,
-              locationHidden: areaLabel == null,
-            ),
-          );
+      final personality = _personality.text.trim();
+      await _repository.submit(
+        prepared,
+        CatchDetails(
+          animalName: name,
+          kind: _kind,
+          animalType: _finalType,
+          personality: personality.isEmpty ? null : personality,
+          areaLabel: areaLabel,
+          locationHidden: areaLabel == null,
+        ),
+      );
+      _posted = true;
       ref.invalidate(todayCatchProvider);
       if (!mounted) return;
       final messenger = ScaffoldMessenger.of(context);
@@ -90,8 +178,29 @@ class _CatchResultScreenState extends ConsumerState<CatchResultScreen> {
     }
   }
 
+  void _retake() => context.pushReplacement(Routes.camera);
+
   @override
   Widget build(BuildContext context) {
+    return switch (_phase) {
+      _Phase.uploading => const _LoadingScreen(
+        title: 'nyimpen fotonya dulu…',
+        subtitle: 'bentar ya',
+      ),
+      _Phase.identifying => const _LoadingScreen(
+        title: 'AI lagi ngenalin hewannya…',
+        subtitle: 'kartu kepribadian lagi ditulis',
+      ),
+      _Phase.uploadFailed => _UploadFailed(
+        message: _uploadError,
+        onRetry: _prepareAndIdentify,
+        onRetake: _retake,
+      ),
+      _Phase.ready => _buildForm(context),
+    };
+  }
+
+  Widget _buildForm(BuildContext context) {
     final label = FurrealText.mono(fontSize: 12)
         .copyWith(color: FurrealColors.textSecondary, letterSpacing: 0.5);
     return Scaffold(
@@ -107,9 +216,7 @@ class _CatchResultScreenState extends ConsumerState<CatchResultScreen> {
                     children: [
                       IconButton(
                         tooltip: 'foto ulang',
-                        onPressed: _posting
-                            ? null
-                            : () => context.pushReplacement(Routes.camera),
+                        onPressed: _posting ? null : _retake,
                         icon: const Icon(Icons.arrow_back, size: 18),
                         style: IconButton.styleFrom(
                           fixedSize: const Size.square(
@@ -121,7 +228,7 @@ class _CatchResultScreenState extends ConsumerState<CatchResultScreen> {
                           ),
                         ),
                       ),
-                      Text('TANGKAPAN BARU', style: label),
+                      Text('CATCH HARI INI', style: label),
                       const SizedBox.square(
                         dimension: FurrealShape.minTouchTarget,
                       ),
@@ -130,7 +237,19 @@ class _CatchResultScreenState extends ConsumerState<CatchResultScreen> {
                   const SizedBox(height: 16),
                   Text('dapet!', style: FurrealText.display(fontSize: 38)),
                   const SizedBox(height: 16),
-                  _PhotoCard(photos: widget.photos),
+                  Card(
+                    clipBehavior: Clip.antiAlias,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _Photos(photos: widget.photos),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                          child: _buildAiSection(label),
+                        ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   Text('KASIH NAMA', style: label),
                   const SizedBox(height: 8),
@@ -171,63 +290,209 @@ class _CatchResultScreenState extends ConsumerState<CatchResultScreen> {
                 ],
               ),
             ),
-            Container(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-              decoration: const BoxDecoration(
-                border: Border(
-                  top: BorderSide(
-                    color: FurrealColors.ink,
-                    width: FurrealShape.borderWidth,
-                  ),
+            _buildPostBar(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAiSection(TextStyle label) {
+    final ai = _ai;
+    final aiMessage = _aiMessage;
+    final edited =
+        ai?.personality != null && _personality.text.trim() != ai!.personality;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (aiMessage != null) ...[
+          Text(
+            aiMessage,
+            key: const Key('ai-message'),
+            style: const TextStyle(fontSize: 14, height: 1.4),
+          ),
+          const SizedBox(height: 10),
+        ],
+        if (_aiFoundAnimal && !_manual) ...[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.baseline,
+            textBaseline: TextBaseline.alphabetic,
+            children: [
+              Expanded(
+                child: Text(
+                  _pickedType ?? '',
+                  key: const Key('ai-type'),
+                  style: FurrealText.display(fontSize: 22)
+                      .copyWith(fontWeight: FontWeight.w700),
                 ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+              if (_pickedType == ai!.animalType)
+                Text(
+                  'yakin ${ai.confidencePercent}%',
+                  style: FurrealText.mono(fontSize: 12)
+                      .copyWith(color: FurrealColors.textSecondary),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+        ] else ...[
+          TextField(
+            key: const Key('animal-type'),
+            controller: _manualType,
+            maxLength: animalTypeMaxLength,
+            textCapitalization: TextCapitalization.none,
+            decoration: const InputDecoration(
+              labelText: 'jenis hewan',
+              hintText: 'mis. kucing',
+              counterText: '',
+            ),
+          ),
+          const SizedBox(height: 10),
+        ],
+        if (_aiFoundAnimal)
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              const Text(
+                'bukan ini?',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: FurrealColors.textSecondary,
+                ),
+              ),
+              for (final candidate in ai!.candidates)
+                _Chip(
+                  label: candidate,
+                  selected: !_manual && _pickedType == candidate,
+                  onTap: () => setState(() {
+                    _manual = false;
+                    _pickedType = candidate;
+                  }),
+                ),
+              _Chip(
+                label: 'lainnya',
+                selected: _manual,
+                onTap: () => setState(() => _manual = true),
+              ),
+            ],
+          ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 4),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF3F3F3),
+            borderRadius: BorderRadius.circular(18),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
                 children: [
-                  if (_error != null) ...[
-                    ErrorText(_error),
-                    const SizedBox(height: 12),
-                  ],
-                  FilledButton(
-                    onPressed: _posting ? null : _post,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: FurrealColors.ink,
-                      foregroundColor: Colors.white,
-                      minimumSize: const Size.fromHeight(56),
-                      shape: const StadiumBorder(),
+                  const Icon(
+                    Icons.auto_awesome_outlined,
+                    size: 14,
+                    color: FurrealColors.textSecondary,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      ai?.personality != null
+                          ? 'KARTU KEPRIBADIAN · DITULIS AI${edited ? ' · DIEDIT' : ''}'
+                          : 'KARTU KEPRIBADIAN',
+                      style: FurrealText.mono(fontSize: 11).copyWith(
+                        color: FurrealColors.textSecondary,
+                        letterSpacing: 0.5,
+                      ),
                     ),
-                    child: _posting
-                        ? const SizedBox.square(
-                            dimension: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                'posting ke circle',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              SizedBox(width: 10),
-                              Icon(
-                                Icons.arrow_forward,
-                                color: FurrealColors.accent,
-                                size: 18,
-                              ),
-                            ],
-                          ),
+                  ),
+                  const Icon(
+                    Icons.edit_outlined,
+                    size: 14,
+                    color: FurrealColors.textSecondary,
                   ),
                 ],
               ),
-            ),
-          ],
+              TextField(
+                key: const Key('personality'),
+                controller: _personality,
+                maxLength: personalityMaxLength,
+                minLines: 1,
+                maxLines: 4,
+                onChanged: (_) => setState(() {}),
+                style: const TextStyle(fontSize: 15, height: 1.4),
+                decoration: const InputDecoration(
+                  hintText: 'tulis kepribadiannya sendiri (opsional)',
+                  counterText: '',
+                  border: InputBorder.none,
+                  enabledBorder: InputBorder.none,
+                  focusedBorder: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(vertical: 6),
+                  isDense: true,
+                ),
+              ),
+            ],
+          ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildPostBar() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+      decoration: const BoxDecoration(
+        border: Border(
+          top: BorderSide(
+            color: FurrealColors.ink,
+            width: FurrealShape.borderWidth,
+          ),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (_error != null) ...[
+            ErrorText(_error),
+            const SizedBox(height: 12),
+          ],
+          FilledButton(
+            onPressed: _posting ? null : _post,
+            style: FilledButton.styleFrom(
+              backgroundColor: FurrealColors.ink,
+              foregroundColor: Colors.white,
+              minimumSize: const Size.fromHeight(56),
+              shape: const StadiumBorder(),
+            ),
+            child: _posting
+                ? const SizedBox.square(
+                    dimension: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Colors.white,
+                    ),
+                  )
+                : const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        'posting ke circle',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 16,
+                        ),
+                      ),
+                      SizedBox(width: 10),
+                      Icon(
+                        Icons.arrow_forward,
+                        color: FurrealColors.accent,
+                        size: 18,
+                      ),
+                    ],
+                  ),
+          ),
+        ],
       ),
     );
   }
@@ -285,67 +550,186 @@ const _fieldBorder = OutlineInputBorder(
   ),
 );
 
-class _PhotoCard extends StatelessWidget {
-  const _PhotoCard({required this.photos});
+/// Layar gelap selama upload & AI bekerja (prototype "analyzing").
+class _LoadingScreen extends StatelessWidget {
+  const _LoadingScreen({required this.title, required this.subtitle});
+
+  final String title;
+  final String subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      child: Scaffold(
+        backgroundColor: const Color(0xFF0E0E0E),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Semantics(
+              liveRegion: true,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox.square(
+                    dimension: 56,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 4,
+                      color: FurrealColors.accent,
+                      backgroundColor: Color(0xFF333333),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: FurrealText.display(fontSize: 24).copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    subtitle,
+                    style: FurrealText.mono(fontSize: 12)
+                        .copyWith(color: const Color(0xFFB0B0B0)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _UploadFailed extends StatelessWidget {
+  const _UploadFailed({
+    required this.message,
+    required this.onRetry,
+    required this.onRetake,
+  });
+
+  final String? message;
+  final VoidCallback onRetry;
+  final VoidCallback onRetake;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Spacer(),
+              Text(
+                'foto belum kesimpen',
+                textAlign: TextAlign.center,
+                style: FurrealText.display(fontSize: 28),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                message ?? 'coba lagi ya.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: FurrealColors.textSecondary),
+              ),
+              const Spacer(),
+              FilledButton(onPressed: onRetry, child: const Text('coba lagi')),
+              const SizedBox(height: 8),
+              TextButton(onPressed: onRetake, child: const Text('foto ulang')),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Photos extends StatelessWidget {
+  const _Photos({required this.photos});
 
   final CapturedPhotos photos;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: SizedBox(
-        height: 300,
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Image.memory(
-              photos.animal,
-              key: const Key('result-animal-photo'),
-              fit: BoxFit.cover,
-            ),
-            Positioned(
-              top: 12,
-              left: 12,
-              width: 60,
-              height: 80,
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white, width: 2),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: Image.memory(
-                  photos.selfie,
-                  key: const Key('result-selfie-photo'),
-                  fit: BoxFit.cover,
-                ),
+    return SizedBox(
+      height: 260,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          Image.memory(
+            photos.animal,
+            key: const Key('result-animal-photo'),
+            fit: BoxFit.cover,
+          ),
+          Positioned(
+            top: 12,
+            left: 12,
+            width: 60,
+            height: 80,
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.white, width: 2),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Image.memory(
+                photos.selfie,
+                key: const Key('result-selfie-photo'),
+                fit: BoxFit.cover,
               ),
             ),
-            Positioned(
-              left: 12,
-              bottom: 12,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  color: FurrealColors.accent,
-                  borderRadius: BorderRadius.circular(999),
-                  border: Border.all(
-                    color: FurrealColors.ink,
-                    width: FurrealShape.borderWidth,
-                  ),
-                ),
-                child: Text(
-                  'hewan baru',
-                  style: FurrealText.mono(fontSize: 11),
+          ),
+          Positioned(
+            left: 12,
+            bottom: 12,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: FurrealColors.accent,
+                borderRadius: BorderRadius.circular(999),
+                border: Border.all(
+                  color: FurrealColors.ink,
+                  width: FurrealShape.borderWidth,
                 ),
               ),
+              child: Text('hewan baru', style: FurrealText.mono(fontSize: 11)),
             ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Chip extends StatelessWidget {
+  const _Chip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      selected: selected,
+      child: OutlinedButton(
+        onPressed: onTap,
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(0, 44),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          backgroundColor: selected ? FurrealColors.ink : Colors.white,
+          foregroundColor: selected ? Colors.white : FurrealColors.ink,
+          textStyle: const TextStyle(fontSize: 13),
         ),
+        child: Text(label),
       ),
     );
   }
