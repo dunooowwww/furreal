@@ -18,6 +18,9 @@ import 'package:furreal/features/catch_result/data/catch_repository.dart';
 import 'package:furreal/features/catch_result/state/catch_providers.dart';
 import 'package:furreal/features/circles/data/circle_repository.dart';
 import 'package:furreal/features/circles/state/circle_providers.dart';
+import 'package:furreal/features/feed/data/feed_models.dart';
+import 'package:furreal/features/feed/data/feed_repository.dart';
+import 'package:furreal/features/feed/state/feed_providers.dart';
 import 'package:furreal/shared/app_settings.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -263,6 +266,80 @@ const mockKucing = AiIdentification(
   personality: 'si penjaga parkiran. hobi: tidur di jok motor orang.',
 );
 
+class FakeFeedRepository implements FeedRepository {
+  FakeFeedRepository({
+    Map<String, List<FeedItem>>? feeds,
+    Map<String, int>? members,
+    Map<String, List<FeedComment>>? comments,
+  }) : feeds = feeds ?? {},
+       members = members ?? {},
+       commentsByCatch = comments ?? {};
+
+  final Map<String, List<FeedItem>> feeds;
+  final Map<String, int> members;
+  final Map<String, List<FeedComment>> commentsByCatch;
+
+  final feedLoads = <String>[];
+  final reactionCalls = <({String catchId, ReactionType type, bool on})>[];
+  final added = <({String catchId, String body})>[];
+  final deletedComments = <String>[];
+
+  /// Kalau diisi, setReaction menunggu gate lalu melempar error ini.
+  Object? reactionError;
+  Completer<void>? reactionGate;
+
+  @override
+  Future<List<FeedItem>> todayFeed(String circleId) async {
+    feedLoads.add(circleId);
+    return feeds[circleId] ?? const [];
+  }
+
+  @override
+  Future<int> memberCount(String circleId) async => members[circleId] ?? 1;
+
+  @override
+  Future<void> setReaction(
+    String catchId,
+    ReactionType type, {
+    required bool on,
+  }) async {
+    reactionCalls.add((catchId: catchId, type: type, on: on));
+    await reactionGate?.future;
+    final error = reactionError;
+    if (error != null) throw error;
+  }
+
+  @override
+  Future<List<FeedComment>> comments(String catchId) async =>
+      List.of(commentsByCatch[catchId] ?? const []);
+
+  @override
+  Future<void> addComment(String catchId, String body) async {
+    added.add((catchId: catchId, body: body));
+    (commentsByCatch[catchId] ??= []).add(
+      FeedComment(
+        id: 'c-${added.length}',
+        displayName: 'bob',
+        body: body,
+        createdAt: DateTime.now(),
+        isMine: true,
+      ),
+    );
+  }
+
+  @override
+  Future<void> deleteComment(String commentId) async {
+    deletedComments.add(commentId);
+    for (final list in commentsByCatch.values) {
+      list.removeWhere((c) => c.id == commentId);
+    }
+  }
+}
+
+/// Foto palsu untuk test (tanpa jaringan): kotak abu-abu ber-key path.
+Widget fakeFeedPhoto(BuildContext context, String? url, String cacheKey) =>
+    ColoredBox(key: Key('photo-$cacheKey'), color: Colors.grey);
+
 Future<void> pumpApp(
   WidgetTester tester, {
   required FakeAuthRepository auth,
@@ -272,6 +349,7 @@ Future<void> pumpApp(
   FakeCatchCamera? camera,
   FakeAreaLocator? area,
   FakeCatchRepository? catches,
+  FakeFeedRepository? feed,
   VoidCallback? onOpenSettings,
 }) async {
   tester.view.physicalSize = const Size(1080, 2400);
@@ -296,6 +374,8 @@ Future<void> pumpApp(
         catchRepositoryProvider.overrideWithValue(
           catches ?? FakeCatchRepository(),
         ),
+        feedRepositoryProvider.overrideWithValue(feed ?? FakeFeedRepository()),
+        feedPhotoBuilderProvider.overrideWithValue(fakeFeedPhoto),
         openAppSettingsProvider.overrideWithValue(() async {
           onOpenSettings?.call();
           return true;
