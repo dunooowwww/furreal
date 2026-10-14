@@ -15,6 +15,8 @@ npx supabase start                  # Supabase lokal (butuh Docker)
 npx supabase db reset               # terapkan migrasi
 npx supabase functions serve --env-file supabase/.env   # Edge Functions lokal (AI_PROVIDER=mock default)
 cd app && flutter run --dart-define-from-file=.env.local
+# data feed contoh (lokal saja): SUPABASE_SERVICE_ROLE_KEY dari `npx supabase status -o env`
+SUPABASE_SERVICE_ROLE_KEY=... deno run -A supabase/scripts/seed_dev_feed.ts emailkamu@contoh.com
 ```
 
 ## Test

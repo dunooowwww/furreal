@@ -8,7 +8,7 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
 - [ ] **M1 — Auth & circle** — kode selesai; `flutter analyze` bersih, `flutter test` 12/12, pgTAP 26/26 (di Postgres 16 lokal dengan tiruan skema auth). Belum terverifikasi: `npx supabase test db` di stack Supabase asli, dan login OTP end-to-end lewat Mailpit (lihat catatan M1).
 - [ ] **M2 — Kamera & catch** — kode selesai; `flutter analyze` bersih, `flutter test` 27/27, pgTAP 57/57 (Postgres 16 lokal dengan tiruan skema auth + storage). Belum terverifikasi: `npx supabase test db` di stack asli, dan alur kamera/upload/lokasi di HP atau emulator (lihat catatan M2).
 - [ ] **M3 — AI** — kode selesai; `flutter analyze` bersih, `flutter test` 39/39, `deno test` 28/28, pgTAP 74/74 (Postgres 16 lokal dengan tiruan skema auth + storage). Belum terverifikasi: `npx supabase test db` & `functions serve` di stack asli, dan alur AI di HP/emulator (lihat catatan M3).
-- [ ] M4 — Feed
+- [ ] **M4 — Feed** — kode selesai; `flutter analyze` bersih, `flutter test` 52/52, `deno test` 28/28, pgTAP 106/106 (Postgres 16 lokal dengan tiruan skema auth + storage, termasuk `protect_delete`). Belum terverifikasi: `npx supabase test db`, skrip seed, dan feed di HP/emulator (lihat catatan M4).
 - [ ] M5 — Koleksi & streak
 - [ ] M6 — Notifikasi & metrik
 - [ ] M7 — Siap rilis
@@ -102,3 +102,20 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
 - Test sekarang tidak menghapus file storage lewat SQL. Aturan hapus/timpa foto dicek lewat helper `is_own_catch_photo_path` (yang dipakai policy-nya) + cek bahwa policy DELETE memakai helper itu.
 - Tiruan lokal (Postgres 16) ikut diberi trigger serupa supaya kasus ini tertangkap di sesi cloud.
 - App sudah benar: hapus foto (batal posting, tombol debug) lewat Storage API (`storage.from(...).remove`). Hapus akun di M7 juga harus lewat Storage API, bukan SQL.
+
+### M4 (14 Okt 2026)
+- **Skema** (`20261014120000_feed.sql`):
+  - `reactions` (PK catch+user+type, `like`/`laugh`) dan `comments` (1–300 karakter setelah trim, tidak bisa diedit). `user_id` default `auth.uid()`.
+  - Policy: baca & buat hanya kalau `can_see_catch(catch_id)` (catch sendiri, atau satu circle dengan pemiliknya), dan buat hanya atas nama sendiri; hapus hanya milik sendiri. Pemilik catch pun tidak bisa menghapus komentar orang lain. Reaksi & komentar ikut terhapus bersama catch.
+  - `circle_feed(circle_id)`: catch hari ini (Asia/Jakarta) anggota circle, terbaru dulu, dalam satu panggilan (profil, hewan, `encounter_count`, jenis & kepribadian final dengan fallback ke `ai_*`, jumlah reaksi/komentar, reaksi saya, telat berapa menit). Security invoker, jadi RLS tetap berlaku; user non-anggota mendapat hasil kosong.
+  - `catch_comments(catch_id)`: komentar + nama penulis. Security definer supaya nama penulis dari circle lain tetap terbaca oleh orang yang memang bisa melihat komentarnya.
+- **Multi-circle:** feed per circle dengan pilihan circle di header (dropdown hanya kalau >1 circle; default circle pertama). Satu catch tampil di semua circle pemiliknya. "x dari y" = anggota yang sudah catch hari ini / jumlah anggota circle.
+- **Belum catch:** feed tetap terlihat, hanya muncul banner aksen + tombol kamera (tidak dikunci ala BeReal). Catch sendiri ikut tampil.
+- **Foto:** signed URL diminta sekali per load (`createSignedUrlsResult`, 1 jam). `cached_network_image` dengan `cacheKey` = path storage, jadi cache tetap kena walau URL berganti. Placeholder saat loading/gagal. Pembangun foto bisa di-override (`feedPhotoBuilderProvider`) untuk test tanpa jaringan.
+- **Reaksi:** toggle optimistis di `FeedController` (family per circle), rollback + snackbar "gagal nyimpen reaksi. coba lagi ya." kalau gagal. Insert duplikat (23505) dianggap sukses.
+- **Komentar:** bottom sheet; setelah kirim/hapus, daftar dimuat ulang dan hitungan di kartu disamakan. Tombol hapus hanya di komentar sendiri (`is_mine`), dan tetap dijaga RLS.
+- **Navigasi:** `ShellRoute` dengan tab bar bawah "beranda" / "feed". Tab "koleksi" menyusul di M5.
+- **Seed development:** `supabase/scripts/seed_dev_feed.ts` (Deno + service role, hanya mau jalan ke Supabase lokal).
+  - Membuat 4 user contoh (`*@furreal.test`) dan circle "anak kos merpati" (kode `KSM234`), lalu memasukkan akunmu ke circle itu.
+  - Meng-upload foto contoh (`supabase/scripts/seed_photos/`, JPEG buatan sendiri), membuat catch hari ini untuk 3 user (1 telat), plus reaksi & komentar. User ke-4 belum catch.
+  - Aman dijalankan ulang tiap hari: catch hari ini milik user contoh diganti (foto lama dihapus lewat Storage API).
