@@ -123,7 +123,13 @@ select throws_ok(
   'user lain tidak bisa upload ke folder alice'
 );
 
-delete from storage.objects where bucket_id = 'catch-photos';
+-- DELETE langsung ke storage.objects ditolak Supabase (wajib lewat Storage API),
+-- jadi aturan hapus/timpa dicek lewat helper yang dipakai policy-nya.
+select is(
+  public.is_own_catch_photo_path('11111111-1111-1111-1111-111111111111/aaaaaaaa-0000-0000-0000-000000000001/animal.jpg'),
+  false,
+  'user lain tidak boleh menghapus/menimpa foto alice'
+);
 
 reset role;
 
@@ -180,11 +186,13 @@ select is(
   1,
   'anggota circle tidak bisa menghapus hewan alice'
 );
-select is(
-  (select count(*)::int from storage.objects
-    where name like '11111111-1111-1111-1111-111111111111/%'),
-  4,
-  'user lain tidak bisa menghapus foto alice'
+select ok(
+  exists (
+    select 1 from pg_policies
+    where schemaname = 'storage' and tablename = 'objects'
+      and cmd = 'DELETE' and qual like '%is_own_catch_photo_path(name)%'
+  ),
+  'hapus foto catch dijaga is_own_catch_photo_path'
 );
 select is(
   (select count(*)::int from public.daily_drops),
@@ -203,10 +211,9 @@ select throws_ok(
   'user tidak bisa menulis daily_drops'
 );
 
-select lives_ok(
-  $$delete from storage.objects
-    where name like '11111111-1111-1111-1111-111111111111/aaaaaaaa-0000-0000-0000-000000000001/%'$$,
-  'pemilik bisa menghapus foto catch-nya'
+select ok(
+  public.is_own_catch_photo_path('11111111-1111-1111-1111-111111111111/aaaaaaaa-0000-0000-0000-000000000001/selfie.jpg'),
+  'pemilik boleh menghapus/menimpa foto di foldernya sendiri'
 );
 select lives_ok(
   $$delete from public.catches where catch_date = public.jakarta_today()$$,
@@ -218,12 +225,6 @@ select lives_ok(
 );
 
 reset role;
-select is(
-  (select count(*)::int from storage.objects
-    where name like '11111111-1111-1111-1111-111111111111/aaaaaaaa-0000-0000-0000-000000000001/%'),
-  0,
-  'foto catch yang dihapus benar-benar hilang'
-);
 
 select * from finish();
 rollback;
