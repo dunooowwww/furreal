@@ -7,7 +7,7 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
 - [ ] **M0 — Scaffold** — kode selesai; `flutter analyze` & `flutter test` lulus. Belum terverifikasi: app di emulator, `supabase start`, `supabase test db` (lihat catatan M0).
 - [ ] **M1 — Auth & circle** — kode selesai; `flutter analyze` bersih, `flutter test` 12/12, pgTAP 26/26 (di Postgres 16 lokal dengan tiruan skema auth). Belum terverifikasi: `npx supabase test db` di stack Supabase asli, dan login OTP end-to-end lewat Mailpit (lihat catatan M1).
 - [ ] **M2 — Kamera & catch** — kode selesai; `flutter analyze` bersih, `flutter test` 27/27, pgTAP 57/57 (Postgres 16 lokal dengan tiruan skema auth + storage). Belum terverifikasi: `npx supabase test db` di stack asli, dan alur kamera/upload/lokasi di HP atau emulator (lihat catatan M2).
-- [ ] M3 — AI
+- [ ] **M3 — AI** — kode selesai; `flutter analyze` bersih, `flutter test` 39/39, `deno test` 28/28, pgTAP 74/74 (Postgres 16 lokal dengan tiruan skema auth + storage). Belum terverifikasi: `npx supabase test db` & `functions serve` di stack asli, dan alur AI di HP/emulator (lihat catatan M3).
 - [ ] M4 — Feed
 - [ ] M5 — Koleksi & streak
 - [ ] M6 — Notifikasi & metrik
@@ -70,3 +70,29 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
 - **Manifest:** tambah `CAMERA`, `ACCESS_COARSE_LOCATION`, `INTERNET` (manifest utama; sebelumnya hanya ada di debug/profile, padahal rilis butuh). `RECORD_AUDIO` & `WRITE_EXTERNAL_STORAGE` bawaan plugin kamera dibuang. Activity dikunci potret.
 - **Layar hasil versi M2:** foto hewan + thumbnail selfie, chip "hewan baru", "kasih nama", pilihan peliharaan/liar (menggantikan "hewan baru / ketemu lagi" di prototype; "ketemu lagi" di M5), baris area + toggle sembunyikan, tombol "posting ke circle". Jenis hewan & kartu kepribadian AI di M3.
 - **Perlu dicek di stack Supabase asli:** `create_catch` membaca `storage.objects` sebagai pemilik fungsi (`postgres`). Di tiruan lokal `postgres` adalah superuser. Kalau di Supabase asli RLS storage menghalangi `postgres`, `create_catch` akan selalu `FR002`. Test `npx supabase test db` akan menunjukkannya.
+
+### M3 (14 Okt 2026)
+- **Alur baru:** foto di-upload begitu layar hasil terbuka, lalu `identify-animal` dipanggil dengan `catch_id` (baris `catches` belum ada).
+  - Function membaca `{uid}/{catch_id}/animal.jpg` saja, tidak pernah selfie, dan menyimpan hasil di tabel server `ai_identifications`.
+  - Saat posting, `create_catch` menyalin hasil AI sukses terbaru (milik user itu) ke `catches.ai_*`. Jadi `ai_*` selalu hasil asli AI, tidak bisa dipalsukan app.
+  - Kalau user batal (foto ulang/tutup/back), foto yang sudah ter-upload dihapus di `dispose`.
+- **Hasil akhir user (opsi 1a):** `catches.ai_*` = hasil asli AI. Jenis final (chip/koreksi/manual) → `animals.animal_type` (huruf kecil). Kartu kepribadian final yang bisa diedit → kolom baru `catches.personality` (yang nanti tampil di feed, M4).
+- **Adapter AI** (`supabase/functions/_shared/ai/`):
+  - Satu interface `identify(image)`, provider dipilih dari env `AI_PROVIDER` (`mock` default | `anthropic` | `openai_compatible`), plus `AI_BASE_URL`, `AI_MODEL`, `AI_API_KEY`. Provider di-cache selama env sama.
+  - `mock`: bergiliran kucing → ayam → burung, delay 1,5 detik, tanpa API.
+  - `anthropic`: `POST {base}/v1/messages`, default `claude-haiku-5-5`, gambar base64, JSON dipaksa lewat `output_config.format` (json_schema), `effort: low`, refusal → `ai_unavailable`.
+  - `openai_compatible` (mis. Sumopod): `POST {AI_BASE_URL}/chat/completions` dengan `image_url` data URL. `AI_BASE_URL` (biasanya diakhiri `/v1`) dan `AI_MODEL` wajib; model harus mendukung gambar. Tanpa `response_format` (tidak semua gateway mendukung); JSON diambil dari teks, termasuk dari blok ```json.
+  - Pemanggilan pakai `fetch` biasa, tanpa SDK atau paket tambahan. Satu-satunya dependensi function: `npm:@supabase/supabase-js@2.117.2` di `index.ts`.
+  - Prompt bersama (`prompt.ts`): jenis umum bahasa Indonesia, kepribadian maks 2 kalimat huruf kecil, larangan menebak manusia & saran medis, abaikan teks di foto.
+  - Validator (`validate.ts`): skema PRD §6.1, huruf kecil, confidence persen → 0..1, kandidat ≤5 dengan jawaban utama di depan, kepribadian dipotong ke 2 kalimat / 280 karakter, `animal_type` null → semua kosong. Tidak valid → `invalid_ai_response`.
+- **Edge function `identify-animal`:**
+  - Handler murni dengan dependensi diinjeksi (`handler.ts`); `index.ts` hanya wiring supabase-js.
+  - Alur: JWT → `catch_id` uuid → `claim_ai_call` → unduh foto hewan (service role, maks 5 MB) → AI dengan timeout 15 detik → validasi → simpan.
+  - Error `{error: {code, message}}`: `unauthorized` 401, `bad_request` 400, `rate_limited` 429, `photo_not_found` 404, `timeout` 504, `invalid_ai_response`/`ai_unavailable` 502, `ai_not_configured` 500.
+- **Batas harian (opsi 2a):** 5 panggilan/user/hari (Asia/Jakarta) untuk provider asli; mode `mock` tanpa batas. Dijaga atomik di `claim_ai_call` (advisory lock per user, error `FR003`). Panggilan yang gagal tetap dihitung.
+- **App:**
+  - Layar loading gelap "nyimpen fotonya dulu…" lalu "AI lagi ngenalin hewannya…" / "kartu kepribadian lagi ditulis" (prototype).
+  - Kartu hasil: jenis + "yakin 94%", "bukan ini?" + chip kandidat + "lainnya" (jenis manual), kartu "kartu kepribadian · ditulis AI" yang bisa diedit (label "· diedit").
+  - AI gagal/timeout/jatah habis/tidak ada hewan → pesan ramah + input jenis manual; jenis & kepribadian opsional, posting tetap jalan. Upload gagal → layar "coba lagi"/"foto ulang".
+  - Timeout klien 20 detik.
+- **Test:** Deno (validator, giliran mock, format request tiap provider dengan `fetch` palsu, handler dengan dependensi palsu) tanpa API asli; widget test alur AI dengan repository palsu; pgTAP untuk akses, batas harian, dan penyalinan hasil AI.
