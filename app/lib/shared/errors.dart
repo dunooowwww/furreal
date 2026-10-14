@@ -24,6 +24,8 @@ String friendlyError(Object error) {
         return 'kamu udah catch hari ini. besok lagi ya!';
       case 'FR002':
         return 'foto belum ke-upload. coba posting lagi.';
+      case 'FR005':
+        return 'daily drop belum turun. tunggu notifikasinya ya.';
       case '23505':
         return 'username sudah dipakai. coba yang lain.';
       case 'P0002':

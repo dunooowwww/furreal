@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
 import '../../../app/theme.dart';
+import '../../../shared/analytics.dart';
 import '../../../shared/errors.dart';
 import '../../../shared/widgets/busy_button.dart';
 import '../../../shared/widgets/error_text.dart';
@@ -49,6 +50,7 @@ class _CircleScreenState extends ConsumerState<CircleScreen> {
       final circle = await ref
           .read(circleRepositoryProvider)
           .createCircle(name);
+      ref.read(analyticsProvider).circleJoined(method: 'create');
       ref.invalidate(myCirclesProvider);
       if (mounted) setState(() => _created = circle);
     } catch (e) {
@@ -71,6 +73,7 @@ class _CircleScreenState extends ConsumerState<CircleScreen> {
     });
     try {
       await ref.read(circleRepositoryProvider).joinCircle(code);
+      ref.read(analyticsProvider).circleJoined(method: 'invite_code');
       ref.invalidate(myCirclesProvider);
       if (mounted) context.go(Routes.home);
     } catch (e) {

@@ -2,7 +2,7 @@
 
 > Dokumen ini adalah spesifikasi teknis untuk membangun MVP furreal.
 > Baca bagian yang relevan dengan milestone yang sedang dikerjakan saja.
-> Versi produk: PRD v0.7 · Diperbarui: 13 Okt 2026
+> Versi produk: PRD v0.8 · Diperbarui: 14 Okt 2026
 
 ---
 
@@ -70,10 +70,10 @@ Mockup referensi: canvas "Catch UI" (nama lama, isinya prototype furreal) (5 lay
 | 0a | Login | Isi email → isi kode OTP 6 digit yang dikirim ke email. Google Sign-In ditunda |
 | 0a' | Username | Setelah login pertama: pilih username (unik) + nama tampilan |
 | 0b | Circle | Buat circle (dapat kode undangan 6 karakter) atau gabung via kode. User boleh ikut beberapa circle; minimal satu untuk masuk beranda |
-| 1 | Beranda | Logo, streak, kartu "daily drop" + sisa waktu tepat-waktu, status circle hari ini, tangkapan kemarin, tab bar |
-| 2 | Kamera | Gelap, full screen. 2 langkah berurutan: "1/2 · foto hewan" (default kamera belakang) lalu "2/2 · foto lo" (selfie/reaksi, default kamera depan). Tombol ganti kamera di tiap langkah, jadi kamera mana pun boleh untuk foto mana pun. Tanpa akses galeri. Izin kamera ditolak → layar penjelasan + tombol buka pengaturan |
+| 1 | Beranda | Logo, streak, kartu izin notifikasi (penjelasan dulu, baru dialog sistem; muncul setelah onboarding kalau izin belum ada), kartu "daily drop": belum turun (kamera dikunci) / sisa waktu tepat-waktu (hitung mundur 1 jam) / telat, status circle hari ini ("x dari y udah catch"), tangkapan kemarin, tab bar. Tarik ke bawah untuk cek drop lagi |
+| 2 | Kamera | Hanya bisa dibuka setelah daily drop hari ini turun. Gelap, full screen, sisa waktu tepat-waktu (atau "telat") di bawah header. 2 langkah berurutan: "1/2 · foto hewan" (default kamera belakang) lalu "2/2 · foto lo" (selfie/reaksi, default kamera depan). Tombol ganti kamera di tiap langkah, jadi kamera mana pun boleh untuk foto mana pun. Tanpa akses galeri. Izin kamera ditolak → layar penjelasan + tombol buka pengaturan |
 | 3 | Hasil tangkapan | Kartu foto + jenis hewan + kartu kepribadian AI, input nama, pilihan "hewan baru / ketemu lagi", label area, tombol posting |
-| 4 | Feed circle | Header "feed" + pilihan circle (kalau ikut >1 circle) + "hari ini · x dari y udah catch". Banner "lo belum catch hari ini" + tombol kamera (feed tetap terlihat). Kartu catch anggota circle hari ini (Asia/Jakarta), terbaru dulu: avatar & nama, waktu relatif, label tepat waktu/telat, foto hewan + selfie kecil, nama, jenis, "first catch"/"ketemu ke-Nx", kartu kepribadian. Reaksi suka & lucu (toggle optimistis), komentar di bottom sheet (maks 300, hapus milik sendiri). Pull-to-refresh, tanpa realtime |
+| 4 | Feed circle | Header "feed" + pilihan circle (kalau ikut >1 circle) + "hari ini · x dari y udah catch". Banner "lo belum catch hari ini" + tombol kamera (feed tetap terlihat); sebelum drop turun banner berganti "daily drop belum turun" tanpa tombol. Kartu catch anggota circle hari ini (Asia/Jakarta), terbaru dulu: avatar & nama, waktu relatif, label tepat waktu/telat, foto hewan + selfie kecil, nama, jenis, "first catch"/"ketemu ke-Nx", kartu kepribadian. Reaksi suka & lucu (toggle optimistis), komentar di bottom sheet (maks 300, hapus milik sendiri). Pull-to-refresh, tanpa realtime |
 | 5 | Koleksi | Statistik (hewan, jenis, streak), filter semua/peliharaan/liar, grid 2 kolom kartu hewan (foto terakhir, nama, jenis, "ketemu Nx"), tap → detail (pertemuan, pertama ditemui, kartu kepribadian terakhir). Rarity/musim/kartu terkunci di luar MVP |
 
 ### Design tokens (dari mockup)
@@ -110,17 +110,21 @@ reactions       (catch_id uuid → catches, user_id uuid → profiles,
 comments        (id uuid PK, catch_id uuid → catches, user_id uuid → profiles,
                  body text check (length(body) <= 300), created_at timestamptz)
 streaks         (user_id uuid PK → profiles, current int, longest int, last_catch_date date)
-daily_drops     (drop_date date PK, sent_at timestamptz)
+daily_drops     (drop_date date PK, scheduled_at timestamptz,   -- jam acak, rahasia dari user
+                 sent_at timestamptz)                         -- null = belum turun
 ```
 
 - **Tanggal catch** memakai zona waktu `Asia/Jakarta`.
 - **Lokasi:** JANGAN simpan koordinat. App mengubah lokasi menjadi label area (contoh: "sekitar Depok, Sleman") di HP, lalu hanya `area_label` yang dikirim.
 - **Streak** diperbarui oleh trigger Postgres saat insert `catches`: +1 kalau `last_catch_date` = kemarin, tetap kalau hari yang sama, reset ke 1 kalau terlewat; catch bertanggal lampau diabaikan; `longest` ikut naik. Saat ditampilkan (`my_streak()`), streak yang `last_catch_date`-nya lebih lama dari kemarin dianggap 0.
-- **is_late** dihitung di server: `true` kalau `created_at` > `daily_drops.sent_at` + 1 jam. Kalau `daily_drops` belum punya baris hari ini (atau `sent_at` masih kosong), `is_late` = false.
+- **Kunci daily drop (v0.8):** catch hanya bisa dibuat setelah daily drop hari ini turun (`daily_drops.sent_at` terisi); sebelum itu `create_catch` menolak dengan error `FR005` dan app mengunci tombol kamera.
+- **is_late** dihitung di server: `true` kalau `created_at` > `daily_drops.sent_at` + 1 jam.
+- **Token FCM:** satu token per profil, disimpan lewat RPC `set_fcm_token(token)` (null saat keluar). Token yang sama dilepas dari akun lain (satu HP = satu akun). `fcm_token` tetap tidak bisa dibaca atau diubah langsung lewat API.
 - **Ketemu lagi:** user memilih `animal_id` yang sudah ada miliknya (`create_catch(..., p_animal_id)`) → `encounter_count` (= jumlah catch hewan itu) dan `last_seen_at` dihitung trigger, bukan dari app. Catch hanya boleh terhubung ke hewan milik pemilik catch (trigger, error `FR004`). Nama & peliharaan/liar mengikuti hewan lama.
 
 ### Aturan RLS (wajib dites)
-- `profiles`: user membaca profil sendiri dan profil anggota circle yang sama; hanya bisa mengubah milik sendiri.
+- `profiles`: user membaca profil sendiri dan profil anggota circle yang sama; hanya bisa mengubah milik sendiri (`fcm_token` hanya lewat `set_fcm_token`).
+- `daily_drops`: user hanya membaca drop yang sudah turun, kolom `drop_date` & `sent_at` saja (jam jadwal tidak bocor); tidak bisa menulis.
 - `circles` / `circle_members`: hanya anggota yang bisa membaca. Gabung lewat fungsi RPC `join_circle(invite_code)`.
 - `animals`, `catches`: pemilik bisa CRUD miliknya (catch + hewan baru dibuat atomik lewat RPC `create_catch`; kolom hasil server seperti `catch_date`, `is_late`, `user_id` tidak bisa diubah user); anggota circle yang sama hanya bisa membaca.
 - `reactions`, `comments`: bisa dibuat dan dibaca jika user berbagi circle dengan pemilik catch; hanya bisa menghapus milik sendiri.
@@ -159,9 +163,13 @@ daily_drops     (drop_date date PK, sent_at timestamptz)
 - **Hasil akhir user:** jenis yang dipilih/dikoreksi user disimpan di `animals.animal_type`; kartu kepribadian yang bisa diedit user disimpan di `catches.personality` (yang tampil di feed). `catches.ai_*` tetap hasil asli AI.
 
 ### 6.2 `send-daily-drop`
-- Dipanggil `pg_cron` setiap hari pukul 09:55 WIB; memilih waktu acak antara 10:00–20:00 WIB yang sama untuk semua user, lalu mengirim notifikasi FCM "waktunya catch!" pada waktu itu dan mengisi `daily_drops`.
-- Kredensial FCM (service account JSON) hanya dari secrets Supabase.
-- Kirim hanya ke user yang punya `fcm_token`; token tidak valid dihapus.
+Edge Function tidak bisa menunggu berjam-jam, jadi jadwal dipegang database (v0.8):
+- **09:55 WIB** — `pg_cron` menjalankan `schedule_daily_drop()`: pilih jam acak 10:00–20:00 WIB (sama untuk semua user) ke `daily_drops.scheduled_at`. Kalau terlewat, jam dipilih dari sisa jendela (lewat 20:00 → sekarang).
+- **Tiap menit** — `pg_cron` menjalankan `dispatch_daily_drop()`: kalau jadwal hari ini sudah lewat dan `sent_at` masih kosong, panggil `send-daily-drop` lewat `pg_net` dengan `Authorization: Bearer <secret>`. URL dan secret dibaca dari Supabase Vault (`daily_drop_url`, `daily_drop_secret`). Kalau gagal, menit berikutnya dicoba lagi.
+- **`send-daily-drop`** (`verify_jwt = false`, dicek dengan `DAILY_DROP_SECRET`): `claim_daily_drop()` mengisi `sent_at` secara atomik (drop turun, catch terbuka; panggilan ganda → `skipped`), lalu kirim FCM HTTP v1 "waktunya catch!" ke semua token lewat channel Android `daily_drop` (prioritas tinggi, TTL 12 jam, data `type=daily_drop`). Token OAuth dibuat dari service account dengan WebCrypto (tanpa SDK).
+- Token tidak valid (`UNREGISTERED`, `SENDER_ID_MISMATCH`, 404, atau 400 soal registration token) dihapus lewat `clear_fcm_tokens`; error lain dibiarkan.
+- Kalau `FCM_SERVICE_ACCOUNT_JSON` kosong, drop tetap turun tanpa notifikasi.
+- **App:** notifikasi saat app terbuka → snackbar + muat ulang drop; ketuk notifikasi / app dibuka lagi → muat ulang drop.
 
 ## 7. Milestone & kriteria selesai
 
@@ -175,7 +183,7 @@ Kerjakan **satu milestone per sesi**. Setiap milestone selesai = test lulus + `f
 | M3 | AI | `identify-animal` jalan dengan respons di-mock di test; layar Hasil tangkapan menampilkan jenis, kandidat, dan kartu kepribadian |
 | M4 | Feed | Feed circle hari ini, label tepat waktu/telat, reaksi & komentar, hanya anggota circle yang bisa melihat |
 | M5 | Koleksi & streak | Grid koleksi + filter, "ketemu lagi" menambah `encounter_count`, streak terupdate via trigger |
-| M6 | Notifikasi & metrik | `send-daily-drop` terjadwal, notifikasi sampai di HP, event Analytics: `catch_created`, `reaction_added`, `circle_joined` |
+| M6 | Notifikasi & metrik | `send-daily-drop` terjadwal, notifikasi sampai di HP, catch dikunci sampai drop turun, event Analytics: `catch_created`, `reaction_added`, `circle_joined` + Crashlytics |
 | M7 | Siap rilis | Halaman kebijakan privasi, hapus akun + data dari app, onboarding pedoman kesejahteraan hewan, build AAB untuk closed testing |
 
 ## 8. Kebutuhan non-fungsional
@@ -200,6 +208,8 @@ Rarity spesies, pengenalan otomatis individu hewan, leaderboard, peta, event mus
 | `AI_PROVIDER`, `AI_BASE_URL`, `AI_MODEL` | Secrets/env Edge Function | Pilih provider AI; default `mock` |
 | `AI_API_KEY` | Secrets Edge Function | Key provider AI (Anthropic/Sumopod/dll.). Jangan pernah di app atau repo |
 | `FCM_SERVICE_ACCOUNT_JSON` | Secrets Edge Function | Jangan pernah di app atau repo |
+| `DAILY_DROP_SECRET` | Secrets Edge Function + Vault `daily_drop_secret` | Bearer pg_cron → `send-daily-drop`; nilai acak panjang di produksi |
+| Vault `daily_drop_url` | Database (Vault) | `https://<project>.supabase.co/functions/v1/send-daily-drop`; lokal diisi `supabase/seed.sql` |
 | `google-services.json` | `app/android/app/` | Masuk `.gitignore` |
 
 Sediakan `.env.example` tanpa nilai asli.
@@ -208,4 +218,5 @@ Sediakan `.env.example` tanpa nilai asli.
 
 - **RLS:** pgTAP di `supabase/tests/`, jalankan `supabase test db`. Wajib ada test "user di luar circle tidak bisa membaca catch".
 - **Edge Functions:** test Deno dengan respons AI (provider `mock` atau `fetch` palsu) dan FCM di-mock; jangan pernah memanggil API asli di test.
+- **Data development daily drop:** `supabase/scripts/seed_dev_drop.ts` menurunkan drop hari ini sekarang (lewat jalur asli dispatch → function), menguncinya lagi (`--lock`), atau menampilkan status (`--status`).
 - **Flutter:** widget test untuk alur kamera → hasil tangkapan → posting, dan untuk koleksi.

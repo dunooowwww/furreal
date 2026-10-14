@@ -20,10 +20,15 @@ import 'package:furreal/features/circles/data/circle_repository.dart';
 import 'package:furreal/features/collection/data/collection_models.dart';
 import 'package:furreal/features/collection/data/collection_repository.dart';
 import 'package:furreal/features/collection/state/collection_providers.dart';
+import 'package:furreal/features/daily_drop/data/daily_drop.dart';
+import 'package:furreal/features/daily_drop/state/daily_drop_providers.dart';
+import 'package:furreal/features/notifications/data/push_messaging.dart';
+import 'package:furreal/features/notifications/state/notification_providers.dart';
 import 'package:furreal/features/circles/state/circle_providers.dart';
 import 'package:furreal/features/feed/data/feed_models.dart';
 import 'package:furreal/features/feed/data/feed_repository.dart';
 import 'package:furreal/features/feed/state/feed_providers.dart';
+import 'package:furreal/shared/analytics.dart';
 import 'package:furreal/shared/app_settings.dart';
 import 'package:furreal/shared/widgets/remote_photo.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -385,6 +390,86 @@ CollectionAnimal animal({
   lastPersonality: personality,
 );
 
+class FakeDailyDropRepository implements DailyDropRepository {
+  /// Default: drop turun 10 menit lalu (tepat waktu, kamera terbuka).
+  FakeDailyDropRepository([DailyDrop? drop])
+    : drop =
+          drop ??
+          DailyDrop(
+            sentAt: DateTime.now().subtract(const Duration(minutes: 10)),
+          );
+
+  DailyDrop drop;
+  var loads = 0;
+
+  @override
+  Future<DailyDrop> today() async {
+    loads++;
+    return drop;
+  }
+}
+
+DailyDrop dropSentAgo(Duration ago) =>
+    DailyDrop(sentAt: DateTime.now().subtract(ago));
+
+class FakePushMessaging implements PushMessaging {
+  FakePushMessaging({
+    this.current = PushPermission.denied,
+    this.afterRequest = PushPermission.granted,
+    this.deviceToken = 'tok-hp',
+  });
+
+  PushPermission current;
+  PushPermission afterRequest;
+  String? deviceToken;
+  var requests = 0;
+  final refreshes = StreamController<String>.broadcast();
+  final drops = StreamController<DropMessage>.broadcast();
+
+  @override
+  Future<PushPermission> permission() async => current;
+
+  @override
+  Future<PushPermission> requestPermission() async {
+    requests++;
+    return current = afterRequest;
+  }
+
+  @override
+  Future<String?> token() async => deviceToken;
+
+  @override
+  Stream<String> get tokenRefreshes => refreshes.stream;
+
+  @override
+  Stream<DropMessage> get dropMessages => drops.stream;
+}
+
+class FakePushTokenRepository implements PushTokenRepository {
+  final saved = <String?>[];
+
+  @override
+  Future<void> save(String? token) async => saved.add(token);
+}
+
+class FakeAnalytics implements Analytics {
+  final events = <String>[];
+
+  @override
+  Future<void> catchCreated({
+    required String encounter,
+    required String timing,
+  }) async => events.add('catch_created encounter=$encounter timing=$timing');
+
+  @override
+  Future<void> reactionAdded({required String type}) async =>
+      events.add('reaction_added type=$type');
+
+  @override
+  Future<void> circleJoined({required String method}) async =>
+      events.add('circle_joined method=$method');
+}
+
 /// Foto palsu untuk test (tanpa jaringan): kotak abu-abu ber-key path.
 Widget fakeRemotePhoto(BuildContext context, String? url, String cacheKey) =>
     ColoredBox(key: Key('photo-$cacheKey'), color: Colors.grey);
@@ -400,6 +485,10 @@ Future<void> pumpApp(
   FakeCatchRepository? catches,
   FakeFeedRepository? feed,
   FakeCollectionRepository? collection,
+  FakeDailyDropRepository? drop,
+  FakePushMessaging? push,
+  FakePushTokenRepository? pushTokens,
+  FakeAnalytics? analytics,
   VoidCallback? onOpenSettings,
 }) async {
   tester.view.physicalSize = const Size(1080, 2400);
@@ -428,6 +517,18 @@ Future<void> pumpApp(
         collectionRepositoryProvider.overrideWithValue(
           collection ?? FakeCollectionRepository(),
         ),
+        dailyDropRepositoryProvider.overrideWithValue(
+          drop ?? FakeDailyDropRepository(),
+        ),
+        // Tanpa detak per detik: pumpAndSettle tidak menunggu timer.
+        clockProvider.overrideWith((ref) => const Stream.empty()),
+        pushMessagingProvider.overrideWithValue(
+          push ?? FakePushMessaging(current: PushPermission.granted),
+        ),
+        pushTokenRepositoryProvider.overrideWithValue(
+          pushTokens ?? FakePushTokenRepository(),
+        ),
+        analyticsProvider.overrideWithValue(analytics ?? FakeAnalytics()),
         remotePhotoBuilderProvider.overrideWithValue(fakeRemotePhoto),
         openAppSettingsProvider.overrideWithValue(() async {
           onOpenSettings?.call();

@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app/app.dart';
 import 'app/config.dart';
+import 'app/firebase.dart';
 import 'app/missing_config_app.dart';
 
 Future<void> main() async {
@@ -27,7 +28,9 @@ Future<void> main() async {
     publishableKey: AppConfig.supabaseAnonKey,
   );
 
-  runApp(const ProviderScope(child: FurrealApp()));
+  final firebase = await initFirebase();
+
+  runApp(ProviderScope(overrides: firebase, child: const FurrealApp()));
 }
 
 Stream<LicenseEntry> _fontLicenses() async* {

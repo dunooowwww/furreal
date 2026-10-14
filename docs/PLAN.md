@@ -4,13 +4,13 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
 
 ## Status
 
-- [ ] **M0 — Scaffold** — kode selesai; `flutter analyze` & `flutter test` lulus. Belum terverifikasi: app di emulator, `supabase start`, `supabase test db` (lihat catatan M0).
-- [ ] **M1 — Auth & circle** — kode selesai; `flutter analyze` bersih, `flutter test` 12/12, pgTAP 26/26 (di Postgres 16 lokal dengan tiruan skema auth). Belum terverifikasi: `npx supabase test db` di stack Supabase asli, dan login OTP end-to-end lewat Mailpit (lihat catatan M1).
-- [ ] **M2 — Kamera & catch** — kode selesai; `flutter analyze` bersih, `flutter test` 27/27, pgTAP 57/57 (Postgres 16 lokal dengan tiruan skema auth + storage). Belum terverifikasi: `npx supabase test db` di stack asli, dan alur kamera/upload/lokasi di HP atau emulator (lihat catatan M2).
-- [ ] **M3 — AI** — kode selesai; `flutter analyze` bersih, `flutter test` 39/39, `deno test` 28/28, pgTAP 74/74 (Postgres 16 lokal dengan tiruan skema auth + storage). Belum terverifikasi: `npx supabase test db` & `functions serve` di stack asli, dan alur AI di HP/emulator (lihat catatan M3).
-- [ ] **M4 — Feed** — kode selesai; `flutter analyze` bersih, `flutter test` 52/52, `deno test` 28/28, pgTAP 106/106 (Postgres 16 lokal dengan tiruan skema auth + storage, termasuk `protect_delete`). Belum terverifikasi: `npx supabase test db`, skrip seed, dan feed di HP/emulator (lihat catatan M4).
-- [ ] **M5 — Koleksi & streak** — kode selesai; `flutter analyze` bersih, `flutter test` 63/63, `deno test` 28/28, pgTAP 134/134 (Postgres 16 lokal dengan tiruan skema auth + storage). Belum terverifikasi: `npx supabase test db`, skrip `seed_dev_streak.ts`, dan alur di HP/emulator (lihat catatan M5).
-- [ ] M6 — Notifikasi & metrik
+- [ ] **M0 — Scaffold** — kode selesai; `flutter analyze` & `flutter test` lulus; `supabase start` & `supabase test db` jalan di Docker lokal (14 Okt). Belum terverifikasi: app di emulator (lihat catatan M0).
+- [ ] **M1 — Auth & circle** — kode selesai; `flutter analyze` bersih, `flutter test` 12/12, pgTAP 26/26 (di Postgres 16 lokal dengan tiruan skema auth). pgTAP lulus di stack asli (14 Okt). Belum terverifikasi: login OTP end-to-end lewat Mailpit (lihat catatan M1).
+- [ ] **M2 — Kamera & catch** — kode selesai; `flutter analyze` bersih, `flutter test` 27/27, pgTAP 57/57 (Postgres 16 lokal dengan tiruan skema auth + storage). pgTAP lulus di stack asli (14 Okt). Belum terverifikasi: alur kamera/upload/lokasi di HP atau emulator (lihat catatan M2).
+- [ ] **M3 — AI** — kode selesai; `flutter analyze` bersih, `flutter test` 39/39, `deno test` 28/28, pgTAP 74/74 (Postgres 16 lokal dengan tiruan skema auth + storage). pgTAP, `deno test` & `functions serve` jalan di stack asli (14 Okt). Belum terverifikasi: alur AI di HP/emulator (lihat catatan M3).
+- [ ] **M4 — Feed** — kode selesai; `flutter analyze` bersih, `flutter test` 52/52, `deno test` 28/28, pgTAP 106/106 (Postgres 16 lokal dengan tiruan skema auth + storage, termasuk `protect_delete`). pgTAP lulus di stack asli (14 Okt). Belum terverifikasi: skrip seed dan feed di HP/emulator (lihat catatan M4).
+- [ ] **M5 — Koleksi & streak** — kode selesai; `flutter analyze` bersih, `flutter test` 63/63, `deno test` 28/28, pgTAP 134/134 (Postgres 16 lokal dengan tiruan skema auth + storage). pgTAP lulus di stack asli (14 Okt). Belum terverifikasi: skrip `seed_dev_streak.ts` dan alur di HP/emulator (lihat catatan M5).
+- [ ] **M6 — Notifikasi & metrik** — kode selesai; `flutter analyze` bersih, `flutter test` 82/82, `deno test` 45/45, pgTAP 167/167 di stack Supabase asli (Docker lokal). Cron → `pg_net` → `send-daily-drop` → drop turun sudah terbukti di lokal. Belum terverifikasi: notifikasi sampai di HP, Analytics DebugView & Crashlytics (butuh proyek Firebase + HP; lihat catatan M6).
 - [ ] M7 — Siap rilis
 
 ## Catatan keputusan
@@ -140,3 +140,64 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
 - **Foto:** widget foto remote dipindah ke `shared/widgets/remote_photo.dart` (`remotePhotoBuilderProvider`), dipakai feed, koleksi, "ketemu lagi", dan beranda.
 - **Layout:** test menangkap dua overflow nyata di lebar 360dp (baris filter → `Wrap`, tinggi kartu grid 230 → 248).
 - **Skrip debug** `supabase/scripts/seed_dev_streak.ts` (lokal saja): catch untuk akunmu N hari ke belakang (`--days`, default 3), hewan "Debu" + "ketemu lagi" + satu hewan baru "Kiko", opsi `--gap` untuk streak putus, lalu `recompute_streak`. Helper bersama skrip dev ada di `supabase/scripts/_dev.ts`.
+
+### M6 (14 Okt 2026)
+- **Stack asli pertama kali:** Docker lokal sudah jalan, jadi `npx supabase db reset` + `npx supabase test db` dijalankan di Postgres 17 + skema auth/storage asli. Sebelum M6 hasilnya 134/134 lulus, tanpa perubahan.
+- **Kunci daily drop (keputusan produk):** catch dikunci sampai daily drop hari ini turun (ala BeReal), bukan bebas kapan saja.
+  - Server: `create_catch` v4 menolak dengan `FR005` kalau `sent_at` hari ini kosong. `is_late` = `now() > sent_at + 1 jam`.
+  - App: tombol kamera di beranda diganti "kamera dikunci", banner feed jadi "daily drop belum turun".
+  - Konsekuensi: kalau dispatch/function mati seharian, tidak ada yang bisa catch. Cron mencoba lagi tiap menit.
+  - Test pgTAP lama (02–05) sekarang membuat drop sendiri dan mengosongkan `daily_drops` dulu, karena cron lokal bisa sudah membuat baris hari ini.
+- **Jadwal** (`20261014180000_daily_drop.sql`, `pg_cron` + `pg_net`):
+  - `schedule_daily_drop()` jam 09:55 WIB (cron `55 2 * * *` UTC) memilih jam acak 10:00–20:00 WIB ke `daily_drops.scheduled_at`. Idempoten. Kalau terlambat, jam diambil dari sisa jendela; lewat 20:00 → sekarang.
+  - `dispatch_daily_drop()` tiap menit: menjadwalkan kalau belum ada (jaga-jaga), lalu kalau sudah waktunya dan `sent_at` kosong, `net.http_post` ke URL Vault `daily_drop_url` dengan `Bearer` Vault `daily_drop_secret`.
+  - Beda dari PRD lama: jam acak dipilih di database, bukan di function. Function tidak bisa menunggu sampai jamnya, dan memilih di SQL bisa dites pgTAP.
+  - `scheduled_at` tidak bisa dibaca user (hak baca per kolom), dan baris yang belum turun tidak terlihat (RLS `sent_at is not null`). Jadi jam drop tidak bocor duluan.
+  - Fungsi jadwal/dispatch/klaim hanya untuk service role.
+- **Edge Function `send-daily-drop`** (`verify_jwt = false`):
+  - Cek `Authorization` dengan `DAILY_DROP_SECRET` (perbandingan waktu-konstan).
+  - `claim_daily_drop()` (atomik; panggilan ganda → `skipped`), lalu `fcm_tokens()`, kirim 20 sekaligus, lalu `clear_fcm_tokens()` untuk token mati.
+  - FCM HTTP v1 tanpa SDK (`_shared/fcm.ts`): JWT RS256 dari service account lewat WebCrypto. Token OAuth di-cache dan diambil ulang sekali kalau 401.
+  - Token dihapus hanya untuk `UNREGISTERED`, `SENDER_ID_MISMATCH`, 404, atau 400 yang menyebut registration token. Bug payload tidak menghapus semua token.
+  - Pesan: "waktunya catch!" / "daily drop udah turun. lo punya 1 jam buat catch tepat waktu.", channel `daily_drop`, TTL 12 jam, data `type=daily_drop`.
+  - `FCM_SERVICE_ACCOUNT_JSON` kosong/rusak → drop tetap turun, notifikasi dilewati.
+- **Token FCM:**
+  - Disimpan lewat RPC `set_fcm_token` (update langsung kolom `fcm_token` dicabut) saat login dan saat token diperbarui. Token yang sama dilepas dari akun lain.
+  - Dihapus (`null`) saat "keluar", sebelum sign out (`signOutProvider`). Gagal hapus tidak menghalangi keluar.
+- **Firebase opsional:**
+  - Plugin Gradle `com.google.gms.google-services` 4.5.0 & `com.google.firebase.crashlytics` 3.0.8 hanya dipasang kalau `app/android/app/google-services.json` ada.
+  - `initFirebase()` (`app/firebase.dart`) menangkap kegagalan `Firebase.initializeApp()`. Tanpa Firebase, provider push/analytics memakai versi nonaktif, dan app tetap jalan tanpa notifikasi/metrik.
+  - Paket: `firebase_core` ^4.15.0, `firebase_messaging` ^16.7.0, `firebase_analytics` ^12.6.0, `firebase_crashlytics` ^5.4.0 (semua dari PRD §2).
+- **Android:**
+  - Channel `daily_drop` prioritas tinggi dibuat di `MainActivity` (Kotlin, tanpa paket tambahan).
+  - Meta-data channel & ikon default FCM; ikon status bar `drawable/ic_notification.xml` (tapak, satu warna).
+  - `POST_NOTIFICATIONS` di manifest.
+- **Izin notifikasi:**
+  - Kartu penjelasan di beranda setelah onboarding (bukan dialog langsung), lalu dialog sistem. Kalau tetap ditolak → tombol "buka pengaturan".
+  - "nanti aja" hanya menyembunyikan kartu sampai app dibuka lagi (tanpa `shared_preferences`, di luar PRD §2).
+- **App:**
+  - Kartu daily drop 3 fase: `DAILY DROP · BELUM TURUN` / `SISA mm:ss` / `TELAT`. Kamera menampilkan sisa waktu atau "telat".
+  - Jam berdetak per detik (`clockProvider`) hanya selama fase tepat-waktu; di test di-override tanpa detak.
+  - Drop dimuat ulang saat notifikasi masuk (foreground → snackbar), saat notifikasi diketuk, saat app kembali dari background, dan saat beranda ditarik ke bawah.
+  - Beranda menampilkan status circle "hari ini · x dari y udah catch" (memakai `feedControllerProvider`).
+- **Analytics:**
+  - `catch_created` (`encounter` new/again, `timing` on_time/late menurut jam HP), `reaction_added` (`type`, hanya saat reaksi ditambah & tersimpan), `circle_joined` (`method` invite_code/create).
+  - Tanpa user id/PII. Collection Analytics tetap aktif di debug (untuk DebugView).
+- **Crashlytics:** `FlutterError.onError` + `PlatformDispatcher.onError`. Pengiriman dimatikan di build debug.
+- **Skrip dev** `supabase/scripts/seed_dev_drop.ts` (lokal saja):
+  - Default: drop turun sekarang lewat jalur asli (dispatch → pg_net → function).
+  - `--lock`: kunci sampai 23:59 WIB. `--status`: tampilkan jadwal & waktu turun.
+  - Vault lokal diisi `supabase/seed.sql` (`daily_drop_url` lewat container kong, secret dev `local-dev-daily-drop-secret` = `DAILY_DROP_SECRET` di `supabase/.env.example`).
+- **Mesin lokal (Windows):**
+  - Deno 2.9.7 dipasang via winget.
+  - Ada `package.json` di folder home user, jadi Deno mencari `node_modules`. Skrip yang meng-import `npm:` dijalankan dengan `--node-modules-dir=none`.
+- **Setup Firebase (manual, belum dilakukan):**
+  1. Buat proyek di console.firebase.google.com, tambah app Android `com.dun.furreal`, unduh `google-services.json` ke `app/android/app/` (di-gitignore).
+  2. Aktifkan Analytics & Crashlytics di proyek itu.
+  3. Project settings → Service accounts → Generate new private key. Isi file JSON-nya (satu baris) ke `FCM_SERVICE_ACCOUNT_JSON` di `supabase/.env` (lokal) atau `npx supabase secrets set` (produksi). Jangan commit.
+  4. Uji: `flutter run`, izinkan notifikasi, kunci (`--lock`) lalu turunkan drop (`seed_dev_drop.ts`), lalu notifikasi muncul.
+  5. Event Analytics bisa dicek di DebugView: `adb shell setprop debug.firebase.analytics.app com.dun.furreal`.
+- **Produksi (M7):**
+  - Isi Vault `daily_drop_url` (`https://<ref>.supabase.co/functions/v1/send-daily-drop`) & `daily_drop_secret` (acak panjang).
+  - `secrets set DAILY_DROP_SECRET` dengan nilai yang sama.
+  - Aktifkan ekstensi `pg_cron` & `pg_net` (migrasi sudah `create extension if not exists`).
