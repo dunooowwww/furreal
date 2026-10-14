@@ -430,3 +430,7 @@ verify_jwt = true
 # M6: dipanggil pg_cron (dispatch_daily_drop) dengan Bearer DAILY_DROP_SECRET, bukan JWT user.
 [functions.send-daily-drop]
 verify_jwt = false
+
+# M7: hapus akun pemilik JWT (foto lewat Storage API, lalu auth.admin.deleteUser).
+[functions.delete-account]
+verify_jwt = true

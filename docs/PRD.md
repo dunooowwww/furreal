@@ -2,7 +2,7 @@
 
 > Dokumen ini adalah spesifikasi teknis untuk membangun MVP furreal.
 > Baca bagian yang relevan dengan milestone yang sedang dikerjakan saja.
-> Versi produk: PRD v0.8 · Diperbarui: 14 Okt 2026
+> Versi produk: PRD v0.9 · Diperbarui: 14 Okt 2026
 
 ---
 
@@ -69,12 +69,14 @@ Mockup referensi: canvas "Catch UI" (nama lama, isinya prototype furreal) (5 lay
 |---|---|---|
 | 0a | Login | Isi email → isi kode OTP 6 digit yang dikirim ke email. Google Sign-In ditunda |
 | 0a' | Username | Setelah login pertama: pilih username (unik) + nama tampilan |
+| 0a'' | Pedoman | Sekali per akun, setelah username dan sebelum circle: pedoman kesejahteraan hewan (jangan kejar, pegang, pancing/ganggu; izin ke pemilik peliharaan), tombol "gue janji" → `profiles.guidelines_accepted_at` lewat RPC `accept_guidelines()` |
 | 0b | Circle | Buat circle (dapat kode undangan 6 karakter) atau gabung via kode. User boleh ikut beberapa circle; minimal satu untuk masuk beranda |
 | 1 | Beranda | Logo, streak, kartu izin notifikasi (penjelasan dulu, baru dialog sistem; muncul setelah onboarding kalau izin belum ada), kartu "daily drop": belum turun (kamera dikunci) / sisa waktu tepat-waktu (hitung mundur 1 jam) / telat, status circle hari ini ("x dari y udah catch"), tangkapan kemarin, tab bar. Tarik ke bawah untuk cek drop lagi |
 | 2 | Kamera | Hanya bisa dibuka setelah daily drop hari ini turun. Gelap, full screen, sisa waktu tepat-waktu (atau "telat") di bawah header. 2 langkah berurutan: "1/2 · foto hewan" (default kamera belakang) lalu "2/2 · foto lo" (selfie/reaksi, default kamera depan). Tombol ganti kamera di tiap langkah, jadi kamera mana pun boleh untuk foto mana pun. Tanpa akses galeri. Izin kamera ditolak → layar penjelasan + tombol buka pengaturan |
 | 3 | Hasil tangkapan | Kartu foto + jenis hewan + kartu kepribadian AI, input nama, pilihan "hewan baru / ketemu lagi", label area, tombol posting |
 | 4 | Feed circle | Header "feed" + pilihan circle (kalau ikut >1 circle) + "hari ini · x dari y udah catch". Banner "lo belum catch hari ini" + tombol kamera (feed tetap terlihat); sebelum drop turun banner berganti "daily drop belum turun" tanpa tombol. Kartu catch anggota circle hari ini (Asia/Jakarta), terbaru dulu: avatar & nama, waktu relatif, label tepat waktu/telat, foto hewan + selfie kecil, nama, jenis, "first catch"/"ketemu ke-Nx", kartu kepribadian. Reaksi suka & lucu (toggle optimistis), komentar di bottom sheet (maks 300, hapus milik sendiri). Pull-to-refresh, tanpa realtime |
 | 5 | Koleksi | Statistik (hewan, jenis, streak), filter semua/peliharaan/liar, grid 2 kolom kartu hewan (foto terakhir, nama, jenis, "ketemu Nx"), tap → detail (pertemuan, pertama ditemui, kartu kepribadian terakhir). Rarity/musim/kartu terkunci di luar MVP |
+| 6 | Akun | Dari ikon di header beranda: nama & @username, kebijakan privasi, keluar, hapus akun (wajib ketik username, lalu kembali ke login). Kebijakan privasi juga bisa dibuka dari layar login |
 
 ### Design tokens (dari mockup)
 - Warna: background `#FFFFFF`, ink `#111111`, aksen `#D4FF3A`, surface `#EEEEEE`, teks sekunder `#555555`
@@ -193,7 +195,7 @@ Kerjakan **satu milestone per sesi**. Setiap milestone selesai = test lulus + `f
 - **Kesejahteraan hewan:** layar onboarding berisi pedoman: jangan kejar, pegang, atau ganggu hewan demi foto.
 - **Performa:** kompres foto ke lebar maksimal 1280px, JPEG kualitas ~80 sebelum upload.
 - **Keamanan:** tidak ada secret di kode app; anon key Supabase boleh di app, service role key TIDAK pernah.
-- **Hapus akun:** menghapus profil, catches, animals, komentar, reaksi, dan file storage milik user.
+- **Hapus akun:** menghapus profil, catches, animals, komentar, reaksi, dan file storage milik user. Lewat Edge Function `delete-account` (JWT user): foto dihapus dulu via Storage API (`account_photo_paths`), lalu `auth.admin.deleteUser` → semua tabel ikut terhapus lewat FK cascade; circle tanpa anggota ikut dihapus. Permintaan lewat email (tanpa app): `supabase/scripts/admin_delete_account.ts`.
 
 ## 9. Di luar cakupan MVP
 

@@ -2,6 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../features/account/ui/account_screen.dart';
+import '../features/account/ui/privacy_policy_screen.dart';
+import '../features/auth/ui/guidelines_screen.dart';
 import '../features/auth/ui/login_screen.dart';
 import '../features/auth/ui/username_screen.dart';
 import '../features/camera/data/captured_photos.dart';
@@ -19,12 +22,17 @@ class Routes {
   static const splash = '/';
   static const login = '/login';
   static const username = '/username';
+  static const guidelines = '/guidelines';
   static const circle = '/circle';
   static const home = '/home';
   static const feed = '/feed';
   static const collection = '/collection';
   static const camera = '/camera';
   static const catchResult = '/catch/result';
+  static const account = '/account';
+
+  /// Boleh dibuka di tahap mana pun, termasuk sebelum login.
+  static const privacy = '/privacy';
 }
 
 /// Arahkan user ke layar yang sesuai tahap onboarding-nya.
@@ -32,6 +40,7 @@ String? redirectFor(AsyncValue<SessionStatus> session, String location) {
   if (session.hasError) return location == Routes.splash ? null : Routes.splash;
   // Sedang memuat ulang: tunggu hasil baru, jangan pindah layar dulu.
   if (session.isLoading && session.hasValue) return null;
+  if (location == Routes.privacy && session.hasValue) return null;
 
   String? only(String target) => location == target ? null : target;
 
@@ -39,9 +48,15 @@ String? redirectFor(AsyncValue<SessionStatus> session, String location) {
     null => only(Routes.splash),
     SessionStatus.signedOut => only(Routes.login),
     SessionStatus.needsUsername => only(Routes.username),
+    SessionStatus.needsGuidelines => only(Routes.guidelines),
     SessionStatus.needsCircle => only(Routes.circle),
     SessionStatus.ready =>
-      const {Routes.splash, Routes.login, Routes.username}.contains(location)
+      const {
+            Routes.splash,
+            Routes.login,
+            Routes.username,
+            Routes.guidelines,
+          }.contains(location)
           ? Routes.home
           : null,
   };
@@ -74,6 +89,18 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Routes.username,
         builder: (context, state) => const UsernameScreen(),
+      ),
+      GoRoute(
+        path: Routes.guidelines,
+        builder: (context, state) => const GuidelinesScreen(),
+      ),
+      GoRoute(
+        path: Routes.privacy,
+        builder: (context, state) => const PrivacyPolicyScreen(),
+      ),
+      GoRoute(
+        path: Routes.account,
+        builder: (context, state) => const AccountScreen(),
       ),
       GoRoute(
         path: Routes.circle,

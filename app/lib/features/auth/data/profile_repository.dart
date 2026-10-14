@@ -1,17 +1,29 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class Profile {
-  const Profile({required this.id, this.username, this.displayName});
+  const Profile({
+    required this.id,
+    this.username,
+    this.displayName,
+    this.guidelinesAcceptedAt,
+  });
 
-  factory Profile.fromJson(Map<String, dynamic> json) => Profile(
-    id: json['id'] as String,
-    username: json['username'] as String?,
-    displayName: json['display_name'] as String?,
-  );
+  factory Profile.fromJson(Map<String, dynamic> json) {
+    final accepted = json['guidelines_accepted_at'] as String?;
+    return Profile(
+      id: json['id'] as String,
+      username: json['username'] as String?,
+      displayName: json['display_name'] as String?,
+      guidelinesAcceptedAt: accepted == null ? null : DateTime.parse(accepted),
+    );
+  }
 
   final String id;
   final String? username;
   final String? displayName;
+
+  /// Kapan pedoman kesejahteraan hewan disetujui (null = belum).
+  final DateTime? guidelinesAcceptedAt;
 }
 
 /// Sama dengan check constraint `profiles.username` di database.
@@ -25,6 +37,9 @@ abstract interface class ProfileRepository {
     required String username,
     required String displayName,
   });
+
+  /// Setujui pedoman kesejahteraan hewan (onboarding, sekali per akun).
+  Future<void> acceptGuidelines();
 }
 
 class SupabaseProfileRepository implements ProfileRepository {
@@ -36,7 +51,7 @@ class SupabaseProfileRepository implements ProfileRepository {
   Future<Profile?> fetchProfile(String userId) async {
     final row = await _client
         .from('profiles')
-        .select('id, username, display_name')
+        .select('id, username, display_name, guidelines_accepted_at')
         .eq('id', userId)
         .maybeSingle();
     return row == null ? null : Profile.fromJson(row);
@@ -53,4 +68,7 @@ class SupabaseProfileRepository implements ProfileRepository {
         .update({'username': username, 'display_name': displayName})
         .eq('id', userId);
   }
+
+  @override
+  Future<void> acceptGuidelines() => _client.rpc<void>('accept_guidelines');
 }

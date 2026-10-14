@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:furreal/app/app.dart';
+import 'package:furreal/features/account/data/account_repository.dart';
+import 'package:furreal/features/account/state/account_providers.dart';
 import 'package:furreal/features/auth/data/auth_repository.dart';
 import 'package:furreal/features/auth/data/profile_repository.dart';
 import 'package:furreal/features/auth/state/auth_providers.dart';
@@ -82,15 +84,44 @@ class FakeAuthRepository implements AuthRepository {
 }
 
 class FakeProfileRepository implements ProfileRepository {
-  FakeProfileRepository({Map<String, Profile>? profiles, this.taken = const {}})
-    : profiles = profiles ?? {};
+  /// Profil awal dianggap sudah menyetujui pedoman, kecuali [accepted] diisi.
+  FakeProfileRepository({
+    Map<String, Profile>? profiles,
+    this.taken = const {},
+    Set<String>? accepted,
+  }) : profiles = profiles ?? {},
+       accepted = accepted ?? {...?profiles?.keys};
 
   final Map<String, Profile> profiles;
   final Set<String> taken;
+  final Set<String> accepted;
+
+  /// Kalau diisi, acceptGuidelines melempar error ini.
+  Object? acceptError;
 
   @override
-  Future<Profile?> fetchProfile(String userId) async =>
-      profiles[userId] ?? Profile(id: userId);
+  Future<Profile?> fetchProfile(String userId) async {
+    _current = userId;
+    final p = profiles[userId] ?? Profile(id: userId);
+    return Profile(
+      id: p.id,
+      username: p.username,
+      displayName: p.displayName,
+      guidelinesAcceptedAt: accepted.contains(userId)
+          ? DateTime(2026, 10, 14)
+          : null,
+    );
+  }
+
+  String? _current;
+
+  @override
+  Future<void> acceptGuidelines() async {
+    final error = acceptError;
+    if (error != null) throw error;
+    // Seperti auth.uid() di server: user yang sedang login.
+    accepted.add(_current!);
+  }
 
   @override
   Future<void> saveUsername({
@@ -106,6 +137,24 @@ class FakeProfileRepository implements ProfileRepository {
       username: username,
       displayName: displayName,
     );
+  }
+}
+
+class FakeAccountRepository implements AccountRepository {
+  FakeAccountRepository(this.auth);
+
+  final FakeAuthRepository auth;
+  var deletes = 0;
+
+  /// Kalau diisi, deleteAccount melempar error ini.
+  Object? error;
+
+  @override
+  Future<void> deleteAccount() async {
+    deletes++;
+    final e = error;
+    if (e != null) throw e;
+    await auth.signOut();
   }
 }
 
@@ -489,6 +538,7 @@ Future<void> pumpApp(
   FakePushMessaging? push,
   FakePushTokenRepository? pushTokens,
   FakeAnalytics? analytics,
+  FakeAccountRepository? account,
   VoidCallback? onOpenSettings,
 }) async {
   tester.view.physicalSize = const Size(1080, 2400);
@@ -529,6 +579,9 @@ Future<void> pumpApp(
           pushTokens ?? FakePushTokenRepository(),
         ),
         analyticsProvider.overrideWithValue(analytics ?? FakeAnalytics()),
+        accountRepositoryProvider.overrideWithValue(
+          account ?? FakeAccountRepository(auth),
+        ),
         remotePhotoBuilderProvider.overrideWithValue(fakeRemotePhoto),
         openAppSettingsProvider.overrideWithValue(() async {
           onOpenSettings?.call();
