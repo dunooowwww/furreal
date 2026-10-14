@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="daily_drop_channel_id" translatable="false">daily_drop</string>
+    <string name="daily_drop_channel_name">daily drop</string>
+    <string name="daily_drop_channel_description">kabar waktunya catch, sekali sehari.</string>
+</resources>

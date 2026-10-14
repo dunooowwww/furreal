@@ -45,6 +45,7 @@ values
    '22222222-2222-2222-2222-222222222222/aaaaaaaa-0000-0000-0000-000000000003/selfie.jpg',
    'bebek', null, null, true, false, public.jakarta_today() - 1, now() - interval '1 day');
 
+delete from public.daily_drops; -- cron lokal mungkin sudah membuat baris hari ini
 insert into public.daily_drops (drop_date, sent_at)
   values (public.jakarta_today(), now() - interval '1 hour 45 minutes');
 

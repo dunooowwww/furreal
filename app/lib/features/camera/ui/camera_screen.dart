@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router.dart';
 import '../../../app/theme.dart';
 import '../../../shared/app_settings.dart';
+import '../../daily_drop/data/daily_drop.dart';
+import '../../daily_drop/state/daily_drop_providers.dart';
 import '../data/captured_photos.dart';
 import '../data/catch_camera.dart';
 import '../state/camera_providers.dart';
@@ -169,6 +171,7 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                         onClose: () => context.pop(),
                         onFlip: _busy ? null : _flip,
                       ),
+                      const _DropTimer(),
                       const SizedBox(height: 16),
                       Expanded(child: _buildViewfinder(step)),
                       const SizedBox(height: 16),
@@ -516,4 +519,30 @@ class _CornersPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+/// Sisa waktu tepat-waktu daily drop (atau "telat") di bawah top bar.
+class _DropTimer extends ConsumerWidget {
+  const _DropTimer();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final drop = ref.watch(todayDropProvider).value;
+    final now = watchDropClock(ref, drop);
+    final text = switch (drop?.phaseAt(now)) {
+      DropPhase.onTime =>
+        'sisa ${formatCountdown(drop!.remainingAt(now))} buat tepat waktu',
+      DropPhase.late => 'lewat 1 jam · catch ditandai telat',
+      _ => null,
+    };
+    if (text == null) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Text(
+        text,
+        key: const Key('camera-drop-timer'),
+        style: FurrealText.mono(fontSize: 12).copyWith(color: _Dark.muted),
+      ),
+    );
+  }
 }

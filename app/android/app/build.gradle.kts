@@ -4,6 +4,14 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Firebase (notifikasi, Analytics, Crashlytics) aktif hanya kalau google-services.json
+// ada (file ini di-.gitignore). Tanpa file itu app tetap bisa di-build dan jalan
+// tanpa notifikasi; lihat docs/PLAN.md (M6) untuk setup Firebase.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+    apply(plugin = "com.google.firebase.crashlytics")
+}
+
 android {
     namespace = "com.dun.furreal"
     compileSdk = flutter.compileSdkVersion

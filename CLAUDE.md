@@ -19,7 +19,14 @@ cd app && flutter run --dart-define-from-file=.env.local
 SUPABASE_SERVICE_ROLE_KEY=... deno run -A supabase/scripts/seed_dev_feed.ts emailkamu@contoh.com
 # catch hari-hari lalu untuk tes streak (lokal saja): --days N, --gap untuk streak putus
 SUPABASE_SERVICE_ROLE_KEY=... deno run -A supabase/scripts/seed_dev_streak.ts emailkamu@contoh.com --days 3
+# daily drop (lokal saja): turun sekarang (butuh functions serve), --lock untuk mengunci kamera, --status
+SUPABASE_SERVICE_ROLE_KEY=... deno run -A supabase/scripts/seed_dev_drop.ts
+# Windows dengan package.json di folder home: tambahkan --node-modules-dir=none setelah `deno run -A`
 ```
+
+Daily drop dijadwalkan `pg_cron` (09:55 WIB + dispatch tiap menit) lewat `pg_net` ke `send-daily-drop`.
+Catch dikunci sampai drop hari ini turun. Firebase opsional: tanpa `app/android/app/google-services.json`
+app jalan tanpa notifikasi/metrik (setup: `docs/PLAN.md` catatan M6).
 
 ## Test
 ```bash

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/supabase.dart';
+import '../../../shared/analytics.dart';
 import '../../circles/state/circle_providers.dart';
 import '../data/feed_models.dart';
 import '../data/feed_repository.dart';
@@ -90,6 +91,7 @@ class FeedController extends AsyncNotifier<FeedState> {
       _update(catchId, (item) => item.withReaction(type, !on));
       rethrow;
     }
+    if (on) ref.read(analyticsProvider).reactionAdded(type: type.dbValue);
   }
 
   void setCommentCount(String catchId, int count) =>

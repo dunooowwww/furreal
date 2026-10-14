@@ -7,6 +7,8 @@ import '../../../app/theme.dart';
 import '../../catch_result/state/catch_providers.dart';
 import '../../circles/data/circle_repository.dart';
 import '../../circles/state/circle_providers.dart';
+import '../../daily_drop/data/daily_drop.dart';
+import '../../daily_drop/state/daily_drop_providers.dart';
 import '../data/feed_models.dart';
 import '../state/feed_providers.dart';
 import 'comments_sheet.dart';
@@ -29,6 +31,7 @@ class FeedScreen extends ConsumerWidget {
 
     Future<void> refresh() async {
       ref.invalidate(todayCatchProvider);
+      ref.invalidate(todayDropProvider);
       await ref.read(feedControllerProvider(circleId).notifier).refresh();
     }
 
@@ -196,11 +199,42 @@ class _Header extends ConsumerWidget {
   }
 }
 
-class _NotCaughtBanner extends StatelessWidget {
+class _NotCaughtBanner extends ConsumerWidget {
   const _NotCaughtBanner();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final drop = ref.watch(todayDropProvider).value;
+    final waiting = drop?.phaseAt(DateTime.now()) == DropPhase.waiting;
+    if (waiting) {
+      return Container(
+        key: const Key('drop-waiting-banner'),
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: FurrealColors.surface,
+          borderRadius: BorderRadius.circular(FurrealShape.cardRadius),
+          border: Border.all(
+            color: FurrealColors.ink,
+            width: FurrealShape.borderWidth,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              'daily drop belum turun',
+              style: FurrealText.display(fontSize: 22),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'kamera kebuka begitu notifikasinya masuk. '
+              'sambil nunggu, intip dulu catch kemarin di koleksi.',
+              style: TextStyle(height: 1.4),
+            ),
+          ],
+        ),
+      );
+    }
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(

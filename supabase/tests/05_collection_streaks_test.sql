@@ -12,6 +12,11 @@ insert into public.animals (id, owner_id, name, kind, animal_type) values
   ('dddddddd-0000-0000-0000-00000000000a', '11111111-1111-1111-1111-111111111111', 'Milo', 'pet', 'kucing'),
   ('dddddddd-0000-0000-0000-00000000000b', '22222222-2222-2222-2222-222222222222', 'Pak Kwek', 'wild', null);
 
+-- create_catch butuh daily drop hari ini yang sudah turun (M6).
+delete from public.daily_drops;
+insert into public.daily_drops (drop_date, scheduled_at, sent_at)
+  values (public.jakarta_today(), now(), now());
+
 -- helper: catch alice di tanggal tertentu (sebagai admin, trigger tetap jalan)
 create function pg_temp.alice_catch(p_id text, p_days_ago int) returns void language sql as $$
   insert into public.catches (id, user_id, animal_id, animal_photo_path, selfie_photo_path, location_hidden, catch_date, created_at)

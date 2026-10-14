@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
 import '../../../app/theme.dart';
+import '../../../shared/analytics.dart';
 import '../../../shared/errors.dart';
 import '../../../shared/widgets/error_text.dart';
 import '../../camera/data/captured_photos.dart';
@@ -14,6 +15,9 @@ import '../data/catch_repository.dart';
 import '../../../shared/widgets/remote_photo.dart';
 import '../../collection/data/collection_models.dart';
 import '../../collection/state/collection_providers.dart';
+import '../../daily_drop/data/daily_drop.dart';
+import '../../daily_drop/state/daily_drop_providers.dart';
+import '../../feed/state/feed_providers.dart';
 import '../state/catch_providers.dart';
 
 enum _Phase { uploading, identifying, uploadFailed, ready }
@@ -177,7 +181,17 @@ class _CatchResultScreenState extends ConsumerState<CatchResultScreen> {
         ),
       );
       _posted = true;
+      final late =
+          ref.read(todayDropProvider).value?.phaseAt(DateTime.now()) ==
+          DropPhase.late;
+      ref
+          .read(analyticsProvider)
+          .catchCreated(
+            encounter: existing == null ? 'new' : 'again',
+            timing: late ? 'late' : 'on_time',
+          );
       ref.invalidate(todayCatchProvider);
+      ref.invalidate(feedControllerProvider);
       for (final p in catchDerivedProviders) {
         ref.invalidate(p);
       }
