@@ -13,7 +13,7 @@ Spesifikasi lengkap: `docs/PRD.md`. Rencana kerja: `docs/PLAN.md`.
 ```bash
 npx supabase start                  # Supabase lokal (butuh Docker)
 npx supabase db reset               # terapkan migrasi
-npx supabase functions serve        # Edge Functions lokal
+npx supabase functions serve --env-file supabase/.env   # Edge Functions lokal (AI_PROVIDER=mock default)
 cd app && flutter run --dart-define-from-file=.env.local
 ```
 
@@ -21,6 +21,7 @@ cd app && flutter run --dart-define-from-file=.env.local
 ```bash
 npx supabase test db                # test RLS (pgTAP)
 cd app && flutter analyze && flutter test
+cd supabase/functions && deno test  # Edge Functions (AI di-mock, tanpa API asli)
 ```
 
 ## Aturan kerja

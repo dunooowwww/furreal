@@ -9,8 +9,10 @@ import 'package:furreal/app/app.dart';
 import 'package:furreal/features/auth/data/auth_repository.dart';
 import 'package:furreal/features/auth/data/profile_repository.dart';
 import 'package:furreal/features/auth/state/auth_providers.dart';
+import 'package:furreal/features/camera/data/captured_photos.dart';
 import 'package:furreal/features/camera/data/catch_camera.dart';
 import 'package:furreal/features/camera/state/camera_providers.dart';
+import 'package:furreal/features/catch_result/data/ai_identification.dart';
 import 'package:furreal/features/catch_result/data/area_locator.dart';
 import 'package:furreal/features/catch_result/data/catch_repository.dart';
 import 'package:furreal/features/catch_result/state/catch_providers.dart';
@@ -175,27 +177,75 @@ class FakeAreaLocator implements AreaLocator {
 }
 
 class FakeCatchRepository implements CatchRepository {
-  FakeCatchRepository({this.today, this.failWith});
+  FakeCatchRepository({
+    this.today,
+    this.failWith,
+    this.uploadFailures = 0,
+    AiIdentification? ai,
+    this.aiFailure,
+  }) : ai = ai ?? mockKucing;
 
   TodayCatch? today;
   Object? failWith;
-  final submitted = <NewCatch>[];
+
+  /// Berapa kali prepare() gagal dulu sebelum berhasil.
+  int uploadFailures;
+  AiIdentification ai;
+  AiFailure? aiFailure;
+
+  /// Kalau diisi, identify() menunggu sampai completer ini selesai.
+  Completer<void>? identifyGate;
+
+  final prepared = <PreparedCatch>[];
+  final identified = <String>[];
+  final discarded = <String>[];
+  final submitted = <CatchDetails>[];
   var deleted = 0;
 
   @override
   Future<TodayCatch?> todayCatch() async => today;
 
   @override
-  Future<void> submit(NewCatch newCatch) async {
+  Future<PreparedCatch> prepare(CapturedPhotos photos) async {
+    if (uploadFailures > 0) {
+      uploadFailures--;
+      throw const StorageException('upload gagal');
+    }
+    final id = 'catch-${prepared.length + 1}';
+    final p = PreparedCatch(
+      id: id,
+      animalPath: 'u/$id/animal.jpg',
+      selfiePath: 'u/$id/selfie.jpg',
+    );
+    prepared.add(p);
+    return p;
+  }
+
+  @override
+  Future<AiIdentification> identify(PreparedCatch prepared) async {
+    identified.add(prepared.id);
+    await identifyGate?.future;
+    final failure = aiFailure;
+    if (failure != null) throw failure;
+    return ai;
+  }
+
+  @override
+  Future<void> discard(PreparedCatch prepared) async =>
+      discarded.add(prepared.id);
+
+  @override
+  Future<void> submit(PreparedCatch prepared, CatchDetails details) async {
     final failure = failWith;
     if (failure != null) throw failure;
-    submitted.add(newCatch);
+    submitted.add(details);
     today = TodayCatch(
-      id: 'catch-1',
-      animalPhotoPath: 'u/catch-1/animal.jpg',
-      selfiePhotoPath: 'u/catch-1/selfie.jpg',
-      animalName: newCatch.animalName,
-      kind: newCatch.kind,
+      id: prepared.id,
+      animalPhotoPath: prepared.animalPath,
+      selfiePhotoPath: prepared.selfiePath,
+      animalName: details.animalName,
+      kind: details.kind,
+      animalType: details.animalType,
     );
   }
 
@@ -205,6 +255,13 @@ class FakeCatchRepository implements CatchRepository {
     today = null;
   }
 }
+
+const mockKucing = AiIdentification(
+  animalType: 'kucing',
+  confidence: 0.94,
+  candidates: ['kucing', 'musang'],
+  personality: 'si penjaga parkiran. hobi: tidur di jok motor orang.',
+);
 
 Future<void> pumpApp(
   WidgetTester tester, {
@@ -255,14 +312,26 @@ Future<void> pumpApp(
 Future<void> tapText(WidgetTester tester, String text) =>
     tapFinder(tester, find.text(text));
 
+/// Gulir layar sampai [finder] dirender (ListView hanya membangun yang terlihat).
+Future<void> reveal(WidgetTester tester, Finder finder) async {
+  final scrollable = find.byType(Scrollable);
+  if (finder.evaluate().isEmpty && scrollable.evaluate().isNotEmpty) {
+    await tester.scrollUntilVisible(finder, 200, scrollable: scrollable.first);
+  }
+}
+
 Future<void> tapFinder(WidgetTester tester, Finder finder) async {
+  await reveal(tester, finder);
   await tester.ensureVisible(finder);
+  await tester.pump(); // terapkan posisi scroll sebelum tap
   await tester.tap(finder);
   await tester.pumpAndSettle();
 }
 
 Future<void> enter(WidgetTester tester, String key, String text) async {
   final finder = find.byKey(Key(key));
+  await reveal(tester, finder);
   await tester.ensureVisible(finder);
+  await tester.pump();
   await tester.enterText(finder, text);
 }

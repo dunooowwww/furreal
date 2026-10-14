@@ -82,6 +82,10 @@ void main() {
       expect(find.text('dapet!'), findsOneWidget);
       expect(find.byKey(const Key('result-animal-photo')), findsOneWidget);
       expect(find.byKey(const Key('result-selfie-photo')), findsOneWidget);
+      await reveal(
+        tester,
+        find.text('sekitar Depok, Sleman · lokasi disamarkan'),
+      );
       expect(
         find.text('sekitar Depok, Sleman · lokasi disamarkan'),
         findsOneWidget,
@@ -100,13 +104,17 @@ void main() {
       expect(posted.kind, AnimalKind.wild);
       expect(posted.areaLabel, 'sekitar Depok, Sleman');
       expect(posted.locationHidden, isFalse);
-      expect(posted.animalPhoto, isNotEmpty);
-      expect(posted.selfiePhoto, isNotEmpty);
+      // AI dipanggil sekali untuk foto yang sudah ter-upload
+      expect(catches.prepared.single.id, 'catch-1');
+      expect(catches.identified, ['catch-1']);
+      expect(posted.animalType, 'kucing');
+      expect(posted.personality, mockKucing.personality);
+      expect(catches.discarded, isEmpty);
 
       // kembali ke beranda dengan status sudah catch
       expect(find.text('catch terposting ke circle!'), findsOneWidget);
       expect(find.text('udah catch\nhari ini!'), findsOneWidget);
-      expect(find.text('Milo · liar'), findsOneWidget);
+      expect(find.text('Milo · kucing · liar'), findsOneWidget);
       expect(find.text('buka kamera'), findsNothing);
     },
   );
@@ -137,6 +145,10 @@ void main() {
     );
     await captureBoth(tester);
 
+    await reveal(
+      tester,
+      find.text('izin lokasi ditolak · lokasi disembunyikan'),
+    );
     expect(
       find.text('izin lokasi ditolak · lokasi disembunyikan'),
       findsOneWidget,
@@ -169,7 +181,8 @@ void main() {
       find.text('kamu udah catch hari ini. besok lagi ya!'),
       findsOneWidget,
     );
-    expect(find.text('dapet!'), findsOneWidget);
+    // tetap di layar hasil, belum diposting
+    expect(find.text('posting ke circle'), findsOneWidget);
   });
 
   testWidgets('izin kamera ditolak → penjelasan + buka pengaturan', (
@@ -205,6 +218,15 @@ void main() {
     await captureBoth(tester);
     await tapFinder(tester, find.byTooltip('foto ulang'));
     expect(find.text('1/2 · foto hewan'), findsOneWidget);
+  });
+
+  testWidgets('foto ulang membuang foto yang sudah ter-upload', (tester) async {
+    final catches = FakeCatchRepository();
+    await pumpReadyApp(tester, catches: catches);
+    await captureBoth(tester);
+    await tapFinder(tester, find.byTooltip('foto ulang'));
+    expect(catches.discarded, ['catch-1']);
+    expect(catches.submitted, isEmpty);
   });
 
   testWidgets('debug: hapus catch hari ini supaya bisa catch lagi', (
