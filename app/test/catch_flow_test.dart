@@ -113,8 +113,9 @@ void main() {
 
       // kembali ke beranda dengan status sudah catch
       expect(find.text('catch terposting ke circle!'), findsOneWidget);
-      expect(find.text('udah catch\nhari ini!'), findsOneWidget);
-      expect(find.text('Milo · kucing · liar'), findsOneWidget);
+      expect(find.text('CATCH HARI INI · BERES'), findsOneWidget);
+      expect(find.text('Milo'), findsOneWidget);
+      expect(find.text('kucing · liar'), findsOneWidget);
       expect(find.text('buka kamera'), findsNothing);
     },
   );
@@ -243,7 +244,8 @@ void main() {
     );
     await pumpReadyApp(tester, catches: catches);
 
-    expect(find.text('Milo · peliharaan'), findsOneWidget);
+    expect(find.text('peliharaan'), findsOneWidget);
+    expect(find.byKey(const Key('today-animal')), findsOneWidget);
     await tapText(tester, 'hapus catch hari ini (debug)');
     expect(catches.deleted, 1);
     expect(find.text('buka kamera'), findsOneWidget);

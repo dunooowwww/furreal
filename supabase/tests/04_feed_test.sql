@@ -154,8 +154,9 @@ select results_eq(
            is_late, late_minutes
     from public.circle_feed('cccccccc-0000-0000-0000-000000000001')$$,
   $$values
-    ('aaaaaaaa-0000-0000-0000-000000000002', 'Bob', 'Pak Kwek', 'bebek', 1, 'patroli selokan.', true, 40),
-    ('aaaaaaaa-0000-0000-0000-000000000001', 'Alice', 'Milo', 'kucing', 3, 'bos parkiran.', false, null::int)$$,
+    -- Pak Kwek punya 2 catch (hari ini + kemarin); sejak M5 dihitung trigger
+    ('aaaaaaaa-0000-0000-0000-000000000002', 'Bob', 'Pak Kwek', 'bebek', 2, 'patroli selokan.', true, 40),
+    ('aaaaaaaa-0000-0000-0000-000000000001', 'Alice', 'Milo', 'kucing', 1, 'bos parkiran.', false, null::int)$$,
   'feed: hanya catch hari ini, terbaru dulu, jenis & kepribadian final, telat berapa menit'
 );
 

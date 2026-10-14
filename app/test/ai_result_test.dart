@@ -140,7 +140,7 @@ void main() {
         final posted = catches.submitted.single;
         expect(posted.animalType, 'kucing');
         expect(posted.personality, isNull);
-        expect(find.text('udah catch\nhari ini!'), findsOneWidget);
+        expect(find.text('CATCH HARI INI · BERES'), findsOneWidget);
       },
     );
   }

@@ -7,31 +7,19 @@
 //
 // Aman dijalankan ulang (mis. tiap hari): catch hari ini milik user contoh
 // diganti yang baru. Skrip menolak jalan ke Supabase non-lokal.
-import { createClient } from "npm:@supabase/supabase-js@2.117.2";
+import {
+  admin,
+  check,
+  findUserIdByEmail,
+  jakartaDate,
+  must,
+  type SamplePhoto,
+  uploadSamplePhotos,
+} from "./_dev.ts";
 
-const url = Deno.env.get("SUPABASE_URL") ?? "http://127.0.0.1:54321";
-const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const myEmail = Deno.args[0]?.trim().toLowerCase();
 
-if (!/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?\/?$/.test(url)) {
-  console.error(
-    `menolak: ${url} bukan Supabase lokal. skrip ini khusus development.`,
-  );
-  Deno.exit(1);
-}
-if (!serviceKey) {
-  console.error(
-    "isi SUPABASE_SERVICE_ROLE_KEY (lihat `npx supabase status -o env`).",
-  );
-  Deno.exit(1);
-}
-
-const admin = createClient(url, serviceKey, {
-  auth: { persistSession: false, autoRefreshToken: false },
-});
-
 const CIRCLE = { name: "anak kos merpati", invite_code: "KSM234" };
-const PHOTOS = new URL("./seed_photos/", import.meta.url);
 
 type SeedUser = {
   key: string;
@@ -39,14 +27,13 @@ type SeedUser = {
   username: string;
   display_name: string;
   catch?: {
-    photo: string;
+    photo: SamplePhoto;
     minutesAgo: number;
     late: boolean;
     animal: {
       name: string;
       kind: "pet" | "wild";
       animal_type: string;
-      encounter_count: number;
     };
     ai_confidence: number;
     personality: string;
@@ -67,7 +54,6 @@ const USERS: SeedUser[] = [
         name: "Mochi",
         kind: "pet",
         animal_type: "kucing",
-        encounter_count: 12,
       },
       ai_confidence: 0.96,
       personality: "bos kamar 4b. nolak semua makanan kecuali yang mahal.",
@@ -86,7 +72,6 @@ const USERS: SeedUser[] = [
         name: "Pak Kwek",
         kind: "wild",
         animal_type: "bebek",
-        encounter_count: 1,
       },
       ai_confidence: 0.88,
       personality: "patroli selokan tiap pagi. tidak menerima kritik.",
@@ -105,7 +90,6 @@ const USERS: SeedUser[] = [
         name: "Kiko",
         kind: "pet",
         animal_type: "burung",
-        encounter_count: 5,
       },
       ai_confidence: 0.81,
       personality:
@@ -120,50 +104,6 @@ const USERS: SeedUser[] = [
     display_name: "sasa",
   },
 ];
-
-/** Ambil `data` dari hasil supabase-js, keluar dengan pesan kalau error. */
-function must<T>(
-  label: string,
-  result: { data: T; error: unknown },
-): NonNullable<T> {
-  if (result.error || result.data == null) {
-    console.error(`gagal ${label}:`, result.error ?? "data kosong");
-    Deno.exit(1);
-  }
-  return result.data as NonNullable<T>;
-}
-
-/** Seperti must(), tapi `data` boleh null (mis. maybeSingle). */
-function check<T>(label: string, result: { data: T; error: unknown }): T {
-  if (result.error) {
-    console.error(`gagal ${label}:`, result.error);
-    Deno.exit(1);
-  }
-  return result.data;
-}
-
-/** Tanggal hari ini Asia/Jakarta (UTC+7), sama dengan public.jakarta_today(). */
-function jakartaToday(): string {
-  return new Date(Date.now() + 7 * 3600_000).toISOString().slice(0, 10);
-}
-
-async function findUserIdByEmail(email: string): Promise<string | undefined> {
-  for (let page = 1; page < 50; page++) {
-    const { data, error } = await admin.auth.admin.listUsers({
-      page,
-      perPage: 200,
-    });
-    if (error) {
-      console.error("gagal listUsers:", error);
-      Deno.exit(1);
-    }
-    const found = data.users.find((user) =>
-      user.email?.toLowerCase() === email
-    );
-    if (found) return found.id;
-    if (data.users.length < 200) return undefined;
-  }
-}
 
 async function ensureUser(u: SeedUser): Promise<string> {
   let id = await findUserIdByEmail(u.email);
@@ -190,7 +130,7 @@ async function ensureUser(u: SeedUser): Promise<string> {
 }
 
 async function main() {
-  const today = jakartaToday();
+  const today = jakartaDate();
   const ids: Record<string, string> = {};
   for (const u of USERS) ids[u.key] = await ensureUser(u);
 
@@ -276,23 +216,7 @@ async function main() {
     }
 
     const catchId = crypto.randomUUID();
-    const folder = `${userId}/${catchId}`;
-    for (const kind of ["animal", "selfie"] as const) {
-      const bytes = await Deno.readFile(
-        new URL(`${u.catch.photo}_${kind}.jpg`, PHOTOS),
-      );
-      must(
-        `upload ${kind} ${u.key}`,
-        await admin.storage.from("catch-photos").upload(
-          `${folder}/${kind}.jpg`,
-          bytes,
-          {
-            contentType: "image/jpeg",
-            upsert: true,
-          },
-        ),
-      );
-    }
+    const paths = await uploadSamplePhotos(userId, catchId, u.catch.photo);
 
     const animal = must(
       "hewan",
@@ -316,8 +240,8 @@ async function main() {
         id: catchId,
         user_id: userId,
         animal_id: animal.id,
-        animal_photo_path: `${folder}/animal.jpg`,
-        selfie_photo_path: `${folder}/selfie.jpg`,
+        animal_photo_path: paths.animal,
+        selfie_photo_path: paths.selfie,
         ai_type: u.catch.animal.animal_type,
         ai_confidence: u.catch.ai_confidence,
         ai_candidates: [u.catch.animal.animal_type],

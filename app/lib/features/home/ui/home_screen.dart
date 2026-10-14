@@ -10,9 +10,12 @@ import '../../auth/state/auth_providers.dart';
 import '../../catch_result/data/catch_repository.dart';
 import '../../catch_result/state/catch_providers.dart';
 import '../../circles/state/circle_providers.dart';
+import '../../collection/data/collection_models.dart';
+import '../../collection/state/collection_providers.dart';
+import '../../../shared/widgets/remote_photo.dart';
 
-/// Beranda sementara: kartu catch hari ini, daftar circle, keluar.
-/// Streak, sisa waktu daily drop, dan status circle menyusul (M4–M6).
+/// Beranda: streak, kartu catch hari ini, tangkapan kemarin, circle.
+/// Sisa waktu daily drop & status circle menyusul (M6).
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
@@ -27,7 +30,17 @@ class HomeScreen extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.all(20),
           children: [
-            Text('furreal', style: FurrealText.display(fontSize: 30)),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'furreal',
+                    style: FurrealText.display(fontSize: 30),
+                  ),
+                ),
+                const _StreakChip(),
+              ],
+            ),
             const SizedBox(height: 4),
             Text(
               'halo, ${profile?.displayName ?? profile?.username ?? ''}',
@@ -35,6 +48,7 @@ class HomeScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 20),
             const _TodayCard(),
+            const _YesterdayCard(),
             const SizedBox(height: 24),
             Text('circle kamu', style: textTheme.titleLarge),
             const SizedBox(height: 8),
@@ -85,6 +99,9 @@ class _TodayCardState extends ConsumerState<_TodayCard> {
     try {
       await ref.read(catchRepositoryProvider).deleteTodayCatch();
       ref.invalidate(todayCatchProvider);
+      for (final p in catchDerivedProviders) {
+        ref.invalidate(p);
+      }
       messenger.showSnackBar(
         const SnackBar(content: Text('catch hari ini dihapus (debug).')),
       );
@@ -114,7 +131,10 @@ class _TodayCardState extends ConsumerState<_TodayCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text('DAILY DROP', style: mono),
+          Text(
+            caught == null ? 'DAILY DROP' : 'CATCH HARI INI · BERES',
+            style: mono,
+          ),
           const SizedBox(height: 14),
           if (today.isLoading && !today.hasValue)
             const Center(child: CircularProgressIndicator())
@@ -159,18 +179,14 @@ class _TodayCardState extends ConsumerState<_TodayCard> {
 
   List<Widget> _buildCaught(TodayCatch caught) => [
     Text(
-      'udah catch\nhari ini!',
+      caught.animalName ?? 'tanpa nama',
+      key: const Key('today-animal'),
       style: FurrealText.display(fontSize: 40).copyWith(height: 0.95),
     ),
-    const SizedBox(height: 14),
+    const SizedBox(height: 8),
     Text(
-      [
-        caught.animalName,
-        caught.animalType,
-        caught.kind?.label,
-      ].nonNulls.join(' · '),
-      style: FurrealText.display(fontSize: 20)
-          .copyWith(fontWeight: FontWeight.w700),
+      [caught.animalType, caught.kind?.label].nonNulls.join(' · '),
+      style: const TextStyle(fontSize: 15),
     ),
     const SizedBox(height: 4),
     const Text(
@@ -186,4 +202,123 @@ class _TodayCardState extends ConsumerState<_TodayCard> {
       ),
     ],
   ];
+}
+
+/// Chip streak di header (0 kalau streak sudah putus).
+class _StreakChip extends ConsumerWidget {
+  const _StreakChip();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final streak = ref.watch(streakProvider).value ?? Streak.none;
+    return Semantics(
+      label: 'streak ${streak.current} hari',
+      excludeSemantics: true,
+      child: Container(
+        key: const Key('streak-chip'),
+        height: 36,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: FurrealColors.ink,
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(
+              Icons.local_fire_department_outlined,
+              size: 16,
+              color: FurrealColors.accent,
+            ),
+            const SizedBox(width: 6),
+            Text(
+              '${streak.current}',
+              style: FurrealText.mono(fontSize: 14)
+                  .copyWith(color: Colors.white),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// "Tangkapan kemarin" (prototype beranda). Disembunyikan kalau tidak ada.
+class _YesterdayCard extends ConsumerWidget {
+  const _YesterdayCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final yesterday = ref.watch(yesterdayCatchProvider).value;
+    if (yesterday == null) return const SizedBox.shrink();
+    final photo = ref.watch(remotePhotoBuilderProvider);
+    final encounter = yesterday.encounterCount <= 1
+        ? 'first catch'
+        : 'ketemu ke-${yesterday.encounterCount}x';
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Container(
+        key: const Key('yesterday-card'),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(22),
+          border: Border.all(
+            color: FurrealColors.ink,
+            width: FurrealShape.borderWidth,
+          ),
+        ),
+        child: Row(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: SizedBox.square(
+                dimension: 64,
+                child: photo(context, yesterday.photoUrl, yesterday.photoPath),
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'TANGKAPAN KEMARIN',
+                    style: FurrealText.mono(fontSize: 11).copyWith(
+                      color: FurrealColors.textSecondary,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  Text(
+                    yesterday.animalName,
+                    style: FurrealText.display(fontSize: 20)
+                        .copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  Text(
+                    [yesterday.animalType, encounter].nonNulls.join(' · '),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: FurrealColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            IconButton(
+              tooltip: 'lihat koleksi',
+              onPressed: () => context.go(Routes.collection),
+              icon: const Icon(Icons.chevron_right),
+              style: IconButton.styleFrom(
+                fixedSize: const Size.square(FurrealShape.minTouchTarget),
+                side: const BorderSide(
+                  color: FurrealColors.ink,
+                  width: FurrealShape.borderWidth,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

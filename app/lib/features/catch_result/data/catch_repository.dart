@@ -48,8 +48,11 @@ class CatchDetails {
     required this.personality,
     required this.areaLabel,
     required this.locationHidden,
+    this.existingAnimalId,
   });
 
+  /// "Ketemu lagi": hewan lama milik sendiri. null = hewan baru.
+  final String? existingAnimalId;
   final String animalName;
   final AnimalKind kind;
 
@@ -210,6 +213,7 @@ class SupabaseCatchRepository implements CatchRepository {
         'p_location_hidden': details.locationHidden,
         'p_animal_type': details.animalType,
         'p_personality': details.personality,
+        'p_animal_id': details.existingAnimalId,
       },
     );
   }
@@ -227,9 +231,18 @@ class SupabaseCatchRepository implements CatchRepository {
     if (today == null) return;
     await _photos.remove([today.animalPhotoPath, today.selfiePhotoPath]);
     await _client.from('catches').delete().eq('id', today.id);
+    // Hapus hewannya hanya kalau dibuat oleh catch ini (tanpa catch lain).
+    // Hewan "ketemu lagi" tetap, encounter_count-nya turun lewat trigger.
     final animalId = today.animalId;
     if (animalId != null) {
-      await _client.from('animals').delete().eq('id', animalId);
+      final others = await _client
+          .from('catches')
+          .select('id')
+          .eq('animal_id', animalId)
+          .limit(1);
+      if (others.isEmpty) {
+        await _client.from('animals').delete().eq('id', animalId);
+      }
     }
   }
 }

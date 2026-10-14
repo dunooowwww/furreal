@@ -17,11 +17,15 @@ import 'package:furreal/features/catch_result/data/area_locator.dart';
 import 'package:furreal/features/catch_result/data/catch_repository.dart';
 import 'package:furreal/features/catch_result/state/catch_providers.dart';
 import 'package:furreal/features/circles/data/circle_repository.dart';
+import 'package:furreal/features/collection/data/collection_models.dart';
+import 'package:furreal/features/collection/data/collection_repository.dart';
+import 'package:furreal/features/collection/state/collection_providers.dart';
 import 'package:furreal/features/circles/state/circle_providers.dart';
 import 'package:furreal/features/feed/data/feed_models.dart';
 import 'package:furreal/features/feed/data/feed_repository.dart';
 import 'package:furreal/features/feed/state/feed_providers.dart';
 import 'package:furreal/shared/app_settings.dart';
+import 'package:furreal/shared/widgets/remote_photo.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 const validOtp = '123456';
@@ -336,8 +340,53 @@ class FakeFeedRepository implements FeedRepository {
   }
 }
 
+class FakeCollectionRepository implements CollectionRepository {
+  FakeCollectionRepository({
+    List<CollectionAnimal>? animals,
+    this.streak = Streak.none,
+    this.yesterday,
+  }) : animals = animals ?? [];
+
+  final List<CollectionAnimal> animals;
+  Streak streak;
+  YesterdayCatch? yesterday;
+  var loads = 0;
+
+  @override
+  Future<List<CollectionAnimal>> myCollection() async {
+    loads++;
+    return List.of(animals);
+  }
+
+  @override
+  Future<Streak> myStreak() async => streak;
+
+  @override
+  Future<YesterdayCatch?> yesterdayCatch() async => yesterday;
+}
+
+CollectionAnimal animal({
+  required String id,
+  required String name,
+  String? type,
+  AnimalKind kind = AnimalKind.pet,
+  int encounters = 1,
+  Duration lastSeenAgo = const Duration(days: 1),
+  String? personality,
+}) => CollectionAnimal(
+  id: id,
+  name: name,
+  kind: kind,
+  animalType: type,
+  encounterCount: encounters,
+  firstSeenAt: DateTime(2026, 9, 1, 12),
+  lastSeenAt: DateTime.now().subtract(lastSeenAgo),
+  lastPhotoPath: 'u/$id/animal.jpg',
+  lastPersonality: personality,
+);
+
 /// Foto palsu untuk test (tanpa jaringan): kotak abu-abu ber-key path.
-Widget fakeFeedPhoto(BuildContext context, String? url, String cacheKey) =>
+Widget fakeRemotePhoto(BuildContext context, String? url, String cacheKey) =>
     ColoredBox(key: Key('photo-$cacheKey'), color: Colors.grey);
 
 Future<void> pumpApp(
@@ -350,6 +399,7 @@ Future<void> pumpApp(
   FakeAreaLocator? area,
   FakeCatchRepository? catches,
   FakeFeedRepository? feed,
+  FakeCollectionRepository? collection,
   VoidCallback? onOpenSettings,
 }) async {
   tester.view.physicalSize = const Size(1080, 2400);
@@ -375,7 +425,10 @@ Future<void> pumpApp(
           catches ?? FakeCatchRepository(),
         ),
         feedRepositoryProvider.overrideWithValue(feed ?? FakeFeedRepository()),
-        feedPhotoBuilderProvider.overrideWithValue(fakeFeedPhoto),
+        collectionRepositoryProvider.overrideWithValue(
+          collection ?? FakeCollectionRepository(),
+        ),
+        remotePhotoBuilderProvider.overrideWithValue(fakeRemotePhoto),
         openAppSettingsProvider.overrideWithValue(() async {
           onOpenSettings?.call();
           return true;

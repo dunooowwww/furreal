@@ -1,30 +1,32 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
-import '../../../app/theme.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-/// Menampilkan foto feed dari signed URL. [cacheKey] = path storage, supaya
+import '../../app/theme.dart';
+
+/// Menampilkan foto catch dari signed URL (feed, koleksi, beranda). [cacheKey] = path storage, supaya
 /// cache tetap kena walau signed URL berganti tiap refresh.
-typedef FeedPhotoBuilder = Widget Function(
+typedef RemotePhotoBuilder = Widget Function(
   BuildContext context,
   String? url,
   String cacheKey,
 );
 
-Widget cachedFeedPhoto(BuildContext context, String? url, String cacheKey) {
-  if (url == null) return const FeedPhotoPlaceholder(failed: true);
+Widget cachedRemotePhoto(BuildContext context, String? url, String cacheKey) {
+  if (url == null) return const RemotePhotoPlaceholder(failed: true);
   return CachedNetworkImage(
     imageUrl: url,
     cacheKey: cacheKey,
     fit: BoxFit.cover,
     fadeInDuration: const Duration(milliseconds: 150),
-    placeholder: (_, _) => const FeedPhotoPlaceholder(),
-    errorWidget: (_, _, _) => const FeedPhotoPlaceholder(failed: true),
+    placeholder: (_, _) => const RemotePhotoPlaceholder(),
+    errorWidget: (_, _, _) => const RemotePhotoPlaceholder(failed: true),
   );
 }
 
-class FeedPhotoPlaceholder extends StatelessWidget {
-  const FeedPhotoPlaceholder({super.key, this.failed = false});
+class RemotePhotoPlaceholder extends StatelessWidget {
+  const RemotePhotoPlaceholder({super.key, this.failed = false});
 
   final bool failed;
 
@@ -54,3 +56,8 @@ class FeedPhotoPlaceholder extends StatelessWidget {
     );
   }
 }
+
+/// Cara menampilkan foto. Default: cached_network_image; diganti di test.
+final remotePhotoBuilderProvider = Provider<RemotePhotoBuilder>(
+  (ref) => cachedRemotePhoto,
+);
