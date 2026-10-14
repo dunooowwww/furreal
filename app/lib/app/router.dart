@@ -8,6 +8,7 @@ import '../features/camera/data/captured_photos.dart';
 import '../features/camera/ui/camera_screen.dart';
 import '../features/catch_result/ui/catch_result_screen.dart';
 import '../features/circles/ui/circle_screen.dart';
+import '../features/collection/ui/collection_screen.dart';
 import '../features/feed/ui/feed_screen.dart';
 import '../features/home/ui/home_screen.dart';
 import 'session.dart';
@@ -21,6 +22,7 @@ class Routes {
   static const circle = '/circle';
   static const home = '/home';
   static const feed = '/feed';
+  static const collection = '/collection';
   static const camera = '/camera';
   static const catchResult = '/catch/result';
 }
@@ -88,6 +90,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: Routes.feed,
             builder: (context, state) => const FeedScreen(),
+          ),
+          GoRoute(
+            path: Routes.collection,
+            builder: (context, state) => const CollectionScreen(),
           ),
         ],
       ),

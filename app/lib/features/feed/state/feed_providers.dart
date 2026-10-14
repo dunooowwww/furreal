@@ -4,15 +4,9 @@ import '../../../app/supabase.dart';
 import '../../circles/state/circle_providers.dart';
 import '../data/feed_models.dart';
 import '../data/feed_repository.dart';
-import '../ui/feed_photo.dart';
 
 final feedRepositoryProvider = Provider<FeedRepository>(
   (ref) => SupabaseFeedRepository(ref.watch(supabaseClientProvider)),
-);
-
-/// Cara menampilkan foto feed. Default: cached_network_image; diganti di test.
-final feedPhotoBuilderProvider = Provider<FeedPhotoBuilder>(
-  (ref) => cachedFeedPhoto,
 );
 
 /// Circle yang sedang dilihat di feed. null = circle pertama.

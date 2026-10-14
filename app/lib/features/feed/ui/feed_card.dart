@@ -3,8 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme.dart';
 import '../../../shared/relative_time.dart';
+import '../../../shared/widgets/remote_photo.dart';
 import '../data/feed_models.dart';
-import '../state/feed_providers.dart';
 
 /// Kartu catch di feed (prototype "Feed circle").
 class FeedCard extends ConsumerWidget {
@@ -25,7 +25,7 @@ class FeedCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final photo = ref.watch(feedPhotoBuilderProvider);
+    final photo = ref.watch(remotePhotoBuilderProvider);
     final mono = FurrealText.mono(fontSize: 11);
     final secondary = mono.copyWith(color: FurrealColors.textSecondary);
 

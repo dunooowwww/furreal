@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'router.dart';
 import 'theme.dart';
 
-/// Tab bar bawah (prototype): beranda & feed. Koleksi menyusul di M5.
+/// Tab bar bawah (prototype): beranda, feed, koleksi.
 class AppShell extends StatelessWidget {
   const AppShell({super.key, required this.location, required this.child});
 
@@ -14,6 +14,7 @@ class AppShell extends StatelessWidget {
   static const _tabs = [
     (path: Routes.home, label: 'beranda', icon: Icons.home_outlined),
     (path: Routes.feed, label: 'feed', icon: Icons.chat_bubble_outline),
+    (path: Routes.collection, label: 'koleksi', icon: Icons.grid_view),
   ];
 
   @override

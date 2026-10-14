@@ -11,6 +11,9 @@ import '../../camera/data/captured_photos.dart';
 import '../data/ai_identification.dart';
 import '../data/area_locator.dart';
 import '../data/catch_repository.dart';
+import '../../../shared/widgets/remote_photo.dart';
+import '../../collection/data/collection_models.dart';
+import '../../collection/state/collection_providers.dart';
 import '../state/catch_providers.dart';
 
 enum _Phase { uploading, identifying, uploadFailed, ready }
@@ -41,6 +44,10 @@ class _CatchResultScreenState extends ConsumerState<CatchResultScreen> {
   AiFailure? _aiFailure;
   String? _pickedType;
   bool _manual = false;
+
+  /// "ketemu lagi" hewan lama milik sendiri.
+  bool _reencounter = false;
+  CollectionAnimal? _existing;
 
   AnimalKind _kind = AnimalKind.pet;
   AreaResult? _area;
@@ -140,7 +147,12 @@ class _CatchResultScreenState extends ConsumerState<CatchResultScreen> {
   Future<void> _post() async {
     final prepared = _prepared;
     if (prepared == null) return;
-    final name = _name.text.trim();
+    final existing = _reencounter ? _existing : null;
+    final name = existing?.name ?? _name.text.trim();
+    if (_reencounter && existing == null) {
+      setState(() => _error = 'pilih dulu hewan yang lo temuin lagi.');
+      return;
+    }
     if (name.isEmpty) {
       setState(() => _error = 'kasih nama dulu hewannya.');
       return;
@@ -156,7 +168,8 @@ class _CatchResultScreenState extends ConsumerState<CatchResultScreen> {
         prepared,
         CatchDetails(
           animalName: name,
-          kind: _kind,
+          kind: existing?.kind ?? _kind,
+          existingAnimalId: existing?.id,
           animalType: _finalType,
           personality: personality.isEmpty ? null : personality,
           areaLabel: areaLabel,
@@ -165,6 +178,9 @@ class _CatchResultScreenState extends ConsumerState<CatchResultScreen> {
       );
       _posted = true;
       ref.invalidate(todayCatchProvider);
+      for (final p in catchDerivedProviders) {
+        ref.invalidate(p);
+      }
       if (!mounted) return;
       final messenger = ScaffoldMessenger.of(context);
       context.go(Routes.home);
@@ -242,7 +258,10 @@ class _CatchResultScreenState extends ConsumerState<CatchResultScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _Photos(photos: widget.photos),
+                        _Photos(
+                          photos: widget.photos,
+                          badge: _reencounter ? 'ketemu lagi' : 'hewan baru',
+                        ),
                         Padding(
                           padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
                           child: _buildAiSection(label),
@@ -251,40 +270,72 @@ class _CatchResultScreenState extends ConsumerState<CatchResultScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Text('KASIH NAMA', style: label),
-                  const SizedBox(height: 8),
-                  TextField(
-                    key: const Key('animal-name'),
-                    controller: _name,
-                    maxLength: animalNameMaxLength,
-                    style: FurrealText.display(fontSize: 22)
-                        .copyWith(fontWeight: FontWeight.w700),
-                    decoration: const InputDecoration(
-                      hintText: 'mis. Milo',
-                      counterText: '',
-                      border: _fieldBorder,
-                      enabledBorder: _fieldBorder,
-                      focusedBorder: _fieldBorder,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text('PELIHARAAN ATAU LIAR?', style: label),
+                  Text('PERNAH KETEMU DIA?', style: label),
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      for (final kind in AnimalKind.values) ...[
-                        if (kind != AnimalKind.values.first)
-                          const SizedBox(width: 8),
-                        Expanded(
-                          child: _PillToggle(
-                            label: kind.label,
-                            selected: _kind == kind,
-                            onTap: () => setState(() => _kind = kind),
-                          ),
+                      Expanded(
+                        child: _PillToggle(
+                          label: 'hewan baru',
+                          selected: !_reencounter,
+                          onTap: () => setState(() => _reencounter = false),
                         ),
-                      ],
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _PillToggle(
+                          label: 'ketemu lagi',
+                          selected: _reencounter,
+                          onTap: () => setState(() => _reencounter = true),
+                        ),
+                      ),
                     ],
                   ),
+                  const SizedBox(height: 16),
+                  if (_reencounter)
+                    _ReencounterList(
+                      // urutkan berdasarkan jenis pilihan user / hasil AI
+                      type: _finalType ?? _ai?.animalType,
+                      selected: _existing,
+                      onSelect: (a) => setState(() => _existing = a),
+                    )
+                  else ...[
+                    Text('KASIH NAMA', style: label),
+                    const SizedBox(height: 8),
+                    TextField(
+                      key: const Key('animal-name'),
+                      controller: _name,
+                      maxLength: animalNameMaxLength,
+                      style: FurrealText.display(fontSize: 22)
+                          .copyWith(fontWeight: FontWeight.w700),
+                      decoration: const InputDecoration(
+                        hintText: 'mis. Milo',
+                        counterText: '',
+                        border: _fieldBorder,
+                        enabledBorder: _fieldBorder,
+                        focusedBorder: _fieldBorder,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text('PELIHARAAN ATAU LIAR?', style: label),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        for (final kind in AnimalKind.values) ...[
+                          if (kind != AnimalKind.values.first)
+                            const SizedBox(width: 8),
+                          Expanded(
+                            child: _PillToggle(
+                              label: kind.label,
+                              selected: _kind == kind,
+                              onTap: () => setState(() => _kind = kind),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   const SizedBox(height: 16),
                   _buildLocation(),
                 ],
@@ -649,9 +700,10 @@ class _UploadFailed extends StatelessWidget {
 }
 
 class _Photos extends StatelessWidget {
-  const _Photos({required this.photos});
+  const _Photos({required this.photos, required this.badge});
 
   final CapturedPhotos photos;
+  final String badge;
 
   @override
   Widget build(BuildContext context) {
@@ -696,7 +748,7 @@ class _Photos extends StatelessWidget {
                   width: FurrealShape.borderWidth,
                 ),
               ),
-              child: Text('hewan baru', style: FurrealText.mono(fontSize: 11)),
+              child: Text(badge, style: FurrealText.mono(fontSize: 11)),
             ),
           ),
         ],
@@ -761,5 +813,113 @@ class _PillToggle extends StatelessWidget {
         child: Text(label),
       ),
     );
+  }
+}
+
+/// Daftar hewan milik user untuk "ketemu lagi": jenis sama dengan [type] di atas.
+class _ReencounterList extends ConsumerWidget {
+  const _ReencounterList({
+    required this.type,
+    required this.selected,
+    required this.onSelect,
+  });
+
+  final String? type;
+  final CollectionAnimal? selected;
+  final ValueChanged<CollectionAnimal> onSelect;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final collection = ref.watch(collectionProvider);
+    final photo = ref.watch(remotePhotoBuilderProvider);
+
+    return switch (collection) {
+      AsyncData(:final value) when value.isEmpty => const Text(
+        'koleksi lo masih kosong. pilih "hewan baru" dulu ya.',
+        key: Key('reencounter-empty'),
+        style: TextStyle(color: FurrealColors.textSecondary),
+      ),
+      AsyncData(:final value) => Column(
+        key: const Key('reencounter-list'),
+        children: [
+          for (final animal in sortForReencounter(value, type))
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Material(
+                color: selected?.id == animal.id
+                    ? FurrealColors.accent
+                    : FurrealColors.background,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                  side: const BorderSide(
+                    color: FurrealColors.ink,
+                    width: FurrealShape.borderWidth,
+                  ),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: InkWell(
+                  key: Key('reencounter-${animal.id}'),
+                  onTap: () => onSelect(animal),
+                  child: Padding(
+                    padding: const EdgeInsets.all(8),
+                    child: Row(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: SizedBox.square(
+                            dimension: 48,
+                            child: animal.lastPhotoPath == null
+                                ? const RemotePhotoPlaceholder()
+                                : photo(
+                                    context,
+                                    animal.lastPhotoUrl,
+                                    animal.lastPhotoPath!,
+                                  ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                animal.name,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
+                                ),
+                              ),
+                              Text(
+                                animal.animalType ?? 'jenis belum diisi',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: FurrealColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Text(
+                          'ketemu ${animal.encounterCount}x',
+                          style: FurrealText.mono(fontSize: 11),
+                        ),
+                        if (selected?.id == animal.id) ...[
+                          const SizedBox(width: 8),
+                          const Icon(Icons.check_circle, size: 20),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+      AsyncError() => TextButton(
+        onPressed: () => ref.invalidate(collectionProvider),
+        child: const Text('gagal memuat koleksi. coba lagi'),
+      ),
+      _ => const Center(child: CircularProgressIndicator()),
+    };
   }
 }
