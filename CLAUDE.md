@@ -17,6 +17,8 @@ npx supabase functions serve --env-file supabase/.env   # Edge Functions lokal (
 cd app && flutter run --dart-define-from-file=.env.local
 # data feed contoh (lokal saja): SUPABASE_SERVICE_ROLE_KEY dari `npx supabase status -o env`
 SUPABASE_SERVICE_ROLE_KEY=... deno run -A supabase/scripts/seed_dev_feed.ts emailkamu@contoh.com
+# catch hari-hari lalu untuk tes streak (lokal saja): --days N, --gap untuk streak putus
+SUPABASE_SERVICE_ROLE_KEY=... deno run -A supabase/scripts/seed_dev_streak.ts emailkamu@contoh.com --days 3
 ```
 
 ## Test

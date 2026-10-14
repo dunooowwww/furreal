@@ -9,7 +9,7 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
 - [ ] **M2 — Kamera & catch** — kode selesai; `flutter analyze` bersih, `flutter test` 27/27, pgTAP 57/57 (Postgres 16 lokal dengan tiruan skema auth + storage). Belum terverifikasi: `npx supabase test db` di stack asli, dan alur kamera/upload/lokasi di HP atau emulator (lihat catatan M2).
 - [ ] **M3 — AI** — kode selesai; `flutter analyze` bersih, `flutter test` 39/39, `deno test` 28/28, pgTAP 74/74 (Postgres 16 lokal dengan tiruan skema auth + storage). Belum terverifikasi: `npx supabase test db` & `functions serve` di stack asli, dan alur AI di HP/emulator (lihat catatan M3).
 - [ ] **M4 — Feed** — kode selesai; `flutter analyze` bersih, `flutter test` 52/52, `deno test` 28/28, pgTAP 106/106 (Postgres 16 lokal dengan tiruan skema auth + storage, termasuk `protect_delete`). Belum terverifikasi: `npx supabase test db`, skrip seed, dan feed di HP/emulator (lihat catatan M4).
-- [ ] M5 — Koleksi & streak
+- [ ] **M5 — Koleksi & streak** — kode selesai; `flutter analyze` bersih, `flutter test` 63/63, `deno test` 28/28, pgTAP 134/134 (Postgres 16 lokal dengan tiruan skema auth + storage). Belum terverifikasi: `npx supabase test db`, skrip `seed_dev_streak.ts`, dan alur di HP/emulator (lihat catatan M5).
 - [ ] M6 — Notifikasi & metrik
 - [ ] M7 — Siap rilis
 
@@ -119,3 +119,24 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
   - Membuat 4 user contoh (`*@furreal.test`) dan circle "anak kos merpati" (kode `KSM234`), lalu memasukkan akunmu ke circle itu.
   - Meng-upload foto contoh (`supabase/scripts/seed_photos/`, JPEG buatan sendiri), membuat catch hari ini untuk 3 user (1 telat), plus reaksi & komentar. User ke-4 belum catch.
   - Aman dijalankan ulang tiap hari: catch hari ini milik user contoh diganti (foto lama dihapus lewat Storage API).
+
+### M5 (14 Okt 2026)
+- **Streak** (`20261014150000_collection_streaks.sql`):
+  - Tabel `streaks` (RLS: baca milik sendiri, tidak bisa ditulis user), diisi trigger `after insert on catches`: kemarin → +1, hari yang sama → tetap, terlewat → 1, `longest` ikut naik.
+  - Catch bertanggal lebih lama dari `last_catch_date` (backfill) diabaikan trigger. Untuk itu ada `recompute_streak(user)` (service role saja) yang menghitung ulang dari riwayat, dipakai skrip debug.
+  - Menghapus catch tidak menurunkan streak.
+  - `my_streak()` mengembalikan `current` 0 kalau `last_catch_date` < kemarin, jadi angka streak yang sudah putus tidak ditampilkan.
+  - Migrasi mem-backfill streak & `encounter_count` untuk catch lama.
+- **Ketemu lagi:**
+  - `create_catch` v3 menerima `p_animal_id`. Nama & peliharaan/liar mengikuti hewan lama; jenis hewan lama hanya diisi kalau masih kosong.
+  - Trigger `before insert/update` memastikan `catches.animal_id` milik pemilik catch (`FR004`). Larangan yang sama juga ada di RPC.
+  - `encounter_count` = jumlah catch hewan itu, `last_seen_at` = catch terbaru, dihitung ulang oleh trigger saat catch dibuat atau dihapus langsung. Penghapusan berantai (hapus akun) dilewati lewat `pg_trigger_depth()` supaya aman.
+  - `encounter_count` tidak bisa diubah dari app (hak update `animals` hanya `name`, `kind`).
+  - Konsekuensi: `encounter_count` yang dulu diisi manual (seed M4) sekarang mengikuti jumlah catch; ekspektasi test feed disesuaikan.
+- **Hapus catch debug:** hewannya ikut dihapus hanya kalau tidak punya catch lain, jadi hewan "ketemu lagi" tetap dan hitungannya turun lewat trigger.
+- **Koleksi:** `my_collection()` (security invoker) mengembalikan hewan milik sendiri + foto & kepribadian dari catch terakhir. Tab "koleksi" berisi statistik (hewan / jenis / hari streak), filter, grid 2 kolom, detail di bottom sheet, dan empty state. "musim 1" & kartu terkunci "???" dari prototype dilewati (rarity di luar MVP, PRD §9).
+- **Layar hasil:** pill "hewan baru" / "ketemu lagi". Daftar hewan sendiri diurutkan: jenis sama dengan jenis pilihan/hasil AI dulu, lalu yang terakhir ditemui. Badge foto ikut berubah. Kalau koleksi kosong, muncul pesan.
+- **Beranda:** chip streak asli di header; kartu "catch hari ini · beres" dengan nama hewan; kartu "tangkapan kemarin" (foto kecil, nama, jenis, "first catch"/"ketemu ke-Nx", tombol ke koleksi), disembunyikan kalau tidak ada catch kemarin.
+- **Foto:** widget foto remote dipindah ke `shared/widgets/remote_photo.dart` (`remotePhotoBuilderProvider`), dipakai feed, koleksi, "ketemu lagi", dan beranda.
+- **Layout:** test menangkap dua overflow nyata di lebar 360dp (baris filter → `Wrap`, tinggi kartu grid 230 → 248).
+- **Skrip debug** `supabase/scripts/seed_dev_streak.ts` (lokal saja): catch untuk akunmu N hari ke belakang (`--days`, default 3), hewan "Debu" + "ketemu lagi" + satu hewan baru "Kiko", opsi `--gap` untuk streak putus, lalu `recompute_streak`. Helper bersama skrip dev ada di `supabase/scripts/_dev.ts`.

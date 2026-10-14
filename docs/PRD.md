@@ -2,7 +2,7 @@
 
 > Dokumen ini adalah spesifikasi teknis untuk membangun MVP furreal.
 > Baca bagian yang relevan dengan milestone yang sedang dikerjakan saja.
-> Versi produk: PRD v0.6 · Diperbarui: 13 Okt 2026
+> Versi produk: PRD v0.7 · Diperbarui: 13 Okt 2026
 
 ---
 
@@ -74,7 +74,7 @@ Mockup referensi: canvas "Catch UI" (nama lama, isinya prototype furreal) (5 lay
 | 2 | Kamera | Gelap, full screen. 2 langkah berurutan: "1/2 · foto hewan" (default kamera belakang) lalu "2/2 · foto lo" (selfie/reaksi, default kamera depan). Tombol ganti kamera di tiap langkah, jadi kamera mana pun boleh untuk foto mana pun. Tanpa akses galeri. Izin kamera ditolak → layar penjelasan + tombol buka pengaturan |
 | 3 | Hasil tangkapan | Kartu foto + jenis hewan + kartu kepribadian AI, input nama, pilihan "hewan baru / ketemu lagi", label area, tombol posting |
 | 4 | Feed circle | Header "feed" + pilihan circle (kalau ikut >1 circle) + "hari ini · x dari y udah catch". Banner "lo belum catch hari ini" + tombol kamera (feed tetap terlihat). Kartu catch anggota circle hari ini (Asia/Jakarta), terbaru dulu: avatar & nama, waktu relatif, label tepat waktu/telat, foto hewan + selfie kecil, nama, jenis, "first catch"/"ketemu ke-Nx", kartu kepribadian. Reaksi suka & lucu (toggle optimistis), komentar di bottom sheet (maks 300, hapus milik sendiri). Pull-to-refresh, tanpa realtime |
-| 5 | Koleksi | Statistik (hewan, jenis, streak), filter semua/peliharaan/liar, grid kartu hewan dengan jumlah pertemuan |
+| 5 | Koleksi | Statistik (hewan, jenis, streak), filter semua/peliharaan/liar, grid 2 kolom kartu hewan (foto terakhir, nama, jenis, "ketemu Nx"), tap → detail (pertemuan, pertama ditemui, kartu kepribadian terakhir). Rarity/musim/kartu terkunci di luar MVP |
 
 ### Design tokens (dari mockup)
 - Warna: background `#FFFFFF`, ink `#111111`, aksen `#D4FF3A`, surface `#EEEEEE`, teks sekunder `#555555`
@@ -115,9 +115,9 @@ daily_drops     (drop_date date PK, sent_at timestamptz)
 
 - **Tanggal catch** memakai zona waktu `Asia/Jakarta`.
 - **Lokasi:** JANGAN simpan koordinat. App mengubah lokasi menjadi label area (contoh: "sekitar Depok, Sleman") di HP, lalu hanya `area_label` yang dikirim.
-- **Streak** diperbarui oleh trigger Postgres saat insert `catches`: +1 kalau `last_catch_date` = kemarin, reset ke 1 kalau terlewat.
+- **Streak** diperbarui oleh trigger Postgres saat insert `catches`: +1 kalau `last_catch_date` = kemarin, tetap kalau hari yang sama, reset ke 1 kalau terlewat; catch bertanggal lampau diabaikan; `longest` ikut naik. Saat ditampilkan (`my_streak()`), streak yang `last_catch_date`-nya lebih lama dari kemarin dianggap 0.
 - **is_late** dihitung di server: `true` kalau `created_at` > `daily_drops.sent_at` + 1 jam. Kalau `daily_drops` belum punya baris hari ini (atau `sent_at` masih kosong), `is_late` = false.
-- **Ketemu lagi:** user memilih `animal_id` yang sudah ada miliknya → `encounter_count` +1, `last_seen_at` diperbarui (trigger).
+- **Ketemu lagi:** user memilih `animal_id` yang sudah ada miliknya (`create_catch(..., p_animal_id)`) → `encounter_count` (= jumlah catch hewan itu) dan `last_seen_at` dihitung trigger, bukan dari app. Catch hanya boleh terhubung ke hewan milik pemilik catch (trigger, error `FR004`). Nama & peliharaan/liar mengikuti hewan lama.
 
 ### Aturan RLS (wajib dites)
 - `profiles`: user membaca profil sendiri dan profil anggota circle yang sama; hanya bisa mengubah milik sendiri.
