@@ -77,6 +77,11 @@ values
   ('22222222-2222-2222-2222-222222222222', 'aaaaaaaa-0000-0000-0000-000000000002', 'mock', 'mock', 'ok',
    'naga', 1, '["naga"]', 'palsu.', now());
 
+-- create_catch butuh daily drop hari ini yang sudah turun (M6).
+delete from public.daily_drops;
+insert into public.daily_drops (drop_date, scheduled_at, sent_at)
+  values (public.jakarta_today(), now(), now());
+
 -- === create_catch menyalin hasil AI =========================================
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}', true);

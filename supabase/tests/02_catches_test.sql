@@ -15,6 +15,11 @@ insert into public.circle_members (circle_id, user_id) values
   ('cccccccc-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111'),
   ('cccccccc-0000-0000-0000-000000000001', '22222222-2222-2222-2222-222222222222');
 
+-- Daily drop hari ini sudah turun (cron lokal mungkin sudah membuat baris hari ini).
+delete from public.daily_drops;
+insert into public.daily_drops (drop_date, scheduled_at, sent_at)
+  values (public.jakarta_today(), now(), now());
+
 -- === alice ==================================================================
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}', true);
@@ -151,7 +156,8 @@ update public.catches set location_hidden = false, area_label = 'diretas';
 
 -- daily drop terkirim 2 jam lalu → catch sekarang telat.
 reset role;
-insert into public.daily_drops (drop_date, sent_at) values (public.jakarta_today(), now() - interval '2 hours');
+update public.daily_drops set sent_at = now() - interval '2 hours'
+  where drop_date = public.jakarta_today();
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}', true);
 
