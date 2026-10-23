@@ -13,3 +13,8 @@ final myCirclesProvider = FutureProvider<List<Circle>>((ref) async {
   if (userId == null) return const [];
   return ref.watch(circleRepositoryProvider).myCircles();
 });
+
+final circleMembersProvider = FutureProvider.autoDispose
+    .family<List<CircleMember>, String>(
+      (ref, circleId) => ref.watch(circleRepositoryProvider).members(circleId),
+    );

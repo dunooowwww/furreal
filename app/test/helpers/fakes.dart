@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:furreal/app/app.dart';
 import 'package:furreal/features/account/data/account_repository.dart';
+import 'package:furreal/features/account/data/avatar_picker.dart';
 import 'package:furreal/features/account/state/account_providers.dart';
 import 'package:furreal/features/auth/data/auth_repository.dart';
 import 'package:furreal/features/auth/data/profile_repository.dart';
@@ -99,6 +100,13 @@ class FakeProfileRepository implements ProfileRepository {
   /// Kalau diisi, acceptGuidelines melempar error ini.
   Object? acceptError;
 
+  /// Foto profil per user (path) dan upload yang terjadi.
+  final avatars = <String, String>{};
+  final uploads = <Uint8List>[];
+
+  /// Kalau diisi, setAvatar melempar error ini.
+  Object? avatarError;
+
   @override
   Future<Profile?> fetchProfile(String userId) async {
     _current = userId;
@@ -107,6 +115,7 @@ class FakeProfileRepository implements ProfileRepository {
       id: p.id,
       username: p.username,
       displayName: p.displayName,
+      avatarPath: avatars[userId],
       guidelinesAcceptedAt: accepted.contains(userId)
           ? DateTime(2026, 10, 14)
           : null,
@@ -138,6 +147,37 @@ class FakeProfileRepository implements ProfileRepository {
       displayName: displayName,
     );
   }
+
+  @override
+  Future<String> setAvatar({
+    required String userId,
+    required Uint8List jpeg,
+  }) async {
+    final error = avatarError;
+    if (error != null) throw error;
+    uploads.add(jpeg);
+    return avatars[userId] = '$userId/avatar-${uploads.length}.jpg';
+  }
+
+  @override
+  Future<void> removeAvatar(String userId) async => avatars.remove(userId);
+
+  @override
+  Future<String?> avatarUrl(String path) async => 'https://test/$path';
+}
+
+class FakeAvatarPicker implements AvatarPicker {
+  FakeAvatarPicker({this.result});
+
+  /// null = user batal memilih.
+  Uint8List? result;
+  var picks = 0;
+
+  @override
+  Future<Uint8List?> pickJpeg() async {
+    picks++;
+    return result;
+  }
 }
 
 class FakeAccountRepository implements AccountRepository {
@@ -159,9 +199,31 @@ class FakeAccountRepository implements AccountRepository {
 }
 
 class FakeCircleRepository implements CircleRepository {
-  FakeCircleRepository({List<Circle>? circles}) : circles = circles ?? [];
+  FakeCircleRepository({
+    List<Circle>? circles,
+    Map<String, List<CircleMember>>? members,
+  }) : circles = circles ?? [],
+       membersByCircle = members ?? {};
 
   final List<Circle> circles;
+  final Map<String, List<CircleMember>> membersByCircle;
+  final left = <String>[];
+
+  /// Kalau diisi, leaveCircle melempar error ini.
+  Object? leaveError;
+
+  @override
+  Future<List<CircleMember>> members(String circleId) async =>
+      membersByCircle[circleId] ??
+      const [CircleMember(userId: 'user-1', displayName: 'bob')];
+
+  @override
+  Future<void> leaveCircle(String circleId) async {
+    final error = leaveError;
+    if (error != null) throw error;
+    left.add(circleId);
+    circles.removeWhere((c) => c.id == circleId);
+  }
 
   @override
   Future<List<Circle>> myCircles() async => List.of(circles);
@@ -539,6 +601,7 @@ Future<void> pumpApp(
   FakePushTokenRepository? pushTokens,
   FakeAnalytics? analytics,
   FakeAccountRepository? account,
+  FakeAvatarPicker? avatarPicker,
   VoidCallback? onOpenSettings,
 }) async {
   tester.view.physicalSize = const Size(1080, 2400);
@@ -581,6 +644,9 @@ Future<void> pumpApp(
         analyticsProvider.overrideWithValue(analytics ?? FakeAnalytics()),
         accountRepositoryProvider.overrideWithValue(
           account ?? FakeAccountRepository(auth),
+        ),
+        avatarPickerProvider.overrideWithValue(
+          avatarPicker ?? FakeAvatarPicker(),
         ),
         remotePhotoBuilderProvider.overrideWithValue(fakeRemotePhoto),
         openAppSettingsProvider.overrideWithValue(() async {

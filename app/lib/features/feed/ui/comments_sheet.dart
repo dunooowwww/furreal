@@ -5,6 +5,7 @@ import '../../../app/theme.dart';
 import '../../../shared/errors.dart';
 import '../../../shared/relative_time.dart';
 import '../../../shared/widgets/error_text.dart';
+import '../../../shared/widgets/user_avatar.dart';
 import '../data/feed_models.dart';
 import '../state/feed_providers.dart';
 
@@ -201,6 +202,12 @@ class _CommentTile extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        UserAvatar(
+          name: comment.displayName,
+          avatarPath: comment.avatarPath,
+          size: 32,
+        ),
+        const SizedBox(width: 10),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

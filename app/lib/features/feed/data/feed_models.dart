@@ -26,6 +26,8 @@ class FeedItem {
     required this.commentCount,
     required this.likedByMe,
     required this.laughedByMe,
+    this.locked = false,
+    this.avatarPath,
     this.animalPhotoUrl,
     this.selfiePhotoUrl,
   });
@@ -34,8 +36,8 @@ class FeedItem {
     Map<String, dynamic> json, {
     Map<String, String> signedUrls = const {},
   }) {
-    final animalPath = json['animal_photo_path'] as String;
-    final selfiePath = json['selfie_photo_path'] as String;
+    final animalPath = json['animal_photo_path'] as String?;
+    final selfiePath = json['selfie_photo_path'] as String?;
     return FeedItem(
       catchId: json['catch_id'] as String,
       userId: json['user_id'] as String,
@@ -57,6 +59,8 @@ class FeedItem {
       commentCount: json['comment_count'] as int? ?? 0,
       likedByMe: json['liked_by_me'] as bool? ?? false,
       laughedByMe: json['laughed_by_me'] as bool? ?? false,
+      locked: json['locked'] as bool? ?? false,
+      avatarPath: json['avatar_path'] as String?,
       animalPhotoUrl: signedUrls[animalPath],
       selfiePhotoUrl: signedUrls[selfiePath],
     );
@@ -72,13 +76,22 @@ class FeedItem {
   final String? animalType;
   final int encounterCount;
   final String? personality;
-  final String animalPhotoPath;
-  final String selfiePhotoPath;
+
+  /// null kalau [locked].
+  final String? animalPhotoPath;
+  final String? selfiePhotoPath;
   final int likeCount;
   final int laughCount;
   final int commentCount;
   final bool likedByMe;
   final bool laughedByMe;
+
+  /// Catch teman hari ini yang belum boleh dilihat karena saya belum catch
+  /// (ala BeReal). Isinya dikosongkan oleh server.
+  final bool locked;
+
+  /// Foto profil pemilik catch (bucket avatars).
+  final String? avatarPath;
   final String? animalPhotoUrl;
   final String? selfiePhotoUrl;
 
@@ -126,6 +139,8 @@ class FeedItem {
     commentCount: commentCount ?? this.commentCount,
     likedByMe: likedByMe ?? this.likedByMe,
     laughedByMe: laughedByMe ?? this.laughedByMe,
+    locked: locked,
+    avatarPath: avatarPath,
     animalPhotoUrl: animalPhotoUrl,
     selfiePhotoUrl: selfiePhotoUrl,
   );
@@ -138,6 +153,7 @@ class FeedComment {
     required this.body,
     required this.createdAt,
     required this.isMine,
+    this.avatarPath,
   });
 
   factory FeedComment.fromJson(Map<String, dynamic> json) => FeedComment(
@@ -148,6 +164,7 @@ class FeedComment {
         'seseorang',
     body: json['body'] as String,
     createdAt: DateTime.parse(json['created_at'] as String),
+    avatarPath: json['avatar_path'] as String?,
     isMine: json['is_mine'] as bool? ?? false,
   );
 
@@ -156,6 +173,7 @@ class FeedComment {
   final String body;
   final DateTime createdAt;
   final bool isMine;
+  final String? avatarPath;
 }
 
 const commentMaxLength = 300;
