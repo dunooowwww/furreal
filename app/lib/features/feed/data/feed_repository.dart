@@ -41,12 +41,16 @@ class SupabaseFeedRepository implements FeedRepository {
     ) as List).cast<Map<String, dynamic>>();
     if (rows.isEmpty) return const [];
 
+    // Catch yang terkunci tidak membawa path foto.
     final paths = [
       for (final row in rows) ...[
-        row['animal_photo_path'] as String,
-        row['selfie_photo_path'] as String,
+        ?row['animal_photo_path'] as String?,
+        ?row['selfie_photo_path'] as String?,
       ],
     ];
+    if (paths.isEmpty) {
+      return [for (final row in rows) FeedItem.fromJson(row)];
+    }
     final signed = await _client.storage
         .from(catchPhotosBucket)
         .createSignedUrlsResult(paths, signedUrlTtlSeconds);

@@ -6,36 +6,87 @@ import '../../../app/router.dart';
 import '../../../app/session.dart';
 import '../../../app/theme.dart';
 import '../../../shared/widgets/error_text.dart';
+import '../../../shared/widgets/user_avatar.dart';
 import '../../auth/state/auth_providers.dart';
+import '../../circles/state/circle_providers.dart';
 import '../state/account_providers.dart';
 
-/// Akun: kebijakan privasi, keluar, hapus akun.
-class AccountScreen extends ConsumerWidget {
-  const AccountScreen({super.key});
+/// Pengaturan: profil, circle, kebijakan privasi, keluar, hapus akun.
+class SettingsScreen extends ConsumerWidget {
+  const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(myProfileProvider).value;
     final username = profile?.username ?? '';
+    final name = profile?.displayName ?? username;
+    final circleCount = ref.watch(myCirclesProvider).value?.length;
     final textTheme = Theme.of(context).textTheme;
     final danger = Theme.of(context).colorScheme.error;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('akun')),
+      appBar: AppBar(title: const Text('pengaturan')),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
           children: [
-            Text(
-              profile?.displayName ?? username,
-              style: FurrealText.display(fontSize: 28),
+            InkWell(
+              key: const Key('settings-profile-header'),
+              borderRadius: BorderRadius.circular(FurrealShape.cardRadius),
+              onTap: () => context.push(Routes.editProfile),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  children: [
+                    UserAvatar(
+                      name: name,
+                      avatarPath: profile?.avatarPath,
+                      size: 64,
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(name, style: FurrealText.display(fontSize: 26)),
+                          Text(
+                            '@$username',
+                            style: FurrealText.mono(fontSize: 14)
+                                .copyWith(color: FurrealColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-            Text(
-              '@$username',
-              style: FurrealText.mono(fontSize: 14)
-                  .copyWith(color: FurrealColors.textSecondary),
+            const SizedBox(height: 20),
+            Card(
+              child: Column(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.person_outline),
+                    title: const Text('edit profil'),
+                    subtitle: const Text('foto, nama, username'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push(Routes.editProfile),
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.group_outlined),
+                    title: const Text('circle lo'),
+                    subtitle: Text(
+                      circleCount == null
+                          ? 'kelola, gabung, atau keluar'
+                          : '$circleCount circle · kelola, gabung, atau keluar',
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push(Routes.myCircles),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 12),
             Card(
               child: Column(
                 children: [

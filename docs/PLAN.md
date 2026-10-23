@@ -12,6 +12,8 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
 - [ ] **M5 — Koleksi & streak** — kode selesai; `flutter analyze` bersih, `flutter test` 63/63, `deno test` 28/28, pgTAP 134/134 (Postgres 16 lokal dengan tiruan skema auth + storage). pgTAP lulus di stack asli (14 Okt). Belum terverifikasi: skrip `seed_dev_streak.ts` dan alur di HP/emulator (lihat catatan M5).
 - [ ] **M6 — Notifikasi & metrik** — kode selesai; `flutter analyze` bersih, `flutter test` 82/82, `deno test` 45/45, pgTAP 167/167 di stack Supabase asli (Docker lokal). Cron → `pg_net` → `send-daily-drop` → drop turun sudah terbukti di lokal. Belum terverifikasi: notifikasi sampai di HP, Analytics DebugView & Crashlytics (butuh proyek Firebase + HP; lihat catatan M6).
 - [ ] **M7 — Siap rilis** — kode selesai; `flutter analyze` bersih, `flutter test` 92/92, `deno test` 53/53, pgTAP 185/185 di stack asli, hapus akun terbukti end-to-end di lokal, AAB rilis ter-build dengan keystore uji. Belum: keystore asli, email kontak, hosting kebijakan privasi, setup Play Console (lihat `docs/RELEASE.md`).
+- [ ] **M8 — Login baru & splash** — belum dikerjakan (rencana dari feedback tes pertama, lihat PRD §7).
+- [ ] **M9 — Pengaturan & feed ala BeReal** — kode selesai; `flutter analyze` bersih, `flutter test` 108/108, `deno test` 56/56, pgTAP 220/220 (Postgres 16 lokal dengan tiruan auth + storage + Vault, `pg_cron` asli, `pg_net` tiruan). Belum terverifikasi: migrasi di Supabase produksi, upload foto profil & kunci feed di HP (lihat catatan M9).
 
 ## Catatan keputusan
 
@@ -228,3 +230,26 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
   - AAB rilis dites dengan keystore uji sementara di scratchpad (bukan di repo; `key.properties` uji dihapus setelah build).
 - **Checklist rilis:** `docs/RELEASE.md` (Supabase produksi, Vault, SMTP sendiri, Firebase, keystore, versionCode, Play Console closed testing, Data safety).
 - **Belum:** ikon launcher masih default Flutter (perlu PNG manual, atau paket `flutter_launcher_icons` yang di luar PRD §2).
+
+### M9 (23 Okt 2026)
+- **Asal:** feedback tes pertama (pengaturan, kelola circle, daily drop ala BeReal, login & splash). Dibagi dua: M9 dulu (tanpa setup Google Cloud), M8 (login baru + splash) menyusul.
+- **Kunci feed ala BeReal (keputusan: bagian BeReal yang ditiru cuma ini):** jam drop acak, kamera terkunci sebelum drop, dan jendela tepat waktu 1 jam tidak berubah.
+  - Ditegakkan di server (`20261023090000_settings_feed_lock.sql`), bukan cuma blur di app: catch teman bertanggal hari ini baru terbaca setelah user catch hari ini. Berlaku untuk baris `catches`, foto storage, reaksi, dan komentar (`can_view_catch_content`, `has_caught_today`; `can_see_catch` & `can_read_catch_photo` ikut diganti).
+  - `circle_feed` jadi security definer (cek `is_circle_member` sendiri) supaya baris terkunci tetap muncul: nama, foto profil, jam, tepat waktu/telat, kolom `locked`; isi (hewan, foto, kepribadian, hitungan reaksi/komentar) dikosongkan.
+  - Catch hari-hari lalu tidak terkunci. Pemilik selalu melihat miliknya (termasuk foto sebelum baris catch dibuat).
+  - Sisa kebocoran yang diterima: tabel `animals` teman tetap terbaca (nama hewan + `last_seen_at`), jadi orang yang sengaja query API bisa menebak hewan hari ini. Tidak terlihat di app.
+  - Test lama `02_catches_test` diubah: anggota circle yang belum catch sekarang membaca 0 catch/foto hari ini.
+- **Foto profil (keputusan: dari galeri):**
+  - Paket `image_picker` ^1.2.4 (disetujui user; di luar daftar PRD §2 lama). Android 13+ memakai photo picker sistem, tanpa izin penyimpanan.
+  - Dikompres di HP: sisi pendek maks 512px, JPEG 80, EXIF dibuang (`flutter_image_compress`).
+  - Bucket private `avatars`, path `{uid}/{uuid}.jpg` (nama baru tiap ganti supaya cache gambar teman tidak basi), maks 1 MB. Kolom baru `profiles.avatar_path` dengan check constraint folder sendiri. Kolom lama `avatar_url` tidak dipakai.
+  - Baca: diri sendiri atau satu circle. Komentator dari circle lain tampil inisial (foto tidak terbaca).
+  - Foto lama dihapus setelah ganti (gagal hapus tidak menggagalkan; sisanya terhapus saat hapus akun).
+  - Hapus akun (`delete-account` dan `admin_delete_account.ts`) ikut menghapus foto profil (`account_avatar_paths`).
+  - Ditampilkan lewat widget `UserAvatar` (beranda, pengaturan, feed, komentar, anggota circle); signed URL di-cache ±50 menit (`avatarUrlProvider`).
+- **Pengaturan** menggantikan layar akun (`/settings`, dibuka dari foto profil di header beranda): edit profil (`/settings/profile`: foto, nama tampilan, username; validasi sama dengan onboarding), circle lo, kebijakan privasi, keluar, hapus akun.
+- **Kelola circle** (`/settings/circles`): per circle kode undangan + salin, anggota (foto, nama, @username; dari `circle_members` + relasi `profiles`), keluar circle (dialog konfirmasi). Keluar dari circle terakhir → status sesi `needsCircle` → layar buat/gabung. Anggota terakhir keluar → circle terhapus (trigger M7). RPC `leave_circle` (error `P0002` kalau bukan anggota).
+- **Kebijakan privasi** ditambah poin foto profil (app & `docs/privacy-policy.html`).
+- **Lingkungan test (sesi cloud):** pgTAP butuh `pg_cron` (paket `postgresql-16-cron`), tiruan `pg_net` (ekstensi stub) dan tiruan Vault, karena migrasi M6.
+- **Manual setelah merge:** `npx supabase db push` (migrasi M9 + bucket `avatars`), lalu `npx supabase functions deploy delete-account`.
+

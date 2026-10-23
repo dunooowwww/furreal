@@ -65,7 +65,7 @@ void main() {
     expect(find.text('halo, alice'), findsOneWidget);
     expect(find.text('kos ceria'), findsOneWidget);
 
-    await tapFinder(tester, find.byTooltip('akun'));
+    await tapFinder(tester, find.byTooltip('pengaturan'));
     await tapText(tester, 'keluar');
     expect(find.text('kirim kode'), findsOneWidget);
   });

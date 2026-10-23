@@ -18,6 +18,7 @@ import '../../daily_drop/state/daily_drop_providers.dart';
 import '../../feed/state/feed_providers.dart';
 import '../../notifications/ui/notification_prompt.dart';
 import '../../../shared/widgets/remote_photo.dart';
+import '../../../shared/widgets/user_avatar.dart';
 
 /// Beranda: streak, izin notifikasi, kartu daily drop / catch hari ini,
 /// tangkapan kemarin, status circle hari ini.
@@ -58,18 +59,7 @@ class HomeScreen extends ConsumerWidget {
                   ),
                   const _StreakChip(),
                   const SizedBox(width: 8),
-                  IconButton(
-                    tooltip: 'akun',
-                    onPressed: () => context.push(Routes.account),
-                    icon: const Icon(Icons.person_outline),
-                    style: IconButton.styleFrom(
-                      fixedSize: const Size.square(FurrealShape.minTouchTarget),
-                      side: const BorderSide(
-                        color: FurrealColors.ink,
-                        width: FurrealShape.borderWidth,
-                      ),
-                    ),
-                  ),
+                  const _SettingsButton(),
                 ],
               ),
               const SizedBox(height: 4),
@@ -437,6 +427,39 @@ class _CircleTile extends ConsumerWidget {
           trailing: Text(
             circle.inviteCode,
             style: FurrealText.mono(fontSize: 16),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Foto profil di header beranda → pengaturan.
+class _SettingsButton extends ConsumerWidget {
+  const _SettingsButton();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profile = ref.watch(myProfileProvider).value;
+    return Tooltip(
+      message: 'pengaturan',
+      child: Semantics(
+        button: true,
+        label: 'pengaturan',
+        excludeSemantics: true,
+        child: InkWell(
+          key: const Key('open-settings'),
+          customBorder: const CircleBorder(),
+          onTap: () => context.push(Routes.settings),
+          child: SizedBox.square(
+            dimension: FurrealShape.minTouchTarget,
+            child: Center(
+              child: UserAvatar(
+                name: profile?.displayName ?? profile?.username ?? '',
+                avatarPath: profile?.avatarPath,
+                size: FurrealShape.minTouchTarget,
+              ),
+            ),
           ),
         ),
       ),

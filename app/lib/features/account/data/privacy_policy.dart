@@ -24,6 +24,8 @@ const privacyPolicy = <PolicySection>[
     '• username & nama tampilan: yang dilihat teman circle-mu.',
     '• foto hewan & foto lo (selfie): diambil langsung dari kamera app, tanpa '
         'akses galeri.',
+    '• foto profil (opsional): lo pilih sendiri dari galeri; diperkecil dan '
+        'data lokasinya (EXIF) dibuang di HP sebelum di-upload.',
     '• isi catch: nama, jenis, dan kartu kepribadian hewan, peliharaan/liar, '
         'komentar, dan reaksi.',
     '• label area perkiraan (mis. "sekitar Depok, Sleman"). lokasi GPS diubah '
@@ -35,7 +37,8 @@ const privacyPolicy = <PolicySection>[
         'Crashlytics), tanpa email atau username.',
   ]),
   PolicySection('siapa yang bisa melihat', [
-    'catch, foto (termasuk selfie), komentar, dan reaksimu hanya bisa dilihat '
+    'catch, foto (termasuk selfie dan foto profil), komentar, dan reaksimu '
+        'hanya bisa dilihat '
         'anggota circle yang sama denganmu. tidak ada profil atau feed publik.',
   ]),
   PolicySection('AI', [

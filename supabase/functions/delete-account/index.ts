@@ -16,16 +16,17 @@ const handler = createDeleteAccountHandler({
     return error ? null : data.user?.id ?? null;
   },
 
-  async listPhotos(userId) {
-    const { data, error } = await admin.rpc("account_photo_paths", {
-      p_user_id: userId,
-    });
+  async listPhotos(userId, bucket) {
+    const rpc = bucket === "avatars"
+      ? "account_avatar_paths"
+      : "account_photo_paths";
+    const { data, error } = await admin.rpc(rpc, { p_user_id: userId });
     if (error) throw error;
     return (data as string[] | null) ?? [];
   },
 
-  async removePhotos(paths) {
-    const { error } = await admin.storage.from("catch-photos").remove(paths);
+  async removePhotos(bucket, paths) {
+    const { error } = await admin.storage.from(bucket).remove(paths);
     if (error) throw error;
   },
 
