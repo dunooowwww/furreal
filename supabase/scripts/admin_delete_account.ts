@@ -40,24 +40,32 @@ if (!userId) {
   Deno.exit(1);
 }
 
-const { data: photos, error: listError } = await admin.rpc(
-  "account_photo_paths",
-  { p_user_id: userId },
-);
-if (listError) throw listError;
-const paths = (photos as string[] | null) ?? [];
-console.log(`${email} (${userId}) di ${url}: ${paths.length} foto.`);
+// Foto catch + foto profil (M9); keduanya di folder {userId}/.
+const buckets = [
+  ["catch-photos", "account_photo_paths"],
+  ["avatars", "account_avatar_paths"],
+] as const;
+const files: [string, string[]][] = [];
+for (const [bucket, rpc] of buckets) {
+  const { data, error } = await admin.rpc(rpc, { p_user_id: userId });
+  if (error) throw error;
+  files.push([bucket, (data as string[] | null) ?? []]);
+}
+const total = files.reduce((n, [, paths]) => n + paths.length, 0);
+console.log(`${email} (${userId}) di ${url}: ${total} foto.`);
 
 if (!confirmed) {
   console.log("belum dihapus. jalankan ulang dengan --yes untuk menghapus.");
   Deno.exit(0);
 }
 
-for (let i = 0; i < paths.length; i += 100) {
-  const { error } = await admin.storage.from("catch-photos").remove(
-    paths.slice(i, i + 100),
-  );
-  if (error) throw error;
+for (const [bucket, paths] of files) {
+  for (let i = 0; i < paths.length; i += 100) {
+    const { error } = await admin.storage.from(bucket).remove(
+      paths.slice(i, i + 100),
+    );
+    if (error) throw error;
+  }
 }
 const { error: deleteError } = await admin.auth.admin.deleteUser(userId);
 if (deleteError) throw deleteError;

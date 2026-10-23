@@ -2,7 +2,7 @@
 
 > Dokumen ini adalah spesifikasi teknis untuk membangun MVP furreal.
 > Baca bagian yang relevan dengan milestone yang sedang dikerjakan saja.
-> Versi produk: PRD v0.9 · Diperbarui: 14 Okt 2026
+> Versi produk: PRD v1.0 · Diperbarui: 23 Okt 2026
 
 ---
 
@@ -31,7 +31,8 @@ bernama yang dibagikan ke circle teman. Koleksi berpusat pada **individu hewan**
 
 **Paket Flutter:** `supabase_flutter`, `camera`, `firebase_core`, `firebase_messaging`,
 `firebase_analytics`, `firebase_crashlytics`, `geolocator`, `geocoding`, `go_router`,
-`flutter_riverpod`, `google_fonts`, `cached_network_image`, `flutter_image_compress` (kompres foto, ditambahkan v0.4).
+`flutter_riverpod`, `google_fonts`, `cached_network_image`, `flutter_image_compress` (kompres foto, ditambahkan v0.4),
+`image_picker` (foto profil dari galeri, ditambahkan v1.0; catch tetap kamera saja).
 Jangan tambah paket lain tanpa alasan yang jelas.
 
 ## 3. Struktur repo
@@ -74,9 +75,10 @@ Mockup referensi: canvas "Catch UI" (nama lama, isinya prototype furreal) (5 lay
 | 1 | Beranda | Logo, streak, kartu izin notifikasi (penjelasan dulu, baru dialog sistem; muncul setelah onboarding kalau izin belum ada), kartu "daily drop": belum turun (kamera dikunci) / sisa waktu tepat-waktu (hitung mundur 1 jam) / telat, status circle hari ini ("x dari y udah catch"), tangkapan kemarin, tab bar. Tarik ke bawah untuk cek drop lagi |
 | 2 | Kamera | Hanya bisa dibuka setelah daily drop hari ini turun. Gelap, full screen, sisa waktu tepat-waktu (atau "telat") di bawah header. 2 langkah berurutan: "1/2 · foto hewan" (default kamera belakang) lalu "2/2 · foto lo" (selfie/reaksi, default kamera depan). Tombol ganti kamera di tiap langkah, jadi kamera mana pun boleh untuk foto mana pun. Tanpa akses galeri. Izin kamera ditolak → layar penjelasan + tombol buka pengaturan |
 | 3 | Hasil tangkapan | Kartu foto + jenis hewan + kartu kepribadian AI, input nama, pilihan "hewan baru / ketemu lagi", label area, tombol posting |
-| 4 | Feed circle | Header "feed" + pilihan circle (kalau ikut >1 circle) + "hari ini · x dari y udah catch". Banner "lo belum catch hari ini" + tombol kamera (feed tetap terlihat); sebelum drop turun banner berganti "daily drop belum turun" tanpa tombol. Kartu catch anggota circle hari ini (Asia/Jakarta), terbaru dulu: avatar & nama, waktu relatif, label tepat waktu/telat, foto hewan + selfie kecil, nama, jenis, "first catch"/"ketemu ke-Nx", kartu kepribadian. Reaksi suka & lucu (toggle optimistis), komentar di bottom sheet (maks 300, hapus milik sendiri). Pull-to-refresh, tanpa realtime |
+| 4 | Feed circle | Header "feed" + pilihan circle (kalau ikut >1 circle) + "hari ini · x dari y udah catch". Banner "lo belum catch hari ini" + tombol kamera; sebelum drop turun banner berganti "daily drop belum turun" tanpa tombol. **Feed dikunci ala BeReal (v1.0):** sebelum user catch hari ini, kartu teman hari ini tampil terkunci (nama, foto profil, jam, tepat waktu/telat saja; isi "catch dulu buat lihat", tanpa reaksi/komentar). Kartu catch anggota circle hari ini (Asia/Jakarta), terbaru dulu: foto profil & nama, waktu relatif, label tepat waktu/telat, foto hewan + selfie kecil, nama, jenis, "first catch"/"ketemu ke-Nx", kartu kepribadian. Reaksi suka & lucu (toggle optimistis), komentar di bottom sheet (maks 300, hapus milik sendiri). Pull-to-refresh, tanpa realtime |
 | 5 | Koleksi | Statistik (hewan, jenis, streak), filter semua/peliharaan/liar, grid 2 kolom kartu hewan (foto terakhir, nama, jenis, "ketemu Nx"), tap → detail (pertemuan, pertama ditemui, kartu kepribadian terakhir). Rarity/musim/kartu terkunci di luar MVP |
-| 6 | Akun | Dari ikon di header beranda: nama & @username, kebijakan privasi, keluar, hapus akun (wajib ketik username, lalu kembali ke login). Kebijakan privasi juga bisa dibuka dari layar login |
+| 6 | Pengaturan | Dari foto profil di header beranda (v1.0): foto/nama & @username, edit profil (foto dari galeri, nama tampilan, username), circle lo, kebijakan privasi, keluar, hapus akun (wajib ketik username, lalu kembali ke login). Kebijakan privasi juga bisa dibuka dari layar login |
+| 6a | Circle lo | Per circle: nama, kode undangan + salin, anggota (foto, nama, @username), keluar circle (konfirmasi; circle terakhir → kembali ke layar buat/gabung; anggota terakhir → circle terhapus). Tombol buat/gabung circle lain |
 
 ### Design tokens (dari mockup)
 - Warna: background `#FFFFFF`, ink `#111111`, aksen `#D4FF3A`, surface `#EEEEEE`, teks sekunder `#555555`
@@ -91,7 +93,9 @@ Semua tabel di schema `public`, RLS **wajib aktif** di semua tabel.
 
 ```sql
 profiles        (id uuid PK → auth.users, username text unique, display_name text,
-                 avatar_url text, fcm_token text, created_at timestamptz)
+                 avatar_url text,                     -- tidak dipakai; foto profil di avatar_path
+                 avatar_path text,                    -- v1.0: {id}/{uuid}.jpg di bucket avatars
+                 fcm_token text, created_at timestamptz)
 circles         (id uuid PK, name text, invite_code text unique, created_by uuid → profiles,
                  created_at timestamptz)
 circle_members  (circle_id uuid → circles, user_id uuid → profiles, joined_at timestamptz,
@@ -128,11 +132,14 @@ daily_drops     (drop_date date PK, scheduled_at timestamptz,   -- jam acak, rah
 - `profiles`: user membaca profil sendiri dan profil anggota circle yang sama; hanya bisa mengubah milik sendiri (`fcm_token` hanya lewat `set_fcm_token`).
 - `daily_drops`: user hanya membaca drop yang sudah turun, kolom `drop_date` & `sent_at` saja (jam jadwal tidak bocor); tidak bisa menulis.
 - `circles` / `circle_members`: hanya anggota yang bisa membaca. Gabung lewat fungsi RPC `join_circle(invite_code)`.
+- **Kunci feed (v1.0):** catch anggota circle bertanggal hari ini (Asia/Jakarta) baru terbaca setelah user sendiri catch hari ini: baris `catches`, foto storage, reaksi, dan komentar. Helper `can_view_catch_content(owner, catch_date)` + `has_caught_today()`. `circle_feed` menjadi security definer (cek keanggotaan sendiri) supaya baris terkunci tetap muncul dengan kolom `locked = true` dan isi kosong.
 - `animals`, `catches`: pemilik bisa CRUD miliknya (catch + hewan baru dibuat atomik lewat RPC `create_catch`; kolom hasil server seperti `catch_date`, `is_late`, `user_id` tidak bisa diubah user); anggota circle yang sama hanya bisa membaca.
 - `reactions`, `comments`: bisa dibuat dan dibaca jika user berbagi circle dengan pemilik catch; hanya bisa menghapus milik sendiri.
-- Storage `catch-photos`: path `{user_id}/{catch_id}/animal.jpg` dan `selfie.jpg`. Upload hanya ke folder sendiri; baca hanya jika berbagi circle. Akses lewat signed URL.
+- Storage `catch-photos`: path `{user_id}/{catch_id}/animal.jpg` dan `selfie.jpg`. Upload hanya ke folder sendiri; baca hanya jika berbagi circle (dan aturan kunci feed). Akses lewat signed URL.
+- Storage `avatars` (v1.0): path `{user_id}/{uuid}.jpg`, JPEG maks 1 MB. Upload/ubah/hapus hanya di folder sendiri; baca milik sendiri atau satu circle. `profiles.avatar_path` wajib di folder sendiri (check constraint).
+- `leave_circle(circle_id)` (v1.0): keluar circle; circle tanpa anggota ikut terhapus.
 - Buat helper SQL `shares_circle(a uuid, b uuid) returns boolean` untuk dipakai di semua policy.
-- Feed lewat RPC `circle_feed(circle_id)` (security invoker, RLS tetap berlaku) dan komentar lewat `catch_comments(catch_id)`. Helper `can_see_catch(catch_id)` dipakai policy reaksi & komentar.
+- Feed lewat RPC `circle_feed(circle_id)` (security definer sejak v1.0, hanya untuk anggota circle; sebelumnya security invoker) dan komentar lewat `catch_comments(catch_id)`. Helper `can_see_catch(catch_id)` dipakai policy reaksi & komentar.
 - **Data development:** `supabase/scripts/seed_dev_feed.ts` membuat user contoh, satu circle, dan catch hari ini (dengan foto, reaksi, komentar) di Supabase lokal saja.
 
 ## 6. Edge Functions
@@ -187,15 +194,17 @@ Kerjakan **satu milestone per sesi**. Setiap milestone selesai = test lulus + `f
 | M5 | Koleksi & streak | Grid koleksi + filter, "ketemu lagi" menambah `encounter_count`, streak terupdate via trigger |
 | M6 | Notifikasi & metrik | `send-daily-drop` terjadwal, notifikasi sampai di HP, catch dikunci sampai drop turun, event Analytics: `catch_created`, `reaction_added`, `circle_joined` + Crashlytics |
 | M7 | Siap rilis | Halaman kebijakan privasi, hapus akun + data dari app, onboarding pedoman kesejahteraan hewan, build AAB untuk closed testing |
+| M8 | Login baru & splash (rencana, dari feedback tes pertama) | Daftar email + username + password (verifikasi kode email sekali), masuk pakai username + password, lupa password lewat kode email, masuk dengan Google (`google_sign_in`), splash screen + ikon launcher furreal |
+| M9 | Pengaturan & feed ala BeReal (dari feedback tes pertama) | Layar pengaturan (edit profil + foto profil dari galeri, kelola circle: kode, anggota, keluar, buat/gabung), feed teman hari ini terkunci di server sampai user catch, hapus akun ikut menghapus foto profil, RLS test lulus |
 
 ## 8. Kebutuhan non-fungsional
 
-- **Keaslian:** catch hanya dari kamera dalam app; tidak ada akses galeri untuk catch.
+- **Keaslian:** catch hanya dari kamera dalam app; tidak ada akses galeri untuk catch (galeri hanya untuk foto profil).
 - **Privasi:** tanpa koordinat; foto lo (selfie) hanya terlihat anggota circle; tidak ada mode publik.
 - **Kesejahteraan hewan:** layar onboarding berisi pedoman: jangan kejar, pegang, atau ganggu hewan demi foto.
 - **Performa:** kompres foto ke lebar maksimal 1280px, JPEG kualitas ~80 sebelum upload.
 - **Keamanan:** tidak ada secret di kode app; anon key Supabase boleh di app, service role key TIDAK pernah.
-- **Hapus akun:** menghapus profil, catches, animals, komentar, reaksi, dan file storage milik user. Lewat Edge Function `delete-account` (JWT user): foto dihapus dulu via Storage API (`account_photo_paths`), lalu `auth.admin.deleteUser` → semua tabel ikut terhapus lewat FK cascade; circle tanpa anggota ikut dihapus. Permintaan lewat email (tanpa app): `supabase/scripts/admin_delete_account.ts`.
+- **Hapus akun:** menghapus profil, catches, animals, komentar, reaksi, dan file storage milik user. Lewat Edge Function `delete-account` (JWT user): foto catch dan foto profil dihapus dulu via Storage API (`account_photo_paths`, `account_avatar_paths`), lalu `auth.admin.deleteUser` → semua tabel ikut terhapus lewat FK cascade; circle tanpa anggota ikut dihapus. Permintaan lewat email (tanpa app): `supabase/scripts/admin_delete_account.ts`.
 
 ## 9. Di luar cakupan MVP
 
