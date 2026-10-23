@@ -27,7 +27,9 @@ export function createOpenAiCompatibleProvider(config: {
         },
         body: JSON.stringify({
           model: config.model,
-          max_tokens: 600,
+          // Model "berpikir" (mis. Gemini Flash) memakai jatah ini juga untuk
+          // reasoning; terlalu kecil → jawaban kosong/terpotong.
+          max_tokens: 2048,
           messages: [
             { role: "system", content: SYSTEM_PROMPT },
             {
@@ -55,6 +57,9 @@ export function createOpenAiCompatibleProvider(config: {
       }
 
       const data = await response.json();
+      if (data?.choices?.[0]?.finish_reason === "length") {
+        throw new AiError("invalid_ai_response", "jawaban AI terpotong");
+      }
       const content = data?.choices?.[0]?.message?.content;
       // Sebagian gateway mengembalikan content berupa array bagian teks.
       const text = Array.isArray(content)

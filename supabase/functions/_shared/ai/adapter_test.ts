@@ -202,6 +202,27 @@ Deno.test("openai_compatible: content berupa array bagian teks", async () => {
   );
 });
 
+Deno.test("openai_compatible: jatah token cukup untuk reasoning, terpotong → invalid_ai_response", async () => {
+  const { fn, calls } = fakeFetch({
+    choices: [{
+      message: { content: '{"animal_type":"kuc' },
+      finish_reason: "length",
+    }],
+  });
+  const p = createAiProvider(
+    env({
+      AI_PROVIDER: "openai_compatible",
+      AI_API_KEY: "k",
+      AI_BASE_URL: "https://x/v1",
+      AI_MODEL: "gemini/flash",
+    }),
+    { fetch: fn },
+  );
+  const e = await assertRejects(() => p.identify(image, signal()), AiError);
+  assertEquals(e.code, "invalid_ai_response");
+  assertEquals(calls[0].body.max_tokens, 2048);
+});
+
 Deno.test("toBase64 sama dengan btoa dan aman untuk data besar", () => {
   const small = new TextEncoder().encode("furreal");
   assertEquals(toBase64(small), btoa("furreal"));
