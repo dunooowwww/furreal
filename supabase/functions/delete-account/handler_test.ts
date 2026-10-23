@@ -10,20 +10,24 @@ const USER = "11111111-1111-1111-1111-111111111111";
 function setup(
   photos: string[] = [`${USER}/a/animal.jpg`, `${USER}/a/selfie.jpg`],
   overrides: Partial<DeleteAccountDeps> = {},
+  avatars: string[] = [],
 ) {
   const log = {
     removed: [] as string[][],
+    buckets: [] as string[],
     deleted: [] as string[],
     steps: [] as string[],
   };
   const deps: DeleteAccountDeps = {
     getUserId: (auth) => Promise.resolve(auth === "Bearer good" ? USER : null),
-    listPhotos: (userId) => {
+    listPhotos: (userId, bucket) => {
+      if (bucket === "avatars") return Promise.resolve(avatars);
       log.steps.push(`list ${userId}`);
       return Promise.resolve(photos);
     },
-    removePhotos: (paths) => {
+    removePhotos: (bucket, paths) => {
       log.steps.push("remove");
+      log.buckets.push(bucket);
       log.removed.push(paths);
       return Promise.resolve();
     },
@@ -114,4 +118,22 @@ Deno.test("hapus user gagal → 500 delete_failed", async () => {
   const res = await handler(post());
   assertEquals(res.status, 500);
   assertEquals((await res.json()).error.code, "delete_failed");
+});
+
+Deno.test("foto profil (avatars) ikut dihapus", async () => {
+  const { handler, log } = setup(undefined, {}, [`${USER}/f.jpg`]);
+  const res = await handler(post());
+  assertEquals(await res.json(), { deleted: true, photos: 3 });
+  assertEquals(log.buckets, ["catch-photos", "avatars"]);
+  assertEquals(log.removed[1], [`${USER}/f.jpg`]);
+});
+
+Deno.test("path asing di avatars → tidak ada yang dihapus", async () => {
+  const { handler, log } = setup(undefined, {}, [
+    "22222222-2222-2222-2222-222222222222/f.jpg",
+  ]);
+  const res = await handler(post());
+  assertEquals((await res.json()).error.code, "photos_failed");
+  assertEquals(log.removed, []);
+  assertEquals(log.deleted, []);
 });

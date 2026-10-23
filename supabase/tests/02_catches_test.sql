@@ -142,12 +142,13 @@ reset role;
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}', true);
 
-select is((select count(*)::int from public.catches), 1, 'anggota circle bisa membaca catch alice');
+-- M9: catch hari ini terkunci sampai bob sendiri catch (detail di 08_settings_feed_lock_test).
+select is((select count(*)::int from public.catches), 0, 'catch alice hari ini terkunci sebelum bob catch');
 select is((select count(*)::int from public.animals), 1, 'anggota circle bisa membaca hewan alice');
 select is(
   (select count(*)::int from storage.objects where bucket_id = 'catch-photos'),
-  4,
-  'anggota circle bisa membaca foto alice'
+  0,
+  'foto alice hari ini terkunci sebelum bob catch'
 );
 
 delete from public.catches;

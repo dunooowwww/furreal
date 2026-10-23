@@ -1,13 +1,17 @@
 /** Storage API menerima maksimal sekian path per panggilan remove. */
 export const REMOVE_BATCH = 100;
 
+/** Bucket berisi file milik user ({uid}/...): foto catch dan foto profil. */
+export const PHOTO_BUCKETS = ["catch-photos", "avatars"] as const;
+export type PhotoBucket = typeof PHOTO_BUCKETS[number];
+
 /** Semua akses ke luar (auth, DB, storage) diinjeksi supaya bisa dites. */
 export interface DeleteAccountDeps {
   getUserId(authorization: string | null): Promise<string | null>;
-  /** account_photo_paths(user): semua file user di catch-photos. */
-  listPhotos(userId: string): Promise<string[]>;
+  /** Semua file user di bucket itu (account_photo_paths / account_avatar_paths). */
+  listPhotos(userId: string, bucket: PhotoBucket): Promise<string[]>;
   /** Hapus lewat Storage API (DELETE SQL ditolak storage.protect_delete). */
-  removePhotos(paths: string[]): Promise<void>;
+  removePhotos(bucket: PhotoBucket, paths: string[]): Promise<void>;
   /** auth.admin.deleteUser: data DB ikut terhapus lewat FK cascade. */
   deleteUser(userId: string): Promise<void>;
 }
@@ -44,15 +48,24 @@ export function createDeleteAccountHandler(deps: DeleteAccountDeps) {
     if (!userId) return errorResponse("unauthorized");
 
     // Foto dulu: kalau gagal, akun belum dihapus dan user bisa mencoba lagi.
-    let photos: string[];
+    let count = 0;
     try {
-      photos = await deps.listPhotos(userId);
+      // Daftar semua bucket dulu: path asing di bucket mana pun → tidak ada
+      // yang dihapus sama sekali.
       const prefix = `${userId}/`;
-      if (photos.some((p) => !p.startsWith(prefix))) {
-        throw new Error("path di luar folder user");
+      const lists: [PhotoBucket, string[]][] = [];
+      for (const bucket of PHOTO_BUCKETS) {
+        const paths = await deps.listPhotos(userId, bucket);
+        if (paths.some((p) => !p.startsWith(prefix))) {
+          throw new Error("path di luar folder user");
+        }
+        lists.push([bucket, paths]);
       }
-      for (let i = 0; i < photos.length; i += REMOVE_BATCH) {
-        await deps.removePhotos(photos.slice(i, i + REMOVE_BATCH));
+      for (const [bucket, paths] of lists) {
+        for (let i = 0; i < paths.length; i += REMOVE_BATCH) {
+          await deps.removePhotos(bucket, paths.slice(i, i + REMOVE_BATCH));
+        }
+        count += paths.length;
       }
     } catch (e) {
       console.error("delete-account: foto", e);
@@ -66,6 +79,6 @@ export function createDeleteAccountHandler(deps: DeleteAccountDeps) {
       return errorResponse("delete_failed");
     }
 
-    return json({ deleted: true, photos: photos.length });
+    return json({ deleted: true, photos: count });
   };
 }
