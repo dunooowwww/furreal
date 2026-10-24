@@ -533,7 +533,8 @@ class _DropTimer extends ConsumerWidget {
       DropPhase.onTime =>
         'sisa ${formatCountdown(drop!.remainingAt(now))} buat tepat waktu',
       DropPhase.late => 'lewat 1 jam · catch ditandai telat',
-      _ => null,
+      DropPhase.waiting => 'drop belum turun · catch ditandai sebelum drop',
+      null => null,
     };
     if (text == null) return const SizedBox.shrink();
     return Padding(

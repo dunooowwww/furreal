@@ -402,7 +402,14 @@ class FakeCatchRepository implements CatchRepository {
   final identified = <String>[];
   final discarded = <String>[];
   final submitted = <CatchDetails>[];
+  final notified = <String>[];
   var deleted = 0;
+
+  /// Label waktu yang "dihitung server" saat submit.
+  CatchTiming timing = CatchTiming.onTime;
+
+  /// Kalau diisi, notifyCircle melempar error ini.
+  Object? notifyError;
 
   @override
   Future<TodayCatch?> todayCatch() async => today;
@@ -437,7 +444,10 @@ class FakeCatchRepository implements CatchRepository {
       discarded.add(prepared.id);
 
   @override
-  Future<void> submit(PreparedCatch prepared, CatchDetails details) async {
+  Future<CatchTiming> submit(
+    PreparedCatch prepared,
+    CatchDetails details,
+  ) async {
     final failure = failWith;
     if (failure != null) throw failure;
     submitted.add(details);
@@ -449,6 +459,14 @@ class FakeCatchRepository implements CatchRepository {
       kind: details.kind,
       animalType: details.animalType,
     );
+    return timing;
+  }
+
+  @override
+  Future<void> notifyCircle(String catchId) async {
+    notified.add(catchId);
+    final error = notifyError;
+    if (error != null) throw error;
   }
 
   @override
@@ -615,6 +633,7 @@ class FakePushMessaging implements PushMessaging {
   var requests = 0;
   final refreshes = StreamController<String>.broadcast();
   final drops = StreamController<DropMessage>.broadcast();
+  final catches = StreamController<FriendCatchMessage>.broadcast();
 
   @override
   Future<PushPermission> permission() async => current;
@@ -633,6 +652,9 @@ class FakePushMessaging implements PushMessaging {
 
   @override
   Stream<DropMessage> get dropMessages => drops.stream;
+
+  @override
+  Stream<FriendCatchMessage> get friendCatches => catches.stream;
 }
 
 class FakePushTokenRepository implements PushTokenRepository {
