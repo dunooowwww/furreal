@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>kode reset password furreal</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@800&family=Geist:wght@400;600&family=Geist+Mono:wght@500&display=swap" rel="stylesheet">
+</head>
+<body style="margin:0;padding:0;background:#FFFFFF;">
+<!-- teks pratinjau di daftar inbox -->
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;">kode reset password lo: {{ .Token }} · berlaku 10 menit</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#FFFFFF;">
+  <tr>
+    <td align="center" style="padding:32px 16px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:440px;">
+        <!-- logo -->
+        <tr>
+          <td style="padding:0 4px 20px;font-family:'Bricolage Grotesque',Arial,Helvetica,sans-serif;font-size:30px;font-weight:800;letter-spacing:-0.5px;color:#111111;">
+            furreal<span style="color:#111111;background:#D4FF3A;border-radius:6px;padding:0 4px;margin-left:2px;">.</span>
+          </td>
+        </tr>
+        <!-- kartu -->
+        <tr>
+          <td style="border:1.5px solid #111111;border-radius:28px;padding:28px 24px;background:#FFFFFF;">
+            <div style="font-family:'Geist Mono','Courier New',Courier,monospace;font-size:12px;letter-spacing:1px;color:#555555;">KODE RESET PASSWORD</div>
+            <div style="padding-top:8px;font-family:'Bricolage Grotesque',Arial,Helvetica,sans-serif;font-size:28px;line-height:1.1;font-weight:800;color:#111111;">reset password lo</div>
+            <div style="padding-top:10px;font-family:Geist,Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#111111;">masukin 6 angka ini di app furreal, terus bikin password baru.</div>
+            <!-- kode -->
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:22px;">
+              <tr>
+                <td align="center" style="background:#D4FF3A;border:1.5px solid #111111;border-radius:999px;padding:16px 12px;font-family:'Geist Mono','Courier New',Courier,monospace;font-size:34px;font-weight:700;letter-spacing:10px;color:#111111;">{{ .Token }}</td>
+              </tr>
+            </table>
+            <div style="padding-top:18px;font-family:'Geist Mono','Courier New',Courier,monospace;font-size:12px;letter-spacing:0.5px;color:#555555;">BERLAKU 10 MENIT · JANGAN KASIH KE SIAPA PUN</div>
+          </td>
+        </tr>
+        <!-- catatan -->
+        <tr>
+          <td style="padding:20px 4px 0;font-family:Geist,Arial,Helvetica,sans-serif;font-size:13px;line-height:1.5;color:#555555;">
+            bukan lo yang minta? abaikan aja email ini, password lo nggak berubah.
+          </td>
+        </tr>
+        <tr>
+          <td style="padding:16px 4px 0;font-family:'Geist Mono','Courier New',Courier,monospace;font-size:11px;letter-spacing:0.5px;color:#555555;">
+            FURREAL · KOLEKSI HEWAN HARIAN BARENG CIRCLE LO
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>

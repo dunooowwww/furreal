@@ -12,7 +12,7 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
 - [ ] **M5 — Koleksi & streak** — kode selesai; `flutter analyze` bersih, `flutter test` 63/63, `deno test` 28/28, pgTAP 134/134 (Postgres 16 lokal dengan tiruan skema auth + storage). pgTAP lulus di stack asli (14 Okt). Belum terverifikasi: skrip `seed_dev_streak.ts` dan alur di HP/emulator (lihat catatan M5).
 - [ ] **M6 — Notifikasi & metrik** — kode selesai; `flutter analyze` bersih, `flutter test` 82/82, `deno test` 45/45, pgTAP 167/167 di stack Supabase asli (Docker lokal). Cron → `pg_net` → `send-daily-drop` → drop turun sudah terbukti di lokal. Belum terverifikasi: notifikasi sampai di HP, Analytics DebugView & Crashlytics (butuh proyek Firebase + HP; lihat catatan M6).
 - [ ] **M7 — Siap rilis** — kode selesai; `flutter analyze` bersih, `flutter test` 92/92, `deno test` 53/53, pgTAP 185/185 di stack asli, hapus akun terbukti end-to-end di lokal, AAB rilis ter-build dengan keystore uji. Belum: keystore asli, email kontak, hosting kebijakan privasi, setup Play Console (lihat `docs/RELEASE.md`).
-- [ ] **M8 — Login baru & splash** — belum dikerjakan (rencana dari feedback tes pertama, lihat PRD §7).
+- [ ] **M8 — Login baru & splash** — kode selesai; `flutter analyze` bersih, `flutter test` 124/124, `deno test` 56/56, pgTAP 233/233 (Postgres 16 lokal dengan tiruan auth + storage + Vault). Belum terverifikasi: daftar/masuk/lupa password di Supabase produksi, masuk dengan Google (butuh setup Google Cloud), build Android dengan ikon & splash baru (lihat catatan M8).
 - [ ] **M9 — Pengaturan & feed ala BeReal** — kode selesai; `flutter analyze` bersih, `flutter test` 108/108, `deno test` 56/56, pgTAP 220/220 (Postgres 16 lokal dengan tiruan auth + storage + Vault, `pg_cron` asli, `pg_net` tiruan). Belum terverifikasi: migrasi di Supabase produksi, upload foto profil & kunci feed di HP (lihat catatan M9).
 
 ## Catatan keputusan
@@ -252,4 +252,33 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
 - **Kebijakan privasi** ditambah poin foto profil (app & `docs/privacy-policy.html`).
 - **Lingkungan test (sesi cloud):** pgTAP butuh `pg_cron` (paket `postgresql-16-cron`), tiruan `pg_net` (ekstensi stub) dan tiruan Vault, karena migrasi M6.
 - **Manual setelah merge:** `npx supabase db push` (migrasi M9 + bucket `avatars`), lalu `npx supabase functions deploy delete-account`.
+
+### M8 (24 Okt 2026)
+- **Dikerjakan setelah M9** (M9 tidak butuh setup Google Cloud).
+- **Login (keputusan user: username + password, dan Google):**
+  - Daftar = email + password (min 8), diverifikasi sekali lewat kode 6 angka (`verifyOTP` tipe `signup`). Username tetap dipilih di layar "kenalan dulu" setelahnya, supaya username tidak dipesan oleh akun yang belum diverifikasi.
+  - Email yang sudah terdaftar: Supabase membalas user tanpa identitas dan tidak mengirim kode → app menyarankan masuk/lupa password.
+  - Masuk = "username atau email" + password. Ada `@` → langsung `signInWithPassword`. Tanpa `@` → RPC `resolve_login(username, password)` (`20261024090000_password_login.sql`) memeriksa password dengan `crypt()` dan mengembalikan email **hanya kalau password benar**, lalu app memanggil `signInWithPassword` biasa (rate limit Supabase Auth tetap per IP HP).
+  - `resolve_login`: maks 10 gagal per username per 15 menit (`FR006`), tabel `login_attempts` (RLS tanpa grant; dibersihkan > 1 hari). Username tak dikenal / akun Google tanpa password tetap menghitung bcrypt dengan hash palsu supaya waktu jawab tidak membocorkan username.
+  - Risiko yang diterima: `resolve_login` bisa dipanggil tanpa login, dan tiap panggilan menghitung bcrypt, jadi spam username acak membebani CPU database. Kalau jadi masalah: pindahkan ke Edge Function dengan rate limit per IP.
+  - Email belum diverifikasi saat masuk → kode dikirim ulang, pindah ke langkah kode di layar daftar.
+  - Lupa password: `resetPasswordForEmail` → kode 6 angka (template Reset password) → `verifyOTP` tipe `recovery` + `updateUser(password)` dalam satu langkah; user langsung masuk. Jalur ini juga untuk akun lama yang dulu masuk pakai kode (belum punya password).
+  - Masuk pakai kode email (OTP) dihapus dari app.
+- **Google:** paket `google_sign_in` ^7.2.0 (disetujui user). `GoogleSignIn.instance.initialize(serverClientId: GOOGLE_WEB_CLIENT_ID)` → `authenticate()` → `idToken` → `signInWithIdToken(provider: google)`. Batal pilih akun = diam saja. Tombol muncul hanya kalau `GOOGLE_WEB_CLIENT_ID` diisi di `.env.local/.env.prod`. Akun Google baru masuk alur username → pedoman → circle seperti biasa. Keluar juga memanggil `GoogleSignIn.signOut()` supaya bisa ganti akun.
+- **Splash & ikon (tanpa paket baru):** latar aksen `#D4FF3A` + tapak kaki (path sama dengan ikon notifikasi).
+  - Native: `launch_background.xml` (PNG `splash_paw` per density), `values-v31` / `values-night-v31` untuk splash screen Android 12+.
+  - Flutter: `SplashScreen` ikut latar aksen + tapak + logo.
+  - Ikon: adaptif (`mipmap-anydpi-v26`, foreground vektor + monokrom untuk ikon bertema Android 13+) dan PNG `ic_launcher` 48–192px untuk Android lama. PNG dirender dari SVG di sesi cloud.
+  - Android SDK tidak tersedia di sesi cloud, jadi resource Android hanya dicek sebagai XML valid; build APK pertama di laptop jadi verifikasinya.
+- **Supabase lokal (`config.toml`):** `enable_confirmations = true`, `minimum_password_length = 8`, template `recovery.html`, provider Google (mati secara default, isi `SUPABASE_AUTH_EXTERNAL_GOOGLE_*` di `supabase/.env`).
+- **Manual (produksi):**
+  1. `npx supabase db push` (migrasi M8).
+  2. Dashboard → Authentication → Emails: template **Reset password** pakai `supabase/templates/recovery.html`, subject "kode reset password furreal". Subject **Confirm signup** jadi "kode verifikasi furreal".
+  3. Authentication → Sign In / Providers → Email: minimum password length 8, Confirm email nyala.
+  4. Google Cloud Console (proyek Firebase yang sama) → APIs & Services:
+     - OAuth consent screen: External, nama app furreal, email kontak.
+     - Credentials → Create OAuth client ID → **Web application** → catat Client ID + Client Secret.
+     - Credentials → Create OAuth client ID → **Android**: package `com.dun.furreal`, SHA-1 dari `cd app/android && ./gradlew signingReport` (varian release/debug yang dipakai build APK). Tambah lagi untuk kunci upload & Play App Signing saat rilis.
+  5. Supabase → Authentication → Sign In / Providers → Google: nyalakan, isi Client ID + Secret (Web), nyalakan "Skip nonce checks".
+  6. `app/.env.prod`: `GOOGLE_WEB_CLIENT_ID=<client id Web>`, lalu build APK ulang.
 
