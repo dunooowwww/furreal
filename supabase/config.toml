@@ -449,3 +449,7 @@ verify_jwt = false
 # M7: hapus akun pemilik JWT (foto lewat Storage API, lalu auth.admin.deleteUser).
 [functions.delete-account]
 verify_jwt = true
+
+# M10: kabari anggota circle setelah pemilik JWT posting catch (sekali per catch).
+[functions.notify-catch]
+verify_jwt = true

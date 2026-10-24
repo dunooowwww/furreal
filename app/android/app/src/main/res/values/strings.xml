@@ -3,4 +3,6 @@
     <string name="daily_drop_channel_id" translatable="false">daily_drop</string>
     <string name="daily_drop_channel_name">daily drop</string>
     <string name="daily_drop_channel_description">kabar waktunya catch, sekali sehari.</string>
+    <string name="friend_catch_channel_name">teman udah catch</string>
+    <string name="friend_catch_channel_description">kabar waktu teman satu circle posting catch.</string>
 </resources>
