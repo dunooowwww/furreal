@@ -5,8 +5,10 @@ import 'package:go_router/go_router.dart';
 import '../features/account/ui/edit_profile_screen.dart';
 import '../features/account/ui/privacy_policy_screen.dart';
 import '../features/account/ui/settings_screen.dart';
+import '../features/auth/ui/forgot_password_screen.dart';
 import '../features/auth/ui/guidelines_screen.dart';
 import '../features/auth/ui/login_screen.dart';
+import '../features/auth/ui/register_screen.dart';
 import '../features/auth/ui/username_screen.dart';
 import '../features/camera/data/captured_photos.dart';
 import '../features/camera/ui/camera_screen.dart';
@@ -23,6 +25,8 @@ import 'splash_screen.dart';
 class Routes {
   static const splash = '/';
   static const login = '/login';
+  static const register = '/register';
+  static const forgotPassword = '/forgot-password';
   static const username = '/username';
   static const guidelines = '/guidelines';
   static const circle = '/circle';
@@ -39,6 +43,9 @@ class Routes {
   static const privacy = '/privacy';
 }
 
+/// Layar yang boleh dibuka sebelum login.
+const _signedOutRoutes = {Routes.login, Routes.register, Routes.forgotPassword};
+
 /// Arahkan user ke layar yang sesuai tahap onboarding-nya.
 String? redirectFor(AsyncValue<SessionStatus> session, String location) {
   if (session.hasError) return location == Routes.splash ? null : Routes.splash;
@@ -50,14 +57,15 @@ String? redirectFor(AsyncValue<SessionStatus> session, String location) {
 
   return switch (session.value) {
     null => only(Routes.splash),
-    SessionStatus.signedOut => only(Routes.login),
+    SessionStatus.signedOut =>
+      _signedOutRoutes.contains(location) ? null : Routes.login,
     SessionStatus.needsUsername => only(Routes.username),
     SessionStatus.needsGuidelines => only(Routes.guidelines),
     SessionStatus.needsCircle => only(Routes.circle),
     SessionStatus.ready =>
-      const {
+      {
             Routes.splash,
-            Routes.login,
+            ..._signedOutRoutes,
             Routes.username,
             Routes.guidelines,
           }.contains(location)
@@ -89,6 +97,19 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Routes.login,
         builder: (context, state) => const LoginScreen(),
+      ),
+      GoRoute(
+        path: Routes.register,
+        builder: (context, state) => RegisterScreen(
+          verifyEmail: switch (state.extra) {
+            VerifyEmail(:final email) => email,
+            _ => null,
+          },
+        ),
+      ),
+      GoRoute(
+        path: Routes.forgotPassword,
+        builder: (context, state) => const ForgotPasswordScreen(),
       ),
       GoRoute(
         path: Routes.username,

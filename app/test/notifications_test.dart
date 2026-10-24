@@ -111,7 +111,7 @@ void main() {
       await tapText(tester, 'keluar');
       expect(tokens.saved.last, isNull, reason: 'token dilepas sebelum keluar');
       expect(auth.userId, isNull);
-      expect(find.text('kirim kode'), findsOneWidget);
+      expect(find.text('belum punya akun?'), findsOneWidget);
 
       // Token yang diperbarui setelah keluar tidak disimpan ke siapa pun.
       push.refreshes.add('tok-setelah-keluar');

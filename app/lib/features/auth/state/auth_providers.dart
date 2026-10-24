@@ -2,21 +2,28 @@ import 'dart:async';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../app/config.dart';
 import '../../../app/supabase.dart';
 import '../data/auth_repository.dart';
 import '../data/profile_repository.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>(
-  (ref) => SupabaseAuthRepository(ref.watch(supabaseClientProvider).auth),
+  (ref) => SupabaseAuthRepository(
+    ref.watch(supabaseClientProvider),
+    googleWebClientId: AppConfig.googleWebClientId,
+  ),
 );
 
 final profileRepositoryProvider = Provider<ProfileRepository>(
   (ref) => SupabaseProfileRepository(ref.watch(supabaseClientProvider)),
 );
 
-/// Metode login yang tampil di layar login. Google ditunda (PRD §4).
+/// Metode login di layar masuk/daftar. Google hanya kalau client ID diisi.
 final enabledAuthMethodsProvider = Provider<List<AuthMethod>>(
-  (ref) => const [AuthMethod.emailOtp],
+  (ref) => [
+    AuthMethod.password,
+    if (AppConfig.googleWebClientId.isNotEmpty) AuthMethod.google,
+  ],
 );
 
 final authUserIdProvider = StreamProvider<String?>(

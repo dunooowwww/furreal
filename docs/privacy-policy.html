@@ -32,7 +32,8 @@
 
   <h2>data yang kami kumpulkan</h2>
   <ul>
-    <li>email: buat login dengan kode OTP.</li>
+    <li>email &amp; password: buat daftar dan masuk. password disimpan Supabase dalam bentuk hash, kami tidak bisa membacanya. kode 6 angka ke email cuma buat verifikasi daftar dan lupa password.</li>
+    <li>kalau masuk dengan Google: email dan id akun Google-mu (dari Google Sign-In), tanpa akses ke data Google lainnya.</li>
     <li>username &amp; nama tampilan: yang dilihat teman circle-mu.</li>
     <li>foto hewan &amp; foto lo (selfie): diambil langsung dari kamera app, tanpa akses galeri.</li>
     <li>foto profil (opsional): lo pilih sendiri dari galeri; diperkecil dan data lokasinya (EXIF) dibuang di HP sebelum di-upload.</li>
@@ -51,6 +52,7 @@
   <h2>pihak ketiga yang memproses data</h2>
   <ul>
     <li>Supabase: database, login, dan penyimpanan foto.</li>
+    <li>Google: masuk dengan Google (opsional).</li>
     <li>Google Firebase: notifikasi (Cloud Messaging), Analytics, Crashlytics.</li>
     <li>penyedia AI: identifikasi jenis hewan dari foto hewan.</li>
   </ul>

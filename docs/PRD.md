@@ -2,7 +2,7 @@
 
 > Dokumen ini adalah spesifikasi teknis untuk membangun MVP furreal.
 > Baca bagian yang relevan dengan milestone yang sedang dikerjakan saja.
-> Versi produk: PRD v1.0 · Diperbarui: 23 Okt 2026
+> Versi produk: PRD v1.1 · Diperbarui: 24 Okt 2026
 
 ---
 
@@ -19,7 +19,7 @@ bernama yang dibagikan ke circle teman. Koleksi berpusat pada **individu hewan**
 | Lapisan | Teknologi |
 |---|---|
 | Aplikasi | Flutter (Dart), Android saja untuk MVP |
-| Auth | Supabase Auth: kode OTP 6 digit lewat email. Google Sign-In ditunda (lihat catatan di §4) |
+| Auth | Supabase Auth (v1.1): daftar email + password (diverifikasi sekali lewat kode 6 digit), masuk pakai username atau email + password, lupa password lewat kode 6 digit, dan Google Sign-In native (`google_sign_in` → `signInWithIdToken`) |
 | Database | Supabase Postgres + Row Level Security (RLS) |
 | Storage | Supabase Storage, bucket private `catch-photos` |
 | Server logic | Supabase Edge Functions (TypeScript/Deno) |
@@ -32,7 +32,8 @@ bernama yang dibagikan ke circle teman. Koleksi berpusat pada **individu hewan**
 **Paket Flutter:** `supabase_flutter`, `camera`, `firebase_core`, `firebase_messaging`,
 `firebase_analytics`, `firebase_crashlytics`, `geolocator`, `geocoding`, `go_router`,
 `flutter_riverpod`, `google_fonts`, `cached_network_image`, `flutter_image_compress` (kompres foto, ditambahkan v0.4),
-`image_picker` (foto profil dari galeri, ditambahkan v1.0; catch tetap kamera saja).
+`image_picker` (foto profil dari galeri, ditambahkan v1.0; catch tetap kamera saja),
+`google_sign_in` (masuk dengan Google, ditambahkan v1.1).
 Jangan tambah paket lain tanpa alasan yang jelas.
 
 ## 3. Struktur repo
@@ -62,13 +63,18 @@ furreal/
 
 Mockup referensi: canvas "Catch UI" (nama lama, isinya prototype furreal) (5 layar). Layar 0 belum dimockup, buat sederhana.
 
-> **Catatan auth (v0.3):** MVP memakai kode OTP 6 digit lewat email (bukan magic link) supaya bisa dites
-> di lokal lewat Mailpit dan tidak butuh deep link. Google Sign-In ditunda; kode auth disusun per
-> metode login sehingga Google bisa ditambahkan tanpa mengubah alur lain.
+> **Catatan auth (v1.1, menggantikan v0.3):** kode 6 digit lewat email tetap dipakai (bukan link, tanpa
+> deep link, bisa dites lokal lewat Mailpit), tapi hanya untuk verifikasi daftar dan lupa password.
+> Masuk sehari-hari pakai username/email + password atau Google. Username tetap dipilih setelah
+> daftar (layar 0a'). Masuk pakai username lewat RPC `resolve_login(username, password)` yang
+> mengembalikan email hanya kalau password benar (maks 10 gagal per username per 15 menit, `FR006`).
 
 | # | Layar | Isi utama |
 |---|---|---|
-| 0a | Login | Isi email → isi kode OTP 6 digit yang dikirim ke email. Google Sign-In ditunda |
+| 0 | Splash | Latar aksen + tapak kaki + logo "furreal" (native Android sama dengan layar Flutter). Ikon app: tapak di latar aksen (ikon adaptif + monokrom) |
+| 0a | Masuk | Username atau email + password (lihat/sembunyikan), "lupa password?", "masuk dengan google" (kalau `GOOGLE_WEB_CLIENT_ID` diisi), link ke daftar. Email belum diverifikasi → kode baru dikirim, lanjut ke langkah kode |
+| 0a-1 | Daftar | Email + password (min 8) atau "daftar dengan google" → kode 6 digit dari email → layar username. Email terdaftar → arahkan ke masuk/lupa password |
+| 0a-2 | Lupa password | Email → kode 6 digit + password baru → langsung masuk. Juga untuk akun lama (dulu masuk pakai kode) yang belum punya password |
 | 0a' | Username | Setelah login pertama: pilih username (unik) + nama tampilan |
 | 0a'' | Pedoman | Sekali per akun, setelah username dan sebelum circle: pedoman kesejahteraan hewan (jangan kejar, pegang, pancing/ganggu; izin ke pemilik peliharaan), tombol "gue janji" → `profiles.guidelines_accepted_at` lewat RPC `accept_guidelines()` |
 | 0b | Circle | Buat circle (dapat kode undangan 6 karakter) atau gabung via kode. User boleh ikut beberapa circle; minimal satu untuk masuk beranda |
@@ -194,7 +200,7 @@ Kerjakan **satu milestone per sesi**. Setiap milestone selesai = test lulus + `f
 | M5 | Koleksi & streak | Grid koleksi + filter, "ketemu lagi" menambah `encounter_count`, streak terupdate via trigger |
 | M6 | Notifikasi & metrik | `send-daily-drop` terjadwal, notifikasi sampai di HP, catch dikunci sampai drop turun, event Analytics: `catch_created`, `reaction_added`, `circle_joined` + Crashlytics |
 | M7 | Siap rilis | Halaman kebijakan privasi, hapus akun + data dari app, onboarding pedoman kesejahteraan hewan, build AAB untuk closed testing |
-| M8 | Login baru & splash (rencana, dari feedback tes pertama) | Daftar email + username + password (verifikasi kode email sekali), masuk pakai username + password, lupa password lewat kode email, masuk dengan Google (`google_sign_in`), splash screen + ikon launcher furreal |
+| M8 | Login baru & splash (dari feedback tes pertama) | Daftar email + username + password (verifikasi kode email sekali), masuk pakai username + password, lupa password lewat kode email, masuk dengan Google (`google_sign_in`), splash screen + ikon launcher furreal |
 | M9 | Pengaturan & feed ala BeReal (dari feedback tes pertama) | Layar pengaturan (edit profil + foto profil dari galeri, kelola circle: kode, anggota, keluar, buat/gabung), feed teman hari ini terkunci di server sampai user catch, hapus akun ikut menghapus foto profil, RLS test lulus |
 
 ## 8. Kebutuhan non-fungsional
@@ -222,6 +228,8 @@ Rarity spesies, pengenalan otomatis individu hewan, leaderboard, peta, event mus
 | `DAILY_DROP_SECRET` | Secrets Edge Function + Vault `daily_drop_secret` | Bearer pg_cron → `send-daily-drop`; nilai acak panjang di produksi |
 | Vault `daily_drop_url` | Database (Vault) | `https://<project>.supabase.co/functions/v1/send-daily-drop`; lokal diisi `supabase/seed.sql` |
 | `google-services.json` | `app/android/app/` | Masuk `.gitignore` |
+| `GOOGLE_WEB_CLIENT_ID` | `app/` via `--dart-define` | OAuth client "Web application"; boleh di app. Kosong = tombol Google disembunyikan |
+| Google client ID + secret | Dashboard Supabase (Auth → Providers → Google); lokal `SUPABASE_AUTH_EXTERNAL_GOOGLE_*` | Secret jangan di app atau repo |
 
 Sediakan `.env.example` tanpa nilai asli.
 

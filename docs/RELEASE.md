@@ -20,7 +20,9 @@ Semua secret (keystore, password, service role key, service account) **tidak per
   select vault.create_secret('https://<ref>.supabase.co/functions/v1/send-daily-drop', 'daily_drop_url');
   select vault.create_secret('<acak-panjang>', 'daily_drop_secret');
   ```
-- [ ] Auth → Email templates: pasang isi `supabase/templates/magic_link.html` & `confirmation.html` (menampilkan kode OTP), OTP expiry 600 detik.
+- [ ] Auth → Email templates (butuh SMTP sendiri dulu): pasang isi `supabase/templates/confirmation.html` (Confirm signup, subject "kode verifikasi furreal"), `recovery.html` (Reset password, subject "kode reset password furreal"), dan `magic_link.html` (Magic link). Semua menampilkan `{{ .Token }}`, bukan link.
+- [ ] Auth → Sign In / Providers → Email: Confirm email nyala, Email OTP length 6, expiry 600 detik, minimum password length 8.
+- [ ] Auth → Sign In / Providers → Google (M8): nyalakan, isi Client ID + Client Secret dari OAuth client "Web application", nyalakan "Skip nonce checks". Langkah Google Cloud ada di catatan M8 `docs/PLAN.md`.
 - [ ] Auth → SMTP: pasang SMTP sendiri (mis. Resend/Brevo). SMTP bawaan Supabase dibatasi beberapa email per jam, tidak cukup untuk 15–30 tester.
 - [ ] Cek besok paginya: `select * from daily_drops order by drop_date desc limit 3;` → drop terjadwal & terkirim.
 
@@ -37,7 +39,8 @@ copy key.properties.example key.properties   # lalu isi password
 - [ ] Aktifkan **Play App Signing** saat upload pertama (default).
 
 ## 5. Build
-- [ ] `app/.env.prod` (di-.gitignore) berisi `SUPABASE_URL` & `SUPABASE_ANON_KEY` project produksi.
+- [ ] `app/.env.prod` (di-.gitignore) berisi `SUPABASE_URL` & `SUPABASE_ANON_KEY` project produksi, plus `GOOGLE_WEB_CLIENT_ID` (M8).
+- [ ] SHA-1 kunci upload **dan** kunci Play App Signing (Play Console → Setup → App signing) didaftarkan sebagai OAuth client Android di Google Cloud, kalau tidak masuk dengan Google gagal di versi Play Store.
 - [ ] Naikkan `version` di `app/pubspec.yaml` setiap upload (`0.1.0+1` → `0.1.0+2`; angka setelah `+` = versionCode, wajib naik).
 - [ ] `cd app && flutter build appbundle --release --dart-define-from-file=.env.prod`
 - [ ] Hasil: `app/build/app/outputs/bundle/release/app-release.aab`.

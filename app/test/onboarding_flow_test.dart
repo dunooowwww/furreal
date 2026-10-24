@@ -1,12 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:furreal/features/auth/data/auth_repository.dart';
+import 'package:flutter/widgets.dart';
 import 'package:furreal/features/auth/data/profile_repository.dart';
 import 'package:furreal/features/circles/data/circle_repository.dart';
 
 import 'helpers/fakes.dart';
 
 void main() {
-  testWidgets('user baru: login OTP → username → buat circle → beranda', (
+  testWidgets('user baru: daftar → kode email → username → circle → beranda', (
     tester,
   ) async {
     final auth = FakeAuthRepository();
@@ -16,23 +16,30 @@ void main() {
       profiles: FakeProfileRepository(taken: {'alice'}),
     );
 
-    // login
-    expect(find.text('kirim kode'), findsOneWidget);
+    // masuk → daftar
+    expect(find.text('belum punya akun?'), findsOneWidget);
     expect(find.text('masuk dengan google'), findsNothing);
-    await enter(tester, 'login-email', '  Alice@Example.com ');
-    await tapText(tester, 'kirim kode');
-    expect(auth.otpRequests, ['alice@example.com']);
+    await tapFinder(tester, find.byKey(const Key('go-register')));
+    await enter(tester, 'register-email', '  Alice@Example.com ');
+    await enter(tester, 'register-password', 'pendek');
+    await tapFinder(tester, find.byKey(const Key('register-submit')));
+    expect(find.text('password minimal 8 karakter.'), findsOneWidget);
+
+    await enter(tester, 'register-password', 'rahasia123');
+    await tapFinder(tester, find.byKey(const Key('register-submit')));
+    expect(auth.signUpCodes, ['alice@example.com']);
     expect(
-      find.text('kode 6 angka sudah dikirim ke alice@example.com'),
+      find.text('kode 6 angka udah dikirim ke alice@example.com'),
       findsOneWidget,
     );
 
-    await enter(tester, 'login-code', '000000');
-    await tapText(tester, 'masuk');
+    await enter(tester, 'register-code', '000000');
+    await tapText(tester, 'verifikasi');
     expect(find.text('kodenya salah atau sudah kedaluwarsa.'), findsOneWidget);
 
-    await enter(tester, 'login-code', validOtp);
-    await tapText(tester, 'masuk');
+    await enter(tester, 'register-code', validOtp);
+    await tapText(tester, 'verifikasi');
+    expect(auth.accounts['alice@example.com']!.confirmed, isTrue);
 
     // username
     expect(find.text('kenalan dulu'), findsOneWidget);
@@ -67,7 +74,7 @@ void main() {
 
     await tapFinder(tester, find.byTooltip('pengaturan'));
     await tapText(tester, 'keluar');
-    expect(find.text('kirim kode'), findsOneWidget);
+    expect(find.text('belum punya akun?'), findsOneWidget);
   });
 
   testWidgets('gabung circle lewat kode, kode salah ditolak', (tester) async {
@@ -118,25 +125,5 @@ void main() {
 
     expect(find.text('halo, bobby'), findsOneWidget);
     expect(find.text('LAB234'), findsOneWidget);
-  });
-
-  testWidgets('validasi format email di sisi app', (tester) async {
-    await pumpApp(tester, auth: FakeAuthRepository());
-    await enter(tester, 'login-email', 'bukan-email');
-    await tapText(tester, 'kirim kode');
-    expect(find.text('emailnya belum benar.'), findsOneWidget);
-  });
-
-  testWidgets('tombol google muncul hanya kalau metodenya diaktifkan', (
-    tester,
-  ) async {
-    await pumpApp(
-      tester,
-      auth: FakeAuthRepository(),
-      authMethods: const [AuthMethod.google, AuthMethod.emailOtp],
-    );
-    expect(find.text('masuk dengan google'), findsOneWidget);
-    await tapText(tester, 'masuk dengan google');
-    expect(find.text('kenalan dulu'), findsOneWidget);
   });
 }

@@ -20,7 +20,11 @@ const privacyPolicy = <PolicySection>[
         'tidak menjual data, dan tidak punya mode publik.',
   ]),
   PolicySection('data yang kami kumpulkan', [
-    '• email: buat login dengan kode OTP.',
+    '• email & password: buat daftar dan masuk. password disimpan '
+        'Supabase dalam bentuk hash, kami tidak bisa membacanya. kode 6 angka '
+        'ke email cuma buat verifikasi daftar dan lupa password.',
+    '• kalau masuk dengan Google: email dan id akun Google-mu (dari Google '
+        'Sign-In), tanpa akses ke data Google lainnya.',
     '• username & nama tampilan: yang dilihat teman circle-mu.',
     '• foto hewan & foto lo (selfie): diambil langsung dari kamera app, tanpa '
         'akses galeri.',
@@ -49,6 +53,7 @@ const privacyPolicy = <PolicySection>[
   ]),
   PolicySection('pihak ketiga yang memproses data', [
     '• Supabase: database, login, dan penyimpanan foto.',
+    '• Google: masuk dengan Google (opsional).',
     '• Google Firebase: notifikasi (Cloud Messaging), Analytics, Crashlytics.',
     '• penyedia AI: identifikasi jenis hewan dari foto hewan.',
   ]),
