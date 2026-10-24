@@ -39,18 +39,45 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 const validOtp = '123456';
 const existingInviteCode = 'KOS234';
 
+class FakeAccount {
+  FakeAccount({
+    required this.id,
+    required this.password,
+    this.confirmed = true,
+    this.username,
+  });
+
+  final String id;
+  String password;
+  bool confirmed;
+  String? username;
+}
+
 class FakeAuthRepository implements AuthRepository {
-  FakeAuthRepository({this.userId});
+  FakeAuthRepository({this.userId, Map<String, FakeAccount>? accounts})
+    : accounts = accounts ?? {};
 
   final _changes = StreamController<String?>.broadcast();
   String? userId;
-  final otpRequests = <String>[];
-  final verified = <({String email, String code})>[];
+
+  /// Akun per email.
+  final Map<String, FakeAccount> accounts;
+  final signUpCodes = <String>[];
+  final resetCodes = <String>[];
+
+  /// Kalau true, pilihan akun Google dibatalkan user.
+  bool googleCanceled = false;
 
   void _set(String? id) {
     userId = id;
     _changes.add(id);
   }
+
+  static const _invalidCode = AuthException(
+    'Token has expired or is invalid',
+    statusCode: '403',
+    code: 'otp_expired',
+  );
 
   @override
   Stream<String?> userIdChanges() async* {
@@ -59,26 +86,78 @@ class FakeAuthRepository implements AuthRepository {
   }
 
   @override
-  Future<void> sendEmailOtp(String email) async => otpRequests.add(email);
-
-  @override
-  Future<void> verifyEmailOtp({
+  Future<SignUpResult> signUp({
     required String email,
-    required String code,
+    required String password,
   }) async {
-    verified.add((email: email, code: code));
-    if (code != validOtp) {
-      throw const AuthException(
-        'Token has expired or is invalid',
-        statusCode: '403',
-        code: 'otp_expired',
-      );
-    }
-    _set('user-1');
+    final key = normalizeEmail(email);
+    if (accounts.containsKey(key)) return SignUpResult.alreadyRegistered;
+    accounts[key] = FakeAccount(
+      id: 'user-${accounts.length + 1}',
+      password: password,
+      confirmed: false,
+    );
+    signUpCodes.add(key);
+    return SignUpResult.codeSent;
   }
 
   @override
-  Future<void> signInWithGoogle() async => _set('user-google');
+  Future<void> verifySignUp({
+    required String email,
+    required String code,
+  }) async {
+    final account = accounts[normalizeEmail(email)];
+    if (account == null || code != validOtp) throw _invalidCode;
+    account.confirmed = true;
+    _set(account.id);
+  }
+
+  @override
+  Future<void> resendSignUpCode(String email) async =>
+      signUpCodes.add(normalizeEmail(email));
+
+  @override
+  Future<void> signInWithPassword({
+    required String identifier,
+    required String password,
+  }) async {
+    final id = identifier.trim().toLowerCase();
+    final entry = accounts.entries
+        .where((e) => e.key == id || e.value.username == id)
+        .firstOrNull;
+    if (entry == null || entry.value.password != password) {
+      throw const InvalidLogin();
+    }
+    if (!entry.value.confirmed) {
+      await resendSignUpCode(entry.key);
+      throw EmailNotConfirmed(entry.key);
+    }
+    _set(entry.value.id);
+  }
+
+  @override
+  Future<void> sendPasswordReset(String email) async =>
+      resetCodes.add(normalizeEmail(email));
+
+  @override
+  Future<void> resetPassword({
+    required String email,
+    required String code,
+    required String newPassword,
+  }) async {
+    final account = accounts[normalizeEmail(email)];
+    if (account == null || code != validOtp) throw _invalidCode;
+    account
+      ..password = newPassword
+      ..confirmed = true;
+    _set(account.id);
+  }
+
+  @override
+  Future<void> signInWithGoogle() async {
+    if (googleCanceled) return;
+    _set('user-google');
+  }
 
   @override
   Future<void> signOut() async => _set(null);

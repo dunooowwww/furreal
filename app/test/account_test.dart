@@ -95,7 +95,7 @@ void main() {
 
     await tester.pageBack();
     await tester.pumpAndSettle();
-    expect(find.text('kirim kode'), findsOneWidget);
+    expect(find.text('belum punya akun?'), findsOneWidget);
   });
 
   group('akun', () {
@@ -148,7 +148,7 @@ void main() {
 
       await tapText(tester, 'hapus akun @bob');
       expect(account.deletes, 1);
-      expect(find.text('kirim kode'), findsOneWidget);
+      expect(find.text('belum punya akun?'), findsOneWidget);
       expect(find.text('akun lo udah dihapus. dadah!'), findsOneWidget);
     });
 
