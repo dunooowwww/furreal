@@ -35,7 +35,8 @@ const privacyPolicy = <PolicySection>[
     '• label area perkiraan (mis. "sekitar Depok, Sleman"). lokasi GPS diubah '
         'jadi label di HP-mu; koordinat tidak pernah dikirim atau disimpan. '
         'label ini bisa disembunyikan per catch.',
-    '• token notifikasi: buat ngirim notifikasi daily drop ke HP-mu.',
+    '• token notifikasi: buat ngirim notifikasi daily drop dan kabar waktu '
+        'teman satu circle posting catch ke HP-mu.',
     '• data pemakaian & crash: event seperti "catch dibuat", "reaksi", '
         '"gabung circle" (Firebase Analytics) dan laporan crash (Firebase '
         'Crashlytics), tanpa email atau username.',
