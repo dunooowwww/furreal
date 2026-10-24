@@ -64,26 +64,33 @@ void main() {
     });
   });
 
-  testWidgets('drop belum turun: kamera dikunci di beranda & feed', (
-    tester,
-  ) async {
-    await pumpHome(tester, drop: FakeDailyDropRepository(DailyDrop.waiting));
+  testWidgets(
+    'drop belum turun: kamera tetap kebuka (M10), ditandai sebelum drop',
+    (tester) async {
+      await pumpHome(tester, drop: FakeDailyDropRepository(DailyDrop.waiting));
 
-    expect(find.text('DAILY DROP · BELUM TURUN'), findsOneWidget);
-    expect(find.text('sabar\ndulu.'), findsOneWidget);
-    expect(find.text('buka kamera'), findsNothing);
-    final locked = tester.widget<ButtonStyleButton>(
-      find.ancestor(
-        of: find.text('kamera dikunci'),
-        matching: find.bySubtype<ButtonStyleButton>(),
-      ),
-    );
-    expect(locked.onPressed, isNull);
+      expect(find.text('DAILY DROP · BELUM TURUN'), findsOneWidget);
+      expect(find.text('catch\nduluan?'), findsOneWidget);
+      expect(find.text('kamera dikunci'), findsNothing);
+      expect(find.textContaining('ditandai "sebelum drop"'), findsOneWidget);
 
-    await tapText(tester, 'feed');
-    expect(find.byKey(const Key('drop-waiting-banner')), findsOneWidget);
-    expect(find.text('buka kamera'), findsNothing);
-  });
+      await tapText(tester, 'feed');
+      expect(
+        find.text(
+          'daily drop belum turun, tapi lo boleh catch duluan. '
+          'catch dulu buat lihat hewan temen lo.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('buka kamera'), findsOneWidget);
+
+      await tapText(tester, 'buka kamera');
+      final timer = tester.widget<Text>(
+        find.byKey(const Key('camera-drop-timer')),
+      );
+      expect(timer.data, 'drop belum turun · catch ditandai sebelum drop');
+    },
+  );
 
   testWidgets('drop baru turun: hitung mundur tepat waktu + timer kamera', (
     tester,
@@ -119,7 +126,7 @@ void main() {
       final drop = FakeDailyDropRepository(DailyDrop.waiting);
       final push = FakePushMessaging(current: PushPermission.granted);
       await pumpHome(tester, drop: drop, push: push);
-      expect(find.text('kamera dikunci'), findsOneWidget);
+      expect(find.text('catch\nduluan?'), findsOneWidget);
 
       drop.drop = dropSentAgo(Duration.zero);
       push.drops.add(DropMessage.foreground);

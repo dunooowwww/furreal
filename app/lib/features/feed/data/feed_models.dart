@@ -1,3 +1,5 @@
+import '../../daily_drop/data/daily_drop.dart';
+
 enum ReactionType {
   like('like'),
   laugh('laugh');
@@ -15,6 +17,7 @@ class FeedItem {
     required this.createdAt,
     required this.isLate,
     required this.lateMinutes,
+    this.timing,
     required this.animalName,
     required this.animalType,
     required this.encounterCount,
@@ -47,6 +50,10 @@ class FeedItem {
           'seseorang',
       createdAt: DateTime.parse(json['created_at'] as String),
       isLate: json['is_late'] as bool? ?? false,
+      timing: CatchTiming.fromDb(
+        json['timing'] as String?,
+        isLate: json['is_late'] as bool? ?? false,
+      ),
       lateMinutes: json['late_minutes'] as int?,
       animalName: json['animal_name'] as String?,
       animalType: json['animal_type'] as String?,
@@ -71,6 +78,12 @@ class FeedItem {
   final String displayName;
   final DateTime createdAt;
   final bool isLate;
+
+  /// Label waktu dari server (M10). null di data lama → ikut [isLate].
+  final CatchTiming? timing;
+
+  CatchTiming get timingLabel =>
+      timing ?? (isLate ? CatchTiming.late : CatchTiming.onTime);
   final int? lateMinutes;
   final String? animalName;
   final String? animalType;
@@ -127,6 +140,7 @@ class FeedItem {
     displayName: displayName,
     createdAt: createdAt,
     isLate: isLate,
+    timing: timing,
     lateMinutes: lateMinutes,
     animalName: animalName,
     animalType: animalType,

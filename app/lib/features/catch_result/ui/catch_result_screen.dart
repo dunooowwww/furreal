@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -15,8 +17,6 @@ import '../data/catch_repository.dart';
 import '../../../shared/widgets/remote_photo.dart';
 import '../../collection/data/collection_models.dart';
 import '../../collection/state/collection_providers.dart';
-import '../../daily_drop/data/daily_drop.dart';
-import '../../daily_drop/state/daily_drop_providers.dart';
 import '../../feed/state/feed_providers.dart';
 import '../state/catch_providers.dart';
 
@@ -168,7 +168,7 @@ class _CatchResultScreenState extends ConsumerState<CatchResultScreen> {
     try {
       final areaLabel = _areaLabel;
       final personality = _personality.text.trim();
-      await _repository.submit(
+      final timing = await _repository.submit(
         prepared,
         CatchDetails(
           animalName: name,
@@ -181,14 +181,15 @@ class _CatchResultScreenState extends ConsumerState<CatchResultScreen> {
         ),
       );
       _posted = true;
-      final late =
-          ref.read(todayDropProvider).value?.phaseAt(DateTime.now()) ==
-          DropPhase.late;
+      // Kabari circle tanpa menunggu; gagal kirim tidak membatalkan catch.
+      unawaited(
+        _repository.notifyCircle(prepared.id).catchError((Object _) {}),
+      );
       ref
           .read(analyticsProvider)
           .catchCreated(
             encounter: existing == null ? 'new' : 'again',
-            timing: late ? 'late' : 'on_time',
+            timing: timing.dbValue,
           );
       ref.invalidate(todayCatchProvider);
       ref.invalidate(feedControllerProvider);

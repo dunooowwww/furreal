@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 /// Event Analytics MVP (PRD §7, M6). Nilai parameter selalu string/angka.
 abstract interface class Analytics {
   /// [encounter]: `new` (hewan baru) atau `again` (ketemu lagi).
-  /// [timing]: `on_time` atau `late` menurut jam HP.
+  /// [timing]: `early`, `on_time`, atau `late` (label dari server, M10).
   Future<void> catchCreated({
     required String encounter,
     required String timing,

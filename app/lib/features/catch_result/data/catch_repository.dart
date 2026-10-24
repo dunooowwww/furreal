@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../daily_drop/data/daily_drop.dart';
 import '../../../shared/dates.dart';
 import '../../../shared/uuid.dart';
 import '../../camera/data/captured_photos.dart';
@@ -110,8 +111,12 @@ abstract interface class CatchRepository {
   Future<AiIdentification> identify(PreparedCatch prepared);
 
   /// Simpan catch + hewan baru. Melempar PostgrestException `FR001` kalau
-  /// sudah catch hari ini.
-  Future<void> submit(PreparedCatch prepared, CatchDetails details);
+  /// sudah catch hari ini. Hasil: label waktu dari server.
+  Future<CatchTiming> submit(PreparedCatch prepared, CatchDetails details);
+
+  /// Kabari anggota circle lewat Edge Function `notify-catch` (sekali per
+  /// catch, dijaga server). Gagal tidak membatalkan catch.
+  Future<void> notifyCircle(String catchId);
 
   /// Hapus foto yang sudah ter-upload kalau user batal posting.
   Future<void> discard(PreparedCatch prepared);
@@ -202,8 +207,11 @@ class SupabaseCatchRepository implements CatchRepository {
   }
 
   @override
-  Future<void> submit(PreparedCatch prepared, CatchDetails details) async {
-    await _client.rpc(
+  Future<CatchTiming> submit(
+    PreparedCatch prepared,
+    CatchDetails details,
+  ) async {
+    final row = await _client.rpc(
       'create_catch',
       params: {
         'p_catch_id': prepared.id,
@@ -216,6 +224,16 @@ class SupabaseCatchRepository implements CatchRepository {
         'p_animal_id': details.existingAnimalId,
       },
     );
+    final json = row as Map<String, dynamic>;
+    return CatchTiming.fromDb(
+      json['timing'] as String?,
+      isLate: json['is_late'] as bool? ?? false,
+    );
+  }
+
+  @override
+  Future<void> notifyCircle(String catchId) async {
+    await _client.functions.invoke('notify-catch', body: {'catch_id': catchId});
   }
 
   @override

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:furreal/features/auth/data/profile_repository.dart';
 import 'package:furreal/features/circles/data/circle_repository.dart';
+import 'package:furreal/features/daily_drop/data/daily_drop.dart';
 import 'package:furreal/features/feed/data/feed_models.dart';
 import 'package:furreal/features/notifications/data/push_messaging.dart';
 
@@ -24,6 +25,7 @@ Future<void> pumpHome(
   FakeDailyDropRepository? drop,
   FakeFeedRepository? feed,
   FakeCircleRepository? circles,
+  FakeCatchRepository? catches,
   VoidCallback? onOpenSettings,
 }) => pumpApp(
   tester,
@@ -35,6 +37,7 @@ Future<void> pumpHome(
   analytics: analytics,
   drop: drop,
   feed: feed,
+  catches: catches,
   onOpenSettings: onOpenSettings,
 );
 
@@ -128,15 +131,22 @@ void main() {
       expect(analytics.events, ['catch_created encounter=new timing=on_time']);
     });
 
-    testWidgets('catch_created: telat', (tester) async {
-      final analytics = FakeAnalytics();
-      await pumpHome(
-        tester,
-        analytics: analytics,
-        drop: FakeDailyDropRepository(dropSentAgo(const Duration(hours: 3))),
-      );
-      await postCatch(tester, 'Milo');
-      expect(analytics.events, ['catch_created encounter=new timing=late']);
+    testWidgets('catch_created: label waktu dari server (telat/sebelum drop)', (
+      tester,
+    ) async {
+      for (final (timing, label) in [
+        (CatchTiming.late, 'late'),
+        (CatchTiming.early, 'early'),
+      ]) {
+        final analytics = FakeAnalytics();
+        await pumpHome(
+          tester,
+          analytics: analytics,
+          catches: FakeCatchRepository()..timing = timing,
+        );
+        await postCatch(tester, 'Milo');
+        expect(analytics.events, ['catch_created encounter=new timing=$label']);
+      }
     });
 
     testWidgets('reaction_added hanya saat reaksi ditambah & tersimpan', (

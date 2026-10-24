@@ -20,6 +20,17 @@ enum DropMessage {
   opened,
 }
 
+/// Notifikasi "teman udah catch" (M10).
+class FriendCatchMessage {
+  const FriendCatchMessage({required this.opened, this.title});
+
+  /// true = user mengetuk notifikasinya; false = masuk saat app terbuka.
+  final bool opened;
+
+  /// Judul notifikasi, mis. "dinda udah catch!".
+  final String? title;
+}
+
 abstract interface class PushMessaging {
   Future<PushPermission> permission();
 
@@ -32,6 +43,8 @@ abstract interface class PushMessaging {
   Stream<String> get tokenRefreshes;
 
   Stream<DropMessage> get dropMessages;
+
+  Stream<FriendCatchMessage> get friendCatches;
 }
 
 /// Dipakai kalau Firebase tidak tersedia; app tetap jalan tanpa notifikasi.
@@ -53,25 +66,35 @@ class DisabledPushMessaging implements PushMessaging {
 
   @override
   Stream<DropMessage> get dropMessages => const Stream.empty();
+
+  @override
+  Stream<FriendCatchMessage> get friendCatches => const Stream.empty();
 }
 
 class FirebasePushMessaging implements PushMessaging {
   FirebasePushMessaging(this._messaging) {
-    bool isDrop(RemoteMessage m) => m.data['type'] == 'daily_drop';
-    FirebaseMessaging.onMessage
-        .where(isDrop)
-        .listen((_) => _drops.add(DropMessage.foreground));
-    FirebaseMessaging.onMessageOpenedApp
-        .where(isDrop)
-        .listen((_) => _drops.add(DropMessage.opened));
+    FirebaseMessaging.onMessage.listen((m) => _route(m, opened: false));
+    FirebaseMessaging.onMessageOpenedApp.listen((m) => _route(m, opened: true));
     // App dibuka dari notifikasi saat sedang mati.
     _messaging.getInitialMessage().then((m) {
-      if (m != null && isDrop(m)) _drops.add(DropMessage.opened);
+      if (m != null) _route(m, opened: true);
     });
+  }
+
+  void _route(RemoteMessage m, {required bool opened}) {
+    switch (m.data['type']) {
+      case 'daily_drop':
+        _drops.add(opened ? DropMessage.opened : DropMessage.foreground);
+      case 'friend_catch':
+        _friendCatches.add(
+          FriendCatchMessage(opened: opened, title: m.notification?.title),
+        );
+    }
   }
 
   final FirebaseMessaging _messaging;
   final _drops = StreamController<DropMessage>.broadcast();
+  final _friendCatches = StreamController<FriendCatchMessage>.broadcast();
 
   static PushPermission _map(NotificationSettings s) =>
       switch (s.authorizationStatus) {
@@ -96,6 +119,9 @@ class FirebasePushMessaging implements PushMessaging {
 
   @override
   Stream<DropMessage> get dropMessages => _drops.stream;
+
+  @override
+  Stream<FriendCatchMessage> get friendCatches => _friendCatches.stream;
 }
 
 /// Simpan token FCM milik user yang login (null = hapus, saat keluar).

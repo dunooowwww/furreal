@@ -1,4 +1,4 @@
--- M6: jadwal daily drop, dispatch lewat pg_net, kunci catch, token FCM.
+-- M6: jadwal daily drop, dispatch lewat pg_net, token FCM. (Kunci catch dilepas di M10.)
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
@@ -6,7 +6,8 @@ select plan(33);
 
 insert into auth.users (id, email) values
   ('11111111-1111-1111-1111-111111111111', 'alice@example.com'),
-  ('22222222-2222-2222-2222-222222222222', 'bob@example.com');
+  ('22222222-2222-2222-2222-222222222222', 'bob@example.com'),
+  ('33333333-3333-3333-3333-333333333333', 'dave@example.com');
 
 -- Cron lokal mungkin sudah menjadwalkan hari ini; mulai dari kosong.
 delete from public.daily_drops;
@@ -63,11 +64,18 @@ insert into storage.objects (bucket_id, name) values
   ('catch-photos', '11111111-1111-1111-1111-111111111111/aaaaaaaa-0000-0000-0000-000000000001/animal.jpg'),
   ('catch-photos', '11111111-1111-1111-1111-111111111111/aaaaaaaa-0000-0000-0000-000000000001/selfie.jpg');
 
-select throws_ok(
-  $$select public.create_catch('aaaaaaaa-0000-0000-0000-000000000001', 'Milo', 'pet', null, true)$$,
-  'FR005', null,
-  'catch dikunci sebelum daily drop turun'
+-- M10: kamera tidak dikunci lagi; catch sebelum drop ditandai 'early'
+-- (detail di 10_bereal_drop_test). Pakai dave supaya alice bisa catch nanti.
+select set_config('request.jwt.claims', '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}', true);
+insert into storage.objects (bucket_id, name) values
+  ('catch-photos', '33333333-3333-3333-3333-333333333333/dddddddd-0000-0000-0000-000000000001/animal.jpg'),
+  ('catch-photos', '33333333-3333-3333-3333-333333333333/dddddddd-0000-0000-0000-000000000001/selfie.jpg');
+select results_eq(
+  $$select timing, is_late from public.create_catch('dddddddd-0000-0000-0000-000000000001', 'Kiko', 'pet', null, true)$$,
+  $$values ('early'::text, false)$$,
+  'catch sebelum daily drop turun boleh, ditandai early'
 );
+select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}', true);
 
 -- === waktunya drop ===========================================================
 reset role;

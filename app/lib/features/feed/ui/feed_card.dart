@@ -5,6 +5,7 @@ import '../../../app/theme.dart';
 import '../../../shared/relative_time.dart';
 import '../../../shared/widgets/remote_photo.dart';
 import '../../../shared/widgets/user_avatar.dart';
+import '../../daily_drop/data/daily_drop.dart';
 import '../data/feed_models.dart';
 
 /// Kartu catch di feed (prototype "Feed circle").
@@ -199,18 +200,21 @@ class _TimelinessChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final mono = FurrealText.mono(fontSize: 11);
-    if (!item.isLate) {
+    final timing = item.timingLabel;
+    if (timing != CatchTiming.late) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
         decoration: BoxDecoration(
-          color: FurrealColors.accent,
+          color: timing == CatchTiming.onTime
+              ? FurrealColors.accent
+              : FurrealColors.surface,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(
             color: FurrealColors.ink,
             width: FurrealShape.borderWidth,
           ),
         ),
-        child: Text('tepat waktu', style: mono),
+        child: Text(timing.label, style: mono),
       );
     }
     final late = item.lateMinutes;

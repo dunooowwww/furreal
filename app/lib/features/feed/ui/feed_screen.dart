@@ -206,35 +206,6 @@ class _NotCaughtBanner extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final drop = ref.watch(todayDropProvider).value;
     final waiting = drop?.phaseAt(DateTime.now()) == DropPhase.waiting;
-    if (waiting) {
-      return Container(
-        key: const Key('drop-waiting-banner'),
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: FurrealColors.surface,
-          borderRadius: BorderRadius.circular(FurrealShape.cardRadius),
-          border: Border.all(
-            color: FurrealColors.ink,
-            width: FurrealShape.borderWidth,
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              'daily drop belum turun',
-              style: FurrealText.display(fontSize: 22),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'kamera kebuka begitu notifikasinya masuk. '
-              'sambil nunggu, intip dulu catch kemarin di koleksi.',
-              style: TextStyle(height: 1.4),
-            ),
-          ],
-        ),
-      );
-    }
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -251,6 +222,15 @@ class _NotCaughtBanner extends ConsumerWidget {
           Text(
             'lo belum catch hari ini',
             style: FurrealText.display(fontSize: 22),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            waiting
+                ? 'daily drop belum turun, tapi lo boleh catch duluan. '
+                      'catch dulu buat lihat hewan temen lo.'
+                : 'catch dulu buat lihat hewan temen lo.',
+            key: const Key('not-caught-hint'),
+            style: const TextStyle(height: 1.4),
           ),
           const SizedBox(height: 12),
           FilledButton.icon(

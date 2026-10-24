@@ -6,7 +6,8 @@ import '../../../shared/dates.dart';
 const onTimeWindow = Duration(hours: 1);
 
 enum DropPhase {
-  /// Drop hari ini belum turun: kamera dikunci.
+  /// Drop hari ini belum turun. Sejak M10 tetap boleh catch (ditandai
+  /// "sebelum drop").
   waiting,
 
   /// Kurang dari 1 jam sejak drop: catch tepat waktu.
@@ -14,6 +15,22 @@ enum DropPhase {
 
   /// Lewat 1 jam: masih boleh catch, tapi ditandai telat.
   late,
+}
+
+/// Label waktu catch, dihitung server saat posting (`catches.timing`, M10).
+enum CatchTiming {
+  early('early', 'sebelum drop'),
+  onTime('on_time', 'tepat waktu'),
+  late('late', 'telat');
+
+  const CatchTiming(this.dbValue, this.label);
+
+  final String dbValue;
+  final String label;
+
+  static CatchTiming fromDb(String? value, {bool isLate = false}) =>
+      values.where((t) => t.dbValue == value).firstOrNull ??
+      (isLate ? late : onTime);
 }
 
 /// Daily drop hari ini (Asia/Jakarta). [sentAt] null = belum turun.

@@ -14,6 +14,7 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
 - [ ] **M7 — Siap rilis** — kode selesai; `flutter analyze` bersih, `flutter test` 92/92, `deno test` 53/53, pgTAP 185/185 di stack asli, hapus akun terbukti end-to-end di lokal, AAB rilis ter-build dengan keystore uji. Belum: keystore asli, email kontak, hosting kebijakan privasi, setup Play Console (lihat `docs/RELEASE.md`).
 - [ ] **M8 — Login baru & splash** — kode selesai; `flutter analyze` bersih, `flutter test` 124/124, `deno test` 56/56, pgTAP 233/233 (Postgres 16 lokal dengan tiruan auth + storage + Vault). Belum terverifikasi: daftar/masuk/lupa password di Supabase produksi, masuk dengan Google (butuh setup Google Cloud), build Android dengan ikon & splash baru (lihat catatan M8).
 - [ ] **M9 — Pengaturan & feed ala BeReal** — kode selesai; `flutter analyze` bersih, `flutter test` 108/108, `deno test` 56/56, pgTAP 220/220 (Postgres 16 lokal dengan tiruan auth + storage + Vault, `pg_cron` asli, `pg_net` tiruan). Belum terverifikasi: migrasi di Supabase produksi, upload foto profil & kunci feed di HP (lihat catatan M9).
+- [ ] **M10 — Daily drop ala BeReal** — kode selesai; `flutter analyze` bersih, `flutter test` 132/132, `deno test` 66/66, pgTAP 249/249 (Postgres 16 lokal dengan tiruan auth + storage + Vault). Belum terverifikasi: notifikasi "teman udah catch" sampai di HP, catch sebelum drop di produksi (lihat catatan M10).
 
 ## Catatan keputusan
 
@@ -281,4 +282,23 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
      - Credentials → Create OAuth client ID → **Android**: package `com.dun.furreal`, SHA-1 dari `cd app/android && ./gradlew signingReport` (varian release/debug yang dipakai build APK). Tambah lagi untuk kunci upload & Play App Signing saat rilis.
   5. Supabase → Authentication → Sign In / Providers → Google: nyalakan, isi Client ID + Secret (Web), nyalakan "Skip nonce checks".
   6. `app/.env.prod`: `GOOGLE_WEB_CLIENT_ID=<client id Web>`, lalu build APK ulang.
+
+### M10 (25 Okt 2026)
+- **Asal:** feedback "daily drop dibikin kayak BeReal". Pilihan user: **kamera tidak dikunci** + **notifikasi teman udah catch**. Jendela tepat waktu tetap 1 jam (opsi 2 menit tidak dipilih); jam drop tetap acak 10:00–20:00 WIB.
+- **Kamera tidak dikunci** (`20261025090000_bereal_drop.sql`):
+  - `create_catch` v5 tidak menolak sebelum drop (`FR005` pensiun, kodenya masih dikenali app untuk versi lama). Kolom baru `catches.timing` (`early` = drop belum turun atau `sent_at` di masa depan, `on_time`, `late`), dihitung server; `is_late` tetap diisi supaya data & test lama konsisten. Data lama di-backfill dari `is_late`.
+  - Tidak ada constraint `is_late` ↔ `timing`: insert langsung (seed/test) yang hanya mengisi `is_late` tetap jalan; `seed_dev_feed.ts` sekarang mengisi `timing`.
+  - `circle_feed` v3 menyertakan `timing`. App: chip "sebelum drop" (abu-abu), "tepat waktu" (aksen), "telat …"; data tanpa `timing` ikut `is_late`.
+  - Analytics `catch_created.timing` sekarang dari server (`early`/`on_time`/`late`), bukan jam HP.
+  - Beranda sebelum drop: "catch duluan?" + tombol kamera aktif; feed: banner "daily drop belum turun, tapi lo boleh catch duluan"; kamera: "drop belum turun · catch ditandai sebelum drop".
+  - `fcm_tokens()` melewati user yang hari itu sudah catch → yang catch duluan tidak dapat "waktunya catch!".
+  - Streak dan kunci feed (M9) tidak berubah: catch sebelum drop tetap menambah streak dan membuka feed.
+- **Notifikasi "teman udah catch":**
+  - Edge Function baru `notify-catch` (`verify_jwt = true`), dipanggil app setelah posting tanpa ditunggu; gagal tidak membatalkan catch.
+  - `claim_catch_notification(catch, user)` (service role) menandai `catches.notified_at` atomik: sekali per catch, hanya catch hari ini milik pemanggil → tidak bisa dipakai spam. Penerima = anggota circle mana pun yang sama dengan pemilik (selain pemilik) yang punya token.
+  - Copy per penerima: belum catch → "catch dulu buat lihat hewan temuannya." (feed masih terkunci); sudah → "lihat hewan temuannya di feed.".
+  - Channel Android baru `friend_catch` (prioritas default, bisa dimatikan terpisah dari daily drop) di `MainActivity`.
+  - App: `PushMessaging.friendCatches`; saat app terbuka → snackbar + "lihat"; diketuk → buka feed; feed dimuat ulang.
+  - Belum ada pengaturan untuk mematikan notif ini selain lewat pengaturan channel Android.
+- **Manual setelah merge:** `npx supabase db push`, lalu `npx supabase functions deploy notify-catch send-daily-drop` (send-daily-drop tidak berubah kodenya, tapi `fcm_tokens` baru ikut terpakai otomatis; deploy ulang aman), build APK baru.
 

@@ -249,6 +249,7 @@ async function main() {
         personality: u.catch.personality,
         location_hidden: true,
         is_late: u.catch.late,
+        timing: u.catch.late ? "late" : "on_time",
         catch_date: today,
         created_at: new Date(createdAt).toISOString(),
       }),

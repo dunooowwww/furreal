@@ -130,14 +130,10 @@ class _TodayCardState extends ConsumerState<_TodayCard> {
         (today.isLoading && !today.hasValue) ||
         (drop.isLoading && !drop.hasValue);
     final failed = today.hasError || drop.hasError;
-    final waiting = caught == null && phase == DropPhase.waiting;
-
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
-        color: caught == null && !waiting
-            ? FurrealColors.accent
-            : FurrealColors.surface,
+        color: caught == null ? FurrealColors.accent : FurrealColors.surface,
         borderRadius: BorderRadius.circular(FurrealShape.cardRadius),
         border: Border.all(
           color: FurrealColors.ink,
@@ -164,59 +160,32 @@ class _TodayCardState extends ConsumerState<_TodayCard> {
             )
           else if (caught != null)
             ..._buildCaught(caught)
-          else if (waiting)
-            ..._buildWaiting()
           else
-            ..._buildOpenCamera(context, late: phase == DropPhase.late),
+            ..._buildOpenCamera(context, phase: phase),
         ],
       ),
     );
   }
 
-  List<Widget> _buildWaiting() => [
-    Text(
-      'sabar\ndulu.',
-      style: FurrealText.display(fontSize: 46).copyWith(height: 0.95),
-    ),
+  List<Widget> _buildOpenCamera(BuildContext context, {DropPhase? phase}) => [
+    Text(switch (phase) {
+      DropPhase.waiting => 'catch\nduluan?',
+      DropPhase.late => 'masih bisa\ncatch!',
+      _ => 'waktunya\ncatch!',
+    }, style: FurrealText.display(fontSize: 46).copyWith(height: 0.95)),
     const SizedBox(height: 14),
-    const Text(
-      'daily drop turun sekali sehari, antara jam 10 pagi sampai 8 malam. '
-      'kamera kebuka begitu notifikasinya masuk.',
-      style: TextStyle(fontSize: 15, height: 1.4),
-    ),
-    const SizedBox(height: 14),
-    FilledButton.icon(
-      onPressed: null,
-      icon: const Icon(Icons.lock_outline, size: 20),
-      label: const Text('kamera dikunci'),
-      style: FilledButton.styleFrom(
-        disabledBackgroundColor: FurrealColors.background,
-        disabledForegroundColor: FurrealColors.textSecondary,
-        minimumSize: const Size.fromHeight(56),
-        shape: const StadiumBorder(
-          side: BorderSide(
-            color: FurrealColors.textSecondary,
-            width: FurrealShape.borderWidth,
-          ),
-        ),
-      ),
-    ),
-  ];
-
-  List<Widget> _buildOpenCamera(BuildContext context, {required bool late}) => [
-    Text(
-      late ? 'masih bisa\ncatch!' : 'waktunya\ncatch!',
-      style: FurrealText.display(fontSize: 46).copyWith(height: 0.95),
-    ),
-    const SizedBox(height: 14),
-    Text(
-      late
-          ? 'udah lewat 1 jam dari drop, jadi catch lo ditandai telat. '
-                'gapapa, yang penting catch.'
-          : 'foto hewan pertama yang lo temuin hari ini. '
-                'kamera real-time, galeri dikunci.',
-      style: const TextStyle(fontSize: 15, height: 1.4),
-    ),
+    Text(switch (phase) {
+      // M10: kamera tidak dikunci sebelum drop (ala BeReal tanpa nunggu).
+      DropPhase.waiting =>
+        'daily drop belum turun (jam acak, 10 pagi–8 malam). lo tetap boleh '
+            'catch sekarang, nanti ditandai "sebelum drop".',
+      DropPhase.late =>
+        'udah lewat 1 jam dari drop, jadi catch lo ditandai telat. '
+            'gapapa, yang penting catch.',
+      _ =>
+        'foto hewan pertama yang lo temuin hari ini. '
+            'kamera real-time, galeri dikunci.',
+    }, style: const TextStyle(fontSize: 15, height: 1.4)),
     const SizedBox(height: 14),
     FilledButton.icon(
       onPressed: () => context.push(Routes.camera),
