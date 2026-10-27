@@ -265,7 +265,8 @@ void main() {
     );
     expect(
       friendlyError(const PostgrestException(message: 'x', code: 'FR006')),
-      'terlalu banyak percobaan masuk. tunggu 15 menit ya.',
+      'terlalu banyak percobaan masuk pakai username ini. tunggu 15 menit, '
+      'atau masuk pakai email.',
     );
     expect(
       friendlyError(const AuthException('x', code: 'same_password')),

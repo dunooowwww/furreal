@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router.dart';
 import '../../../app/theme.dart';
 import '../../../shared/app_settings.dart';
+import '../../../shared/widgets/discard_photos_dialog.dart';
 import '../../daily_drop/data/daily_drop.dart';
 import '../../daily_drop/state/daily_drop_providers.dart';
 import '../data/captured_photos.dart';
@@ -115,6 +116,12 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     }
   }
 
+  /// Tutup kamera. Setelah foto hewan diambil, tanya dulu sebelum dibuang.
+  Future<void> _close() async {
+    if (_animalPhoto != null && !await confirmDiscardPhotos(context)) return;
+    if (mounted) context.pop();
+  }
+
   void _flip() =>
       _open(_lens == CameraLens.back ? CameraLens.front : CameraLens.back);
 
@@ -151,43 +158,49 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   @override
   Widget build(BuildContext context) {
     final step = _steps[_step];
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light,
-      child: Scaffold(
-        backgroundColor: _Dark.background,
-        body: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-            child: _permissionDenied
-                ? _PermissionDenied(
-                    onClose: () => context.pop(),
-                    onOpenSettings: () => ref.read(openAppSettingsProvider)(),
-                    onRetry: () => _open(_lens),
-                  )
-                : Column(
-                    children: [
-                      _TopBar(
-                        label: step.label,
-                        onClose: () => context.pop(),
-                        onFlip: _busy ? null : _flip,
-                      ),
-                      const _DropTimer(),
-                      const SizedBox(height: 16),
-                      Expanded(child: _buildViewfinder(step)),
-                      const SizedBox(height: 16),
-                      _BottomBar(
-                        flashAuto: _flashAuto,
-                        onShoot: _ready && !_busy ? _shoot : null,
-                        onFlash: _toggleFlash,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'REAL-TIME ONLY · NO FILTER',
-                        style: FurrealText.mono(fontSize: 11)
-                            .copyWith(color: _Dark.faint, letterSpacing: 0.5),
-                      ),
-                    ],
-                  ),
+    return PopScope(
+      canPop: _animalPhoto == null,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _close();
+      },
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.light,
+        child: Scaffold(
+          backgroundColor: _Dark.background,
+          body: SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+              child: _permissionDenied
+                  ? _PermissionDenied(
+                      onClose: _close,
+                      onOpenSettings: () => ref.read(openAppSettingsProvider)(),
+                      onRetry: () => _open(_lens),
+                    )
+                  : Column(
+                      children: [
+                        _TopBar(
+                          label: step.label,
+                          onClose: _close,
+                          onFlip: _busy ? null : _flip,
+                        ),
+                        const _DropTimer(),
+                        const SizedBox(height: 16),
+                        Expanded(child: _buildViewfinder(step)),
+                        const SizedBox(height: 16),
+                        _BottomBar(
+                          flashAuto: _flashAuto,
+                          onShoot: _ready && !_busy ? _shoot : null,
+                          onFlash: _toggleFlash,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'REAL-TIME ONLY · NO FILTER',
+                          style: FurrealText.mono(fontSize: 11)
+                              .copyWith(color: _Dark.faint, letterSpacing: 0.5),
+                        ),
+                      ],
+                    ),
+            ),
           ),
         ),
       ),

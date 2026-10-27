@@ -9,6 +9,7 @@ import '../../../app/router.dart';
 import '../../../app/theme.dart';
 import '../../../shared/analytics.dart';
 import '../../../shared/errors.dart';
+import '../../../shared/widgets/discard_photos_dialog.dart';
 import '../../../shared/widgets/error_text.dart';
 import '../../camera/data/captured_photos.dart';
 import '../data/ai_identification.dart';
@@ -68,7 +69,9 @@ class _CatchResultScreenState extends ConsumerState<CatchResultScreen> {
 
   @override
   void dispose() {
-    // Batal posting (foto ulang, tutup, back): buang foto yang sudah ter-upload.
+    // Batal posting (foto ulang atau back, setelah dikonfirmasi): buang foto
+    // yang sudah ter-upload. Kalau posting sebenarnya berhasil tapi balasannya
+    // hilang, server menolak menghapus foto catch yang sudah terposting.
     final prepared = _prepared;
     if (prepared != null && !_posted) _repository.discard(prepared);
     _name.dispose();
@@ -209,10 +212,30 @@ class _CatchResultScreenState extends ConsumerState<CatchResultScreen> {
     }
   }
 
-  void _retake() => context.pushReplacement(Routes.camera);
+  Future<void> _retake() async {
+    if (!await confirmDiscardPhotos(context, retake: true)) return;
+    if (mounted) context.pushReplacement(Routes.camera);
+  }
+
+  /// Back sistem: tanya dulu, foto belum diposting bakal kebuang.
+  Future<void> _leave() async {
+    if (_posting) return;
+    if (!await confirmDiscardPhotos(context)) return;
+    if (mounted) context.pop();
+  }
 
   @override
   Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) _leave();
+      },
+      child: _buildPhase(context),
+    );
+  }
+
+  Widget _buildPhase(BuildContext context) {
     return switch (_phase) {
       _Phase.uploading => const _LoadingScreen(
         title: 'nyimpen fotonya dulu…',

@@ -120,9 +120,6 @@ abstract interface class CatchRepository {
 
   /// Hapus foto yang sudah ter-upload kalau user batal posting.
   Future<void> discard(PreparedCatch prepared);
-
-  /// Hapus catch hari ini beserta fotonya (dipakai tombol debug).
-  Future<void> deleteTodayCatch();
 }
 
 class SupabaseCatchRepository implements CatchRepository {
@@ -241,26 +238,5 @@ class SupabaseCatchRepository implements CatchRepository {
     await _photos
         .remove([prepared.animalPath, prepared.selfiePath])
         .catchError((_) => <FileObject>[]);
-  }
-
-  @override
-  Future<void> deleteTodayCatch() async {
-    final today = await todayCatch();
-    if (today == null) return;
-    await _photos.remove([today.animalPhotoPath, today.selfiePhotoPath]);
-    await _client.from('catches').delete().eq('id', today.id);
-    // Hapus hewannya hanya kalau dibuat oleh catch ini (tanpa catch lain).
-    // Hewan "ketemu lagi" tetap, encounter_count-nya turun lewat trigger.
-    final animalId = today.animalId;
-    if (animalId != null) {
-      final others = await _client
-          .from('catches')
-          .select('id')
-          .eq('animal_id', animalId)
-          .limit(1);
-      if (others.isEmpty) {
-        await _client.from('animals').delete().eq('id', animalId);
-      }
-    }
   }
 }

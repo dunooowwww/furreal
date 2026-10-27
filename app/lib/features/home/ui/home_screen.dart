@@ -1,11 +1,9 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
 import '../../../app/theme.dart';
-import '../../../shared/errors.dart';
 import '../../auth/state/auth_providers.dart';
 import '../../catch_result/data/catch_repository.dart';
 import '../../catch_result/state/catch_providers.dart';
@@ -89,37 +87,11 @@ class HomeScreen extends ConsumerWidget {
 }
 
 /// Kartu "daily drop" (prototype beranda): buka kamera, atau catch hari ini.
-class _TodayCard extends ConsumerStatefulWidget {
+class _TodayCard extends ConsumerWidget {
   const _TodayCard();
 
   @override
-  ConsumerState<_TodayCard> createState() => _TodayCardState();
-}
-
-class _TodayCardState extends ConsumerState<_TodayCard> {
-  bool _deleting = false;
-
-  Future<void> _deleteToday() async {
-    setState(() => _deleting = true);
-    final messenger = ScaffoldMessenger.of(context);
-    try {
-      await ref.read(catchRepositoryProvider).deleteTodayCatch();
-      ref.invalidate(todayCatchProvider);
-      for (final p in catchDerivedProviders) {
-        ref.invalidate(p);
-      }
-      messenger.showSnackBar(
-        const SnackBar(content: Text('catch hari ini dihapus (debug).')),
-      );
-    } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(friendlyError(e))));
-    } finally {
-      if (mounted) setState(() => _deleting = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final today = ref.watch(todayCatchProvider);
     final drop = ref.watch(todayDropProvider);
     final caught = today.value;
@@ -216,14 +188,6 @@ class _TodayCardState extends ConsumerState<_TodayCard> {
       'besok ada daily drop lagi.',
       style: TextStyle(color: FurrealColors.textSecondary),
     ),
-    // Hanya untuk tes berulang di mode debug; tidak ada di build rilis.
-    if (kDebugMode) ...[
-      const SizedBox(height: 12),
-      OutlinedButton(
-        onPressed: _deleting ? null : _deleteToday,
-        child: Text(_deleting ? 'menghapus…' : 'hapus catch hari ini (debug)'),
-      ),
-    ],
   ];
 }
 

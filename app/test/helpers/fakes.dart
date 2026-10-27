@@ -403,7 +403,6 @@ class FakeCatchRepository implements CatchRepository {
   final discarded = <String>[];
   final submitted = <CatchDetails>[];
   final notified = <String>[];
-  var deleted = 0;
 
   /// Label waktu yang "dihitung server" saat submit.
   CatchTiming timing = CatchTiming.onTime;
@@ -467,12 +466,6 @@ class FakeCatchRepository implements CatchRepository {
     notified.add(catchId);
     final error = notifyError;
     if (error != null) throw error;
-  }
-
-  @override
-  Future<void> deleteTodayCatch() async {
-    deleted++;
-    today = null;
   }
 }
 
