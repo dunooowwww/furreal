@@ -15,6 +15,7 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
 - [ ] **M8 — Login baru & splash** — kode selesai; `flutter analyze` bersih, `flutter test` 124/124, `deno test` 56/56, pgTAP 233/233 (Postgres 16 lokal dengan tiruan auth + storage + Vault). Belum terverifikasi: daftar/masuk/lupa password di Supabase produksi, masuk dengan Google (butuh setup Google Cloud), build Android dengan ikon & splash baru (lihat catatan M8).
 - [ ] **M9 — Pengaturan & feed ala BeReal** — kode selesai; `flutter analyze` bersih, `flutter test` 108/108, `deno test` 56/56, pgTAP 220/220 (Postgres 16 lokal dengan tiruan auth + storage + Vault, `pg_cron` asli, `pg_net` tiruan). Belum terverifikasi: migrasi di Supabase produksi, upload foto profil & kunci feed di HP (lihat catatan M9).
 - [ ] **M10 — Daily drop ala BeReal** — kode selesai; `flutter analyze` bersih, `flutter test` 132/132, `deno test` 66/66, pgTAP 249/249 (Postgres 16 lokal dengan tiruan auth + storage + Vault). Belum terverifikasi: notifikasi "teman udah catch" sampai di HP, catch sebelum drop di produksi (lihat catatan M10).
+- **Perbaikan audit (27 Okt, di luar milestone)** — kode selesai; `flutter analyze` bersih, `flutter test` 134/134, `deno test` 66/66, pgTAP 262/262 (Postgres 16 lokal dengan tiruan auth + storage + Vault + `pg_net`, `pg_cron` asli). Belum terverifikasi: migrasi di Supabase lokal asli/produksi dan dialog konfirmasi di HP (lihat catatan audit).
 
 ## Catatan keputusan
 
@@ -302,3 +303,12 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
   - Belum ada pengaturan untuk mematikan notif ini selain lewat pengaturan channel Android.
 - **Manual setelah merge:** `npx supabase db push`, lalu `npx supabase functions deploy notify-catch send-daily-drop` (send-daily-drop tidak berubah kodenya, tapi `fcm_tokens` baru ikut terpakai otomatis; deploy ulang aman), build APK baru.
 
+### Perbaikan audit (27 Okt 2026)
+- **Asal:** audit keamanan & UX sebelum closed testing. Dikerjakan 4 temuan teratas; sisanya (reaksi gagal tanpa pesan, copy "kamu" vs "lo", jatah AI terpotong sebelum cek foto) belum.
+- **Catch tidak bisa dihapus user** (`20261027090000_audit_hardening.sql`): policy & hak `delete` di `catches` dicabut. Dulu hapus → catch ulang bisa mengakali satu catch per hari dan mengirim notifikasi "teman udah catch" berulang (`notified_at` per catch). Tombol "hapus catch hari ini (debug)" di beranda dihapus, diganti skrip lokal `supabase/scripts/reset_dev_today.ts <email>` (service role; hapus foto, catch, hewan baru, lalu `recompute_streak`). Hapus akun tidak terpengaruh (service role + cascade).
+- **Foto catch yang sudah diposting dikunci:** policy update/delete `catch-photos` ditambah `not is_posted_catch_photo(name)`. Kasus nyata: posting berhasil di server tapi balasan hilang (sinyal jelek) → app menganggap gagal → saat layar ditutup `discard()` dulu menghapus foto catch yang sudah tayang. Sekarang Storage API menolak diam-diam. Sekaligus menutup penggantian foto setelah posting.
+- **`create_catch` v6 idempoten:** `catch_id` yang sudah jadi catch milik pemanggil → catch itu dikembalikan (bukan `FR001`), jadi "posting lagi" setelah balasan hilang langsung berhasil. `catch_id` lain di hari yang sama tetap `FR001`.
+- **Konfirmasi sebelum foto dibuang** (`shared/widgets/discard_photos_dialog.dart`): kamera langkah 2 (tutup/back) dan layar hasil (back/"foto ulang", termasuk saat upload/AI) bertanya dulu ("buang catch ini?" / "foto ulang?", tombol "lanjut catch"). Back diblokir selama posting. Pakai `PopScope`.
+- **Pesan `FR006`:** "terlalu banyak percobaan masuk pakai username ini. tunggu 15 menit, atau masuk pakai email." Batas per username tetap (orang lain bisa sengaja mengunci login username seseorang; jalur email tidak terkunci).
+- **Lingkungan test (sesi cloud):** Flutter 3.47.7 dari storage.googleapis.com, Deno 2.9.6 dari paket npm `deno`, `postgresql-16-pgtap` + `postgresql-16-cron` via apt; skema auth/storage/Vault dan `pg_net` ditiru.
+- **Manual setelah merge:** `npx supabase db push` (tidak ada Edge Function yang berubah), build APK baru.

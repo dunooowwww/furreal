@@ -19,6 +19,8 @@ cd app && flutter run --dart-define-from-file=.env.local
 SUPABASE_SERVICE_ROLE_KEY=... deno run -A supabase/scripts/seed_dev_feed.ts emailkamu@contoh.com
 # catch hari-hari lalu untuk tes streak (lokal saja): --days N, --gap untuk streak putus
 SUPABASE_SERVICE_ROLE_KEY=... deno run -A supabase/scripts/seed_dev_streak.ts emailkamu@contoh.com --days 3
+# hapus catch hari ini supaya bisa catch lagi (lokal saja; pengganti tombol debug di app)
+SUPABASE_SERVICE_ROLE_KEY=... deno run -A supabase/scripts/reset_dev_today.ts emailkamu@contoh.com
 # daily drop (lokal saja): turun sekarang (butuh functions serve), --lock untuk mengunci kamera, --status
 SUPABASE_SERVICE_ROLE_KEY=... deno run -A supabase/scripts/seed_dev_drop.ts
 # Windows dengan package.json di folder home: tambahkan --node-modules-dir=none setelah `deno run -A`

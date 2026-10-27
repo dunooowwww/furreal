@@ -139,9 +139,9 @@ daily_drops     (drop_date date PK, scheduled_at timestamptz,   -- jam acak, rah
 - `daily_drops`: user hanya membaca drop yang sudah turun, kolom `drop_date` & `sent_at` saja (jam jadwal tidak bocor); tidak bisa menulis.
 - `circles` / `circle_members`: hanya anggota yang bisa membaca. Gabung lewat fungsi RPC `join_circle(invite_code)`.
 - **Kunci feed (v1.0):** catch anggota circle bertanggal hari ini (Asia/Jakarta) baru terbaca setelah user sendiri catch hari ini: baris `catches`, foto storage, reaksi, dan komentar. Helper `can_view_catch_content(owner, catch_date)` + `has_caught_today()`. `circle_feed` menjadi security definer (cek keanggotaan sendiri) supaya baris terkunci tetap muncul dengan kolom `locked = true` dan isi kosong.
-- `animals`, `catches`: pemilik bisa CRUD miliknya (catch + hewan baru dibuat atomik lewat RPC `create_catch`; kolom hasil server seperti `catch_date`, `is_late`, `user_id` tidak bisa diubah user); anggota circle yang sama hanya bisa membaca.
+- `animals`, `catches`: pemilik bisa membaca, membuat, dan mengubah miliknya (catch + hewan baru dibuat atomik lewat RPC `create_catch`, idempoten untuk `catch_id` yang sama; kolom hasil server seperti `catch_date`, `is_late`, `user_id` tidak bisa diubah user); anggota circle yang sama hanya bisa membaca. **Catch tidak bisa dihapus user** (audit 27 Okt): hapus akun lewat `delete-account`, hapus untuk development lewat `supabase/scripts/reset_dev_today.ts`.
 - `reactions`, `comments`: bisa dibuat dan dibaca jika user berbagi circle dengan pemilik catch; hanya bisa menghapus milik sendiri.
-- Storage `catch-photos`: path `{user_id}/{catch_id}/animal.jpg` dan `selfie.jpg`. Upload hanya ke folder sendiri; baca hanya jika berbagi circle (dan aturan kunci feed). Akses lewat signed URL.
+- Storage `catch-photos`: path `{user_id}/{catch_id}/animal.jpg` dan `selfie.jpg`. Upload hanya ke folder sendiri; foto yang belum diposting boleh ditimpa/dihapus pemiliknya, foto catch yang sudah diposting tidak (`is_posted_catch_photo`); baca hanya jika berbagi circle (dan aturan kunci feed). Akses lewat signed URL.
 - Storage `avatars` (v1.0): path `{user_id}/{uuid}.jpg`, JPEG maks 1 MB. Upload/ubah/hapus hanya di folder sendiri; baca milik sendiri atau satu circle. `profiles.avatar_path` wajib di folder sendiri (check constraint).
 - `leave_circle(circle_id)` (v1.0): keluar circle; circle tanpa anggota ikut terhapus.
 - Buat helper SQL `shares_circle(a uuid, b uuid) returns boolean` untuk dipakai di semua policy.
@@ -245,5 +245,5 @@ Sediakan `.env.example` tanpa nilai asli.
 
 - **RLS:** pgTAP di `supabase/tests/`, jalankan `supabase test db`. Wajib ada test "user di luar circle tidak bisa membaca catch".
 - **Edge Functions:** test Deno dengan respons AI (provider `mock` atau `fetch` palsu) dan FCM di-mock; jangan pernah memanggil API asli di test.
-- **Data development daily drop:** `supabase/scripts/seed_dev_drop.ts` menurunkan drop hari ini sekarang (lewat jalur asli dispatch → function), menguncinya lagi (`--lock`), atau menampilkan status (`--status`).
+- **Data development daily drop:** `supabase/scripts/seed_dev_drop.ts` menurunkan drop hari ini sekarang (lewat jalur asli dispatch → function), menguncinya lagi (`--lock`), atau menampilkan status (`--status`). `supabase/scripts/reset_dev_today.ts` menghapus catch hari ini milik akunmu supaya bisa catch lagi.
 - **Flutter:** widget test untuk alur kamera → hasil tangkapan → posting, dan untuk koleksi.
