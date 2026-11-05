@@ -20,6 +20,7 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
 - [ ] **M13 — Ajak teman, edit & hapus catch** — kode selesai; `flutter analyze` bersih, `flutter test` 162/162, `deno test` 66/66, pgTAP 283/283 (Postgres 16 lokal dengan tiruan auth + storage + Vault). Belum terverifikasi: menu bagikan undangan & edit/hapus di HP asli, migrasi di produksi (lihat catatan M13).
 - [ ] **M14 — Notifikasi aktivitas & pengingat streak** — kode selesai; `flutter analyze` bersih, `flutter test` 165/165, `deno test` 75/75, pgTAP 298/298 (Postgres 16 lokal dengan tiruan auth + storage + Vault, `pg_net` tiruan). Belum terverifikasi: notifikasi sampai di HP, cron 20:00 di produksi (lihat catatan M14).
 - [ ] **M15 — Edit & hapus kartu koleksi** — kode selesai; `flutter analyze` bersih, `flutter test` 168/168, `deno test` 75/75, pgTAP 309/309 (Postgres 16 lokal dengan tiruan auth + storage + Vault). Belum terverifikasi: di HP asli, migrasi di produksi.
+- [ ] **M16 — Splash animasi & riwayat catch** — kode selesai; `flutter analyze` bersih, `flutter test` 173/173, `deno test` 75/75, pgTAP 309/309. Belum terverifikasi: animasi splash & riwayat di HP asli.
 
 ## Catatan keputusan
 
@@ -358,3 +359,10 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
 - App: detail koleksi punya tombol "edit" (sheet: nama, segmented peliharaan/liar, jenis, kepribadian) dan "hapus" (dialog konfirmasi, detail ditutup). Detail mengikuti data terbaru setelah edit; beranda & feed ikut dimuat ulang.
 - Nomor kartu (#0001) dihitung dari urutan hewan yang tersisa, jadi bisa bergeser setelah ada yang dihapus.
 - **Manual setelah merge:** `npx supabase db push --remote`, build APK baru.
+
+### M16 (9 Nov 2026)
+- **Permintaan user:** splash animasi sebelum masuk app; riwayat feed harian tetap tersimpan sebagai halaman lain di koleksi. Ide "kartu full background" dibatalkan user (kartu tetap pakai potongan hewan).
+- **Keputusan user:** splash animasi (bukan cuma splash statis M8); riwayat = **catch sendiri saja** (bukan feed circle hari lalu).
+- **Splash:** `SplashOverlay` di `MaterialApp.router(builder:)`: tapak kaki memantul, 4 jejak kecil muncul bergantian, logo & tagline naik, ±1,5 dtk lalu memudar 0,3 dtk. Sebagai lapisan (bukan rute) supaya router & notifikasi yang diketuk saat cold start tetap langsung ke tujuan. Latar = splash native, jadi mulus. Durasi `splashDurationProvider` (nol di test). Splash rute (loading/gagal) M8 tetap.
+- **Riwayat:** tanpa migrasi (RLS catch milik sendiri sudah boleh dibaca). Tab "kartu" / "riwayat" di koleksi; query `catches` milik sendiri terbaru dulu, 30 per halaman (kursor `catch_date`), signed URL per halaman. Ikut dimuat ulang setelah catch dibuat/diedit/dihapus.
+- **Manual setelah merge:** build APK baru.

@@ -1,4 +1,5 @@
 import '../../catch_result/data/catch_repository.dart' show AnimalKind;
+import '../../daily_drop/data/daily_drop.dart' show CatchTiming;
 
 /// Hewan di koleksi + foto & kepribadian dari catch terakhirnya.
 class CollectionAnimal {
@@ -163,4 +164,61 @@ List<CollectionAnimal> sortForReencounter(
     return b.lastSeenAt.compareTo(a.lastSeenAt);
   });
   return sorted;
+}
+
+/// Satu catch sendiri di riwayat (ala BeReal Memories). Tetap ada walau
+/// hewannya dihapus dari koleksi.
+class HistoryCatch {
+  const HistoryCatch({
+    required this.id,
+    required this.catchDate,
+    required this.createdAt,
+    required this.animalPhotoPath,
+    required this.selfiePhotoPath,
+    this.animalName,
+    this.animalType,
+    this.caption,
+    this.timing = CatchTiming.onTime,
+    this.animalPhotoUrl,
+    this.selfiePhotoUrl,
+  });
+
+  factory HistoryCatch.fromJson(
+    Map<String, dynamic> json, {
+    Map<String, String> signedUrls = const {},
+  }) {
+    final animal = json['animals'] as Map<String, dynamic>?;
+    final animalPath = json['animal_photo_path'] as String;
+    final selfiePath = json['selfie_photo_path'] as String;
+    return HistoryCatch(
+      id: json['id'] as String,
+      catchDate: DateTime.parse(json['catch_date'] as String),
+      createdAt: DateTime.parse(json['created_at'] as String),
+      animalPhotoPath: animalPath,
+      selfiePhotoPath: selfiePath,
+      animalName: animal?['name'] as String?,
+      animalType: animal?['animal_type'] as String?,
+      caption: json['caption'] as String?,
+      timing: CatchTiming.fromDb(
+        json['timing'] as String?,
+        isLate: json['is_late'] as bool? ?? false,
+      ),
+      animalPhotoUrl: signedUrls[animalPath],
+      selfiePhotoUrl: signedUrls[selfiePath],
+    );
+  }
+
+  final String id;
+
+  /// Tanggal catch (Asia/Jakarta).
+  final DateTime catchDate;
+  final DateTime createdAt;
+  final String animalPhotoPath;
+  final String selfiePhotoPath;
+  final String? animalName;
+  final String? animalType;
+  final String? caption;
+  final CatchTiming timing;
+  final String? animalPhotoUrl;
+  final String? selfiePhotoUrl;
 }

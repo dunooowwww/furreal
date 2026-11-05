@@ -650,6 +650,22 @@ class FakeCollectionRepository implements CollectionRepository {
     );
   }
 
+  /// Riwayat catch sendiri, terbaru dulu.
+  List<HistoryCatch> history = [];
+  final historyQueries = <DateTime?>[];
+
+  @override
+  Future<List<HistoryCatch>> myCatches({
+    DateTime? before,
+    int limit = historyPageSize,
+  }) async {
+    historyQueries.add(before);
+    return history
+        .where((c) => before == null || c.catchDate.isBefore(before))
+        .take(limit)
+        .toList();
+  }
+
   @override
   Future<void> removeAnimal(String animalId) async {
     final e = error;
