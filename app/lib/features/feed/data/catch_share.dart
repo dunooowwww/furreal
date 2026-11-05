@@ -169,6 +169,9 @@ abstract interface class CatchSharer {
   Future<void> saveToGallery(Uint8List png, {required String name});
 
   Future<void> share(Uint8List png, {required String name, String? text});
+
+  /// Bagikan teks saja (undangan circle, M13).
+  Future<void> shareText(String text);
 }
 
 class PluginCatchSharer implements CatchSharer {
@@ -193,5 +196,10 @@ class PluginCatchSharer implements CatchSharer {
         text: text,
       ),
     );
+  }
+
+  @override
+  Future<void> shareText(String text) async {
+    await SharePlus.instance.share(ShareParams(text: text));
   }
 }
