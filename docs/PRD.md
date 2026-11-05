@@ -2,7 +2,7 @@
 
 > Dokumen ini adalah spesifikasi teknis untuk membangun MVP furreal.
 > Baca bagian yang relevan dengan milestone yang sedang dikerjakan saja.
-> Versi produk: PRD v1.5 · Diperbarui: 7 Nov 2026
+> Versi produk: PRD v1.6 · Diperbarui: 8 Nov 2026
 
 ---
 
@@ -200,6 +200,13 @@ Edge Function tidak bisa menunggu berjam-jam, jadi jadwal dipegang database (v0.
 - FCM channel Android `friend_catch` (prioritas default, TTL 6 jam, data `type=friend_catch`, `catch_id`). Judul "{nama} udah catch!"; isi "catch dulu buat lihat hewan temuannya." (penerima belum catch, feed terkunci) atau "lihat hewan temuannya di feed.". Token ganda dikirim sekali; token mati dihapus.
 - **App:** notifikasi saat app terbuka → snackbar "{nama} udah catch!" + tombol "lihat"; diketuk → buka feed. Feed dimuat ulang.
 
+### 6.4 `send-activity` (v1.6)
+- `verify_jwt = false`; Bearer `DAILY_DROP_SECRET` (sama dengan send-daily-drop). Body `{ "job": "activity" | "streak" }`. URL dipanggil pg_cron diturunkan dari Vault `daily_drop_url` (`send-daily-drop` → `send-activity`), jadi tidak ada Vault baru.
+- **Reaksi & komentar:** trigger di `reactions`/`comments` mengisi `activity_notifications` (penerima = pemilik catch, bukan reaksi ke catch sendiri; reaksi dari orang yang sama ke catch yang sama hanya sekali). `dispatch_activity_notifications()` tiap menit memanggil fungsi kalau ada antrean. `claim_activity_notifications()` menandai semua antrean terkirim dan mengembalikan satu baris per penerima & catch (nama pelaku terbaru dulu, jumlah reaksi/komentar, komentar terbaru "nama: isi"). Lebih dari 6 jam / tanpa token → dibuang. Antrean terkirim dihapus setelah 7 hari.
+  - FCM channel `activity` (TTL 6 jam, data `type=activity`, `catch_id`). Judul "{dinda, raka & 2 lainnya} ngereaksi / komentar di / ngereaksi & komentar di catch {nama hewan}"; isi = komentar terbaru (maks 120) atau "buka feed buat lihat.". App: sama seperti `friend_catch` (snackbar + "lihat", diketuk → feed).
+- **Pengingat streak:** pg_cron 20:00 WIB → `dispatch_streak_reminders()` → `claim_streak_reminders()`: user bertoken yang catch terakhirnya kemarin (streak > 0) dan belum catch hari ini, sekali per hari (`streaks.reminded_on`). Channel `streak_reminder` (TTL 4 jam). Judul "streak {n} hari lo hampir putus!". App: saat terbuka → snackbar + tombol "catch" (buka kamera); diketuk → beranda.
+- Tanpa FCM terkonfigurasi: antrean tidak diklaim (tidak hilang). Token mati dihapus.
+
 ## 7. Milestone & kriteria selesai
 
 Kerjakan **satu milestone per sesi**. Setiap milestone selesai = test lulus + `flutter analyze` bersih.
@@ -220,6 +227,7 @@ Kerjakan **satu milestone per sesi**. Setiap milestone selesai = test lulus + `f
 | M11 | Kartu koleksi (dari feedback) | Hewan dipotong di HP (ML Kit) saat posting & untuk catch lama, kartu koleksi bergaya referensi user di grid, detail (holo geser jari), dan "baru dapet!" setelah posting; RLS/test lulus |
 | M12 | Kamera ganda, share, caption, saran (dari feedback) | 1 tap jepret hewan + selfie (urutan bisa dipilih), simpan/bagikan gambar catch sendiri (foto + selfie + watermark furreal + tanggal + nama & caption), caption manual di feed (kepribadian hanya di koleksi), form saran fitur/laporan bug di pengaturan (tabel `feedback`, hanya insert), RLS/test lulus |
 | M13 | Ajak teman, edit & hapus catch (dari feedback) | Bagikan kode undangan lewat menu share (nama circle + kode + link opsional), edit nama hewan & caption catch hari ini, hapus catch dengan konfirmasi + streak dihitung ulang, RLS/test lulus |
+| M14 | Notifikasi aktivitas & pengingat streak (dari feedback) | Pemilik catch dapat notifikasi reaksi/komentar (dikelompokkan, tanpa spam toggle), pengingat streak 20:00 WIB untuk yang belum catch, channel Android baru, RLS/test lulus |
 
 ## 8. Kebutuhan non-fungsional
 
