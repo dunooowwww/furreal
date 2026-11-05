@@ -333,6 +333,11 @@ class FakeCircleRepository implements CircleRepository {
   }
 }
 
+/// PNG 1x1 kedua (warna lain), supaya foto kamera depan bisa dibedakan.
+final testPhotoFront = base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP438MAAAQZAYzvQbwjAAAAAElFTkSuQmCC',
+);
+
 /// PNG 1x1 valid, supaya Image.memory tidak error di test.
 final testPhoto = base64Decode(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
@@ -360,7 +365,7 @@ class FakeCatchCamera implements CatchCamera {
   @override
   Future<Uint8List> takePicture() async {
     shots.add(current!);
-    return testPhoto;
+    return current == CameraLens.front ? testPhotoFront : testPhoto;
   }
 
   @override
@@ -400,6 +405,7 @@ class FakeCatchRepository implements CatchRepository {
   Completer<void>? identifyGate;
 
   final prepared = <PreparedCatch>[];
+  final capturedPhotos = <CapturedPhotos>[];
   final identified = <String>[];
   final discarded = <String>[];
   final submitted = <CatchDetails>[];
@@ -417,6 +423,7 @@ class FakeCatchRepository implements CatchRepository {
 
   @override
   Future<PreparedCatch> prepare(CapturedPhotos photos) async {
+    capturedPhotos.add(photos);
     if (uploadFailures > 0) {
       uploadFailures--;
       throw const StorageException('upload gagal');
@@ -764,6 +771,7 @@ Future<void> pumpApp(
         circleRepositoryProvider.overrideWithValue(
           circles ?? FakeCircleRepository(),
         ),
+        autoCaptureDelayProvider.overrideWithValue(Duration.zero),
         catchCameraFactoryProvider.overrideWithValue(
           () => camera ?? FakeCatchCamera(),
         ),

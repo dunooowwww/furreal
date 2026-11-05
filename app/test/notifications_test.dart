@@ -44,7 +44,6 @@ Future<void> pumpHome(
 Future<void> postCatch(WidgetTester tester, String name) async {
   await tapText(tester, 'buka kamera');
   await tapFinder(tester, find.byKey(const Key('shutter')));
-  await tapFinder(tester, find.byKey(const Key('shutter')));
   await enter(tester, 'animal-name', name);
   await postToCircle(tester);
 }
