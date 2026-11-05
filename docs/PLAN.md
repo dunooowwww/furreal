@@ -15,6 +15,8 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
 - [ ] **M8 — Login baru & splash** — kode selesai; `flutter analyze` bersih, `flutter test` 124/124, `deno test` 56/56, pgTAP 233/233 (Postgres 16 lokal dengan tiruan auth + storage + Vault). Belum terverifikasi: daftar/masuk/lupa password di Supabase produksi, masuk dengan Google (butuh setup Google Cloud), build Android dengan ikon & splash baru (lihat catatan M8).
 - [ ] **M9 — Pengaturan & feed ala BeReal** — kode selesai; `flutter analyze` bersih, `flutter test` 108/108, `deno test` 56/56, pgTAP 220/220 (Postgres 16 lokal dengan tiruan auth + storage + Vault, `pg_cron` asli, `pg_net` tiruan). Belum terverifikasi: migrasi di Supabase produksi, upload foto profil & kunci feed di HP (lihat catatan M9).
 - [ ] **M10 — Daily drop ala BeReal** — kode selesai; `flutter analyze` bersih, `flutter test` 132/132, `deno test` 66/66, pgTAP 249/249 (Postgres 16 lokal dengan tiruan auth + storage + Vault). Belum terverifikasi: notifikasi "teman udah catch" sampai di HP, catch sebelum drop di produksi (lihat catatan M10).
+- [ ] **M11 — Kartu koleksi** — kode selesai; `flutter analyze` bersih, `flutter test` 148/148, `deno test` 66/66, pgTAP 263/263 (Postgres 16 lokal dengan tiruan auth + storage + Vault). Belum terverifikasi: kualitas potongan ML Kit di HP asli, build Android dengan paket ML Kit (lihat catatan M11).
+- [ ] **M12 — Kamera ganda, share, caption, saran** — belum dikerjakan (keputusan sudah ada di catatan M11).
 
 ## Catatan keputusan
 
@@ -301,4 +303,21 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
   - App: `PushMessaging.friendCatches`; saat app terbuka → snackbar + "lihat"; diketuk → buka feed; feed dimuat ulang.
   - Belum ada pengaturan untuk mematikan notif ini selain lewat pengaturan channel Android.
 - **Manual setelah merge:** `npx supabase db push`, lalu `npx supabase functions deploy notify-catch send-daily-drop` (send-daily-drop tidak berubah kodenya, tapi `fcm_tokens` baru ikut terpakai otomatis; deploy ulang aman), build APK baru.
+
+### M11 (5 Nov 2026)
+- **Asal:** feedback "gambar kucing di-cut, belakangnya dikasih card effect kayak kartu pokemon", dengan gambar referensi dari user (kartu pastel: logo Furreal + nomor, gambar, pita nama, tagline, info jenis/lokasi/tanggal, kotak kepribadian, badge kelangkaan).
+- **Keputusan user:** potong pakai ML Kit di HP; holo digerakkan geser jari (tanpa `sensors_plus`); catch lama dipotong di HP saat koleksi dibuka; kartu tampil di grid koleksi, detail hewan, dan setelah posting (bukan feed); **tanpa badge kelangkaan** (rarity tetap di luar MVP); tagline = kalimat pertama kepribadian, sisanya isi kotak "Kepribadian:"; nomor = urutan hewan di koleksi (#0001 = paling dulu ditemui).
+- **Potong hewan** (`google_mlkit_subject_segmentation` ^0.2.1, disetujui user; minSdk 24, model `subject_segment` diunduh Play Services lewat meta-data manifest):
+  - Foto ditegakkan dulu (EXIF) dengan `flutter_image_compress`, lalu multi-subject segmentation; dipilih subjek terbesar, minimal 3% foto (`pickMainSubject`). Bitmap subjek (PNG, sudah dipotong ke kotaknya) dikecilkan ke 720px.
+  - Setelah posting: potong (timeout 8 dtk) → kartu "BARU DAPET!"/"KETEMU LAGI!" langsung dari byte di HP → upload & `set_catch_cutout` di belakang, lalu koleksi dimuat ulang. Gagal tidak membatalkan catch.
+  - Catch lama: `cutoutBackfillProvider` mendengarkan koleksi; `CutoutService.backfill` memproses yang belum punya potongan & belum dicoba (maks 8 per kali). Error ML Kit (mis. model belum terunduh) tidak menandai catch, jadi dicoba lagi di sesi berikutnya; dalam satu sesi tiap catch hanya dicoba sekali (mencegah loop muat ulang).
+  - Migrasi `20261105090000_collection_cards.sql`: bucket menerima PNG, `is_own_catch_photo_path` mengizinkan `cutout.png`, kolom `catches.cutout_path` + `cutout_attempted` (hanya lewat RPC `set_catch_cutout`, yang mengecek file ada & catch milik pemanggil), `my_collection` v2 (+ catch terakhir, potongan, tanggal, label area). Hapus akun sudah ikut menghapus potongan (folder sama).
+- **Kartu** (`features/collection/ui/animal_card.dart`, desain sendiri, bukan tiruan merek): rasio 63:88, warna pastel per jenis (`paletteFor`), sinar lembut + taburan kilau, potongan hewan di atas foto asli yang diburamkan (tanpa potongan → foto biasa), bayangan elips di bawah hewan. Versi ringkas di grid (logo, nomor, gambar, nama, "jenis · ketemu Nx", kilau statis tipis). `HoloCard`: miring 3D maks ±0,22 rad + kilau pelangi mengikuti jari, kembali pelan saat dilepas.
+- Pratinjau visual dirender lewat golden test sementara (tidak di-commit) dengan foto & potongan buatan; Android SDK tidak ada di sesi cloud, jadi build APK pertama di laptop sekaligus mengecek paket ML Kit.
+- **Rencana M12 (keputusan user, belum dikerjakan):**
+  1. Kamera: 1 tap → dua foto otomatis, urutan bisa dipilih (hewan dulu atau selfie dulu).
+  2. Simpan/bagikan **hanya catch sendiri**: gambar berisi foto hewan + selfie kecil di pojok, watermark/logo furreal + tanggal, nama hewan & caption.
+  3. Feed pakai **caption manual**; kartu kepribadian hanya di koleksi.
+  4. Form saran fitur / laporan bug di pengaturan → tabel Supabase.
+- **Manual setelah merge:** `npx supabase db push`, build APK baru (paket ML Kit).
 

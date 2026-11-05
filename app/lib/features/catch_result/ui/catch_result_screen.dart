@@ -16,6 +16,7 @@ import '../data/area_locator.dart';
 import '../data/catch_repository.dart';
 import '../../../shared/widgets/remote_photo.dart';
 import '../../collection/data/collection_models.dart';
+import '../../collection/ui/animal_card.dart';
 import '../../collection/state/collection_providers.dart';
 import '../../feed/state/feed_providers.dart';
 import '../state/catch_providers.dart';
@@ -196,6 +197,38 @@ class _CatchResultScreenState extends ConsumerState<CatchResultScreen> {
       for (final p in catchDerivedProviders) {
         ref.invalidate(p);
       }
+      if (!mounted) return;
+      // M11: potong hewan di HP, tampilkan kartu barunya, simpan di belakang.
+      final container = ProviderScope.containerOf(context, listen: false);
+      final numbers = ref.read(collectionNumbersProvider);
+      final cutouts = ref.read(cutoutServiceProvider);
+      final cutout = await cutouts
+          .make(widget.photos.animal)
+          .timeout(const Duration(seconds: 8), onTimeout: () => null);
+      unawaited(
+        cutouts
+            .save(prepared.id, cutout)
+            .then((_) => container.invalidate(collectionProvider)),
+      );
+      if (!mounted) return;
+      // Spinner tombol posting berhenti selama kartu tampil.
+      setState(() => _posting = false);
+      await showNewCardDialog(
+        context,
+        AnimalCardData(
+          name: name,
+          kind: existing?.kind ?? _kind,
+          encounterCount: (existing?.encounterCount ?? 0) + 1,
+          animalType: existing?.animalType ?? _finalType,
+          personality: personality.isEmpty ? _ai?.personality : personality,
+          cutoutBytes: cutout,
+          photoBytes: widget.photos.animal,
+          number: existing != null ? numbers[existing.id] : numbers.length + 1,
+          areaLabel: _areaLabel,
+          date: DateTime.now(),
+        ),
+        reencounter: existing != null,
+      );
       if (!mounted) return;
       final messenger = ScaffoldMessenger.of(context);
       context.go(Routes.home);

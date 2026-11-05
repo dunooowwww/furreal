@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme.dart';
-import '../../../shared/widgets/remote_photo.dart';
 import '../data/collection_models.dart';
+import 'animal_card.dart';
 
 const _months = [
   'jan', 'feb', 'mar', 'apr', 'mei', 'jun', //
@@ -16,7 +15,11 @@ String shortDate(DateTime time) {
   return '${t.day} ${_months[t.month - 1]} ${t.year}';
 }
 
-Future<void> showAnimalDetail(BuildContext context, CollectionAnimal animal) {
+Future<void> showAnimalDetail(
+  BuildContext context,
+  CollectionAnimal animal, {
+  int? number,
+}) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
@@ -31,18 +34,18 @@ Future<void> showAnimalDetail(BuildContext context, CollectionAnimal animal) {
         width: FurrealShape.borderWidth,
       ),
     ),
-    builder: (_) => AnimalDetailSheet(animal: animal),
+    builder: (_) => AnimalDetailSheet(animal: animal, number: number),
   );
 }
 
-class AnimalDetailSheet extends ConsumerWidget {
-  const AnimalDetailSheet({super.key, required this.animal});
+class AnimalDetailSheet extends StatelessWidget {
+  const AnimalDetailSheet({super.key, required this.animal, this.number});
 
   final CollectionAnimal animal;
+  final int? number;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final photo = ref.watch(remotePhotoBuilderProvider);
+  Widget build(BuildContext context) {
     final label = FurrealText.mono(fontSize: 11)
         .copyWith(color: FurrealColors.textSecondary, letterSpacing: 0.5);
 
@@ -52,14 +55,20 @@ class AnimalDetailSheet extends ConsumerWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ClipRRect(
-            borderRadius: BorderRadius.circular(22),
-            child: SizedBox(
-              height: 260,
-              child: animal.lastPhotoPath == null
-                  ? const RemotePhotoPlaceholder()
-                  : photo(context, animal.lastPhotoUrl, animal.lastPhotoPath!),
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 320),
+              child: AnimalCard(
+                data: AnimalCardData.fromAnimal(animal, number: number),
+                interactive: true,
+              ),
             ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'geser jari di kartu buat lihat kilaunya',
+            textAlign: TextAlign.center,
+            style: label,
           ),
           const SizedBox(height: 16),
           Text(animal.name, style: FurrealText.display(fontSize: 30)),
@@ -96,27 +105,6 @@ class AnimalDetailSheet extends ConsumerWidget {
               ),
             ],
           ),
-          if (animal.lastPersonality != null) ...[
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF3F3F3),
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('KARTU KEPRIBADIAN TERAKHIR', style: label),
-                  const SizedBox(height: 6),
-                  Text(
-                    animal.lastPersonality!,
-                    style: const TextStyle(fontSize: 15, height: 1.4),
-                  ),
-                ],
-              ),
-            ),
-          ],
         ],
       ),
     );

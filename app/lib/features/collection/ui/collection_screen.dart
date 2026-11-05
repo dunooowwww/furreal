@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme.dart';
-import '../../../shared/widgets/remote_photo.dart';
 import '../../catch_result/data/catch_repository.dart' show AnimalKind;
 import '../data/collection_models.dart';
 import '../state/collection_providers.dart';
+import 'animal_card.dart';
 import 'animal_detail_sheet.dart';
 
 /// Koleksi hewan (prototype "Koleksi"). Rarity & musim di luar MVP (PRD §9).
@@ -15,6 +15,8 @@ class CollectionScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final collection = ref.watch(collectionProvider);
+    // Potong hewan dari catch lama di latar belakang (M11).
+    ref.watch(cutoutBackfillProvider);
     final streak = ref.watch(streakProvider).value ?? Streak.none;
     final filter = ref.watch(collectionFilterProvider);
 
@@ -66,6 +68,7 @@ class CollectionScreen extends ConsumerWidget {
     AnimalKind? filter,
   ) {
     final types = animals.map((a) => a.animalType).whereType<String>().toSet();
+    final numbers = ref.watch(collectionNumbersProvider);
     final shown = [
       for (final a in animals)
         if (filter == null || a.kind == filter) a,
@@ -139,12 +142,17 @@ class CollectionScreen extends ConsumerWidget {
               crossAxisCount: 2,
               mainAxisSpacing: 12,
               crossAxisSpacing: 12,
-              mainAxisExtent: 248,
+              childAspectRatio: AnimalCard.aspectRatio,
             ),
             itemCount: shown.length,
             itemBuilder: (context, i) => _AnimalCard(
               animal: shown[i],
-              onTap: () => showAnimalDetail(context, shown[i]),
+              number: numbers[shown[i].id],
+              onTap: () => showAnimalDetail(
+                context,
+                shown[i],
+                number: numbers[shown[i].id],
+              ),
             ),
           ),
       ],
@@ -226,67 +234,26 @@ class _FilterPill extends StatelessWidget {
   }
 }
 
-class _AnimalCard extends ConsumerWidget {
-  const _AnimalCard({required this.animal, required this.onTap});
+class _AnimalCard extends StatelessWidget {
+  const _AnimalCard({required this.animal, required this.onTap, this.number});
 
   final CollectionAnimal animal;
   final VoidCallback onTap;
+  final int? number;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final photo = ref.watch(remotePhotoBuilderProvider);
-    return Card(
-      key: Key('animal-${animal.id}'),
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(22),
-        side: const BorderSide(
-          color: FurrealColors.ink,
-          width: FurrealShape.borderWidth,
-        ),
-      ),
-      child: InkWell(
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label:
+          '${animal.name}, ${animal.animalType ?? 'jenis belum diisi'}, '
+          'ketemu ${animal.encounterCount} kali',
+      child: GestureDetector(
+        key: Key('animal-${animal.id}'),
         onTap: onTap,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            SizedBox(
-              height: 140,
-              child: animal.lastPhotoPath == null
-                  ? const RemotePhotoPlaceholder()
-                  : photo(context, animal.lastPhotoUrl, animal.lastPhotoPath!),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    animal.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: FurrealText.display(fontSize: 18)
-                        .copyWith(fontWeight: FontWeight.w700),
-                  ),
-                  Text(
-                    animal.animalType ?? 'jenis belum diisi',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: FurrealColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'ketemu ${animal.encounterCount}x · ${animal.kind.label}',
-                    style: FurrealText.mono(fontSize: 11)
-                        .copyWith(color: FurrealColors.textSecondary),
-                  ),
-                ],
-              ),
-            ),
-          ],
+        child: AnimalCard(
+          data: AnimalCardData.fromAnimal(animal, number: number),
+          compact: true,
         ),
       ),
     );

@@ -22,6 +22,7 @@ import 'package:furreal/features/catch_result/state/catch_providers.dart';
 import 'package:furreal/features/circles/data/circle_repository.dart';
 import 'package:furreal/features/collection/data/collection_models.dart';
 import 'package:furreal/features/collection/data/collection_repository.dart';
+import 'package:furreal/features/collection/data/cutout.dart';
 import 'package:furreal/features/collection/state/collection_providers.dart';
 import 'package:furreal/features/daily_drop/data/daily_drop.dart';
 import 'package:furreal/features/daily_drop/state/daily_drop_providers.dart';
@@ -586,6 +587,9 @@ CollectionAnimal animal({
   int encounters = 1,
   Duration lastSeenAgo = const Duration(days: 1),
   String? personality,
+  String? catchId,
+  String? cutoutPath,
+  bool cutoutAttempted = false,
 }) => CollectionAnimal(
   id: id,
   name: name,
@@ -596,7 +600,45 @@ CollectionAnimal animal({
   lastSeenAt: DateTime.now().subtract(lastSeenAgo),
   lastPhotoPath: 'u/$id/animal.jpg',
   lastPersonality: personality,
+  lastCatchId: catchId,
+  lastCutoutPath: cutoutPath,
+  cutoutAttempted: cutoutAttempted,
 );
+
+/// PNG 1x1 dipakai sebagai "potongan hewan" palsu.
+class FakeCutoutMaker implements CutoutMaker {
+  FakeCutoutMaker({this.found = true});
+
+  /// false = tidak ada hewan terdeteksi.
+  bool found;
+
+  /// Kalau diisi, cutout() melempar (mis. ML Kit belum siap).
+  Object? error;
+  final inputs = <Uint8List>[];
+
+  @override
+  Future<Uint8List?> cutout(Uint8List photo) async {
+    inputs.add(photo);
+    final e = error;
+    if (e != null) throw e;
+    return found ? testPhoto : null;
+  }
+}
+
+class FakeCutoutRepository implements CutoutRepository {
+  final downloads = <String>[];
+  final saved = <({String catchId, bool hasCutout})>[];
+
+  @override
+  Future<Uint8List> download(String path) async {
+    downloads.add(path);
+    return testPhoto;
+  }
+
+  @override
+  Future<void> save(String catchId, Uint8List? png) async =>
+      saved.add((catchId: catchId, hasCutout: png != null));
+}
 
 class FakeDailyDropRepository implements DailyDropRepository {
   /// Default: drop turun 10 menit lalu (tepat waktu, kamera terbuka).
@@ -703,6 +745,8 @@ Future<void> pumpApp(
   FakeAnalytics? analytics,
   FakeAccountRepository? account,
   FakeAvatarPicker? avatarPicker,
+  FakeCutoutMaker? cutoutMaker,
+  FakeCutoutRepository? cutouts,
   VoidCallback? onOpenSettings,
 }) async {
   tester.view.physicalSize = const Size(1080, 2400);
@@ -750,6 +794,11 @@ Future<void> pumpApp(
           avatarPicker ?? FakeAvatarPicker(),
         ),
         remotePhotoBuilderProvider.overrideWithValue(fakeRemotePhoto),
+        remoteCutoutBuilderProvider.overrideWithValue(fakeRemotePhoto),
+        cutoutMakerProvider.overrideWithValue(cutoutMaker ?? FakeCutoutMaker()),
+        cutoutRepositoryProvider.overrideWithValue(
+          cutouts ?? FakeCutoutRepository(),
+        ),
         openAppSettingsProvider.overrideWithValue(() async {
           onOpenSettings?.call();
           return true;
@@ -788,4 +837,14 @@ Future<void> enter(WidgetTester tester, String key, String text) async {
   await tester.ensureVisible(finder);
   await tester.pump();
   await tester.enterText(finder, text);
+}
+
+/// Tekan "posting ke circle"; kalau berhasil, tutup kartu "baru dapet!" (M11).
+Future<void> postToCircle(WidgetTester tester) async {
+  await tapText(tester, 'posting ke circle');
+  final done = find.byKey(const Key('new-card-done'));
+  if (done.evaluate().isNotEmpty) {
+    await tester.tap(done);
+    await tester.pumpAndSettle();
+  }
 }
