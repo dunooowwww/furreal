@@ -19,6 +19,7 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
 - [ ] **M12 — Kamera ganda, share, caption, saran** — kode selesai; `flutter analyze` bersih, `flutter test` 156/156, `deno test` 66/66, pgTAP 274/274 (Postgres 16 lokal dengan tiruan auth + storage + Vault). Belum terverifikasi: jepret otomatis kamera kedua di HP asli, simpan ke galeri & menu bagikan, build Android dengan plugin baru (lihat catatan M12).
 - [ ] **M13 — Ajak teman, edit & hapus catch** — kode selesai; `flutter analyze` bersih, `flutter test` 162/162, `deno test` 66/66, pgTAP 283/283 (Postgres 16 lokal dengan tiruan auth + storage + Vault). Belum terverifikasi: menu bagikan undangan & edit/hapus di HP asli, migrasi di produksi (lihat catatan M13).
 - [ ] **M14 — Notifikasi aktivitas & pengingat streak** — kode selesai; `flutter analyze` bersih, `flutter test` 165/165, `deno test` 75/75, pgTAP 298/298 (Postgres 16 lokal dengan tiruan auth + storage + Vault, `pg_net` tiruan). Belum terverifikasi: notifikasi sampai di HP, cron 20:00 di produksi (lihat catatan M14).
+- [ ] **M15 — Edit & hapus kartu koleksi** — kode selesai; `flutter analyze` bersih, `flutter test` 168/168, `deno test` 75/75, pgTAP 309/309 (Postgres 16 lokal dengan tiruan auth + storage + Vault). Belum terverifikasi: di HP asli, migrasi di produksi.
 
 ## Catatan keputusan
 
@@ -349,3 +350,11 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
 - **Edge Function `send-activity`:** satu fungsi untuk dua job, secret & Vault dipakai ulang dari daily drop. Tanpa FCM → antrean dibiarkan (tidak diklaim).
 - **App:** channel Android `activity` & `streak_reminder` (MainActivity). Push `activity` diperlakukan seperti `friend_catch`; `streak_reminder` → snackbar "catch" / buka beranda.
 - **Manual setelah merge:** `npx supabase db push --remote`, `npx supabase functions deploy send-activity`, build APK baru (channel baru). Tidak ada secret/Vault baru.
+
+### M15 (9 Nov 2026)
+- **Permintaan user:** tombol edit & hapus di kartu koleksi (nama, kepribadian, dll.).
+- **Keputusan user:** hapus = **hanya dari koleksi** (catch & foto tetap, feed & streak tidak berubah); yang bisa diedit: nama, peliharaan/liar, jenis, kepribadian.
+- Migrasi `20261109090000_edit_collection.sql`: `animals.personality` (menimpa kepribadian catch terakhir di kartu), `animals.removed_at` (soft delete), RPC `edit_animal` & `remove_animal`, `my_collection` v3 (tanpa hewan terhapus). Test `15_edit_collection_test.sql` (11).
+- App: detail koleksi punya tombol "edit" (sheet: nama, segmented peliharaan/liar, jenis, kepribadian) dan "hapus" (dialog konfirmasi, detail ditutup). Detail mengikuti data terbaru setelah edit; beranda & feed ikut dimuat ulang.
+- Nomor kartu (#0001) dihitung dari urutan hewan yang tersisa, jadi bisa bergeser setelah ada yang dihapus.
+- **Manual setelah merge:** `npx supabase db push --remote`, build APK baru.
