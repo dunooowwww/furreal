@@ -773,6 +773,7 @@ class FakePushMessaging implements PushMessaging {
   final refreshes = StreamController<String>.broadcast();
   final drops = StreamController<DropMessage>.broadcast();
   final catches = StreamController<FriendCatchMessage>.broadcast();
+  final streaks = StreamController<StreakReminderMessage>.broadcast();
 
   @override
   Future<PushPermission> permission() async => current;
@@ -794,6 +795,9 @@ class FakePushMessaging implements PushMessaging {
 
   @override
   Stream<FriendCatchMessage> get friendCatches => catches.stream;
+
+  @override
+  Stream<StreakReminderMessage> get streakReminders => streaks.stream;
 }
 
 class FakePushTokenRepository implements PushTokenRepository {

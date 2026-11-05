@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../features/catch_result/state/catch_providers.dart';
 import '../features/daily_drop/state/daily_drop_providers.dart';
 import '../features/feed/state/feed_providers.dart';
 import '../features/notifications/data/push_messaging.dart';
@@ -22,6 +23,7 @@ class _FurrealAppState extends ConsumerState<FurrealApp> {
   late final AppLifecycleListener _lifecycle;
   StreamSubscription<DropMessage>? _drops;
   StreamSubscription<FriendCatchMessage>? _friendCatches;
+  StreamSubscription<StreakReminderMessage>? _streaks;
 
   @override
   void initState() {
@@ -31,6 +33,7 @@ class _FurrealAppState extends ConsumerState<FurrealApp> {
     final push = ref.read(pushMessagingProvider);
     _drops = push.dropMessages.listen(_onDrop);
     _friendCatches = push.friendCatches.listen(_onFriendCatch);
+    _streaks = push.streakReminders.listen(_onStreakReminder);
   }
 
   void _refreshDrop() {
@@ -48,7 +51,26 @@ class _FurrealAppState extends ConsumerState<FurrealApp> {
     }
   }
 
-  /// Teman posting catch: segarkan feed; ketuk notifikasi → buka feed.
+  /// Streak hampir putus: ketuk notifikasi → beranda (tombol kamera).
+  void _onStreakReminder(StreakReminderMessage message) {
+    ref.invalidate(todayCatchProvider);
+    if (message.opened) {
+      ref.read(routerProvider).go(Routes.home);
+    } else {
+      _messenger.currentState?.showSnackBar(
+        SnackBar(
+          content: Text(message.title ?? 'streak lo hampir putus!'),
+          action: SnackBarAction(
+            label: 'catch',
+            onPressed: () => ref.read(routerProvider).push(Routes.camera),
+          ),
+        ),
+      );
+    }
+  }
+
+  /// Teman posting catch / reaksi & komentar di catch sendiri: segarkan feed;
+  /// ketuk notifikasi → buka feed.
   void _onFriendCatch(FriendCatchMessage message) {
     ref.invalidate(feedControllerProvider);
     if (message.opened) {
@@ -70,6 +92,7 @@ class _FurrealAppState extends ConsumerState<FurrealApp> {
   void dispose() {
     _drops?.cancel();
     _friendCatches?.cancel();
+    _streaks?.cancel();
     _lifecycle.dispose();
     super.dispose();
   }
