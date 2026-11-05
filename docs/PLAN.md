@@ -16,7 +16,7 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
 - [ ] **M9 — Pengaturan & feed ala BeReal** — kode selesai; `flutter analyze` bersih, `flutter test` 108/108, `deno test` 56/56, pgTAP 220/220 (Postgres 16 lokal dengan tiruan auth + storage + Vault, `pg_cron` asli, `pg_net` tiruan). Belum terverifikasi: migrasi di Supabase produksi, upload foto profil & kunci feed di HP (lihat catatan M9).
 - [ ] **M10 — Daily drop ala BeReal** — kode selesai; `flutter analyze` bersih, `flutter test` 132/132, `deno test` 66/66, pgTAP 249/249 (Postgres 16 lokal dengan tiruan auth + storage + Vault). Belum terverifikasi: notifikasi "teman udah catch" sampai di HP, catch sebelum drop di produksi (lihat catatan M10).
 - [ ] **M11 — Kartu koleksi** — kode selesai; `flutter analyze` bersih, `flutter test` 148/148, `deno test` 66/66, pgTAP 263/263 (Postgres 16 lokal dengan tiruan auth + storage + Vault). Belum terverifikasi: kualitas potongan ML Kit di HP asli, build Android dengan paket ML Kit (lihat catatan M11).
-- [ ] **M12 — Kamera ganda, share, caption, saran** — belum dikerjakan (keputusan sudah ada di catatan M11).
+- [ ] **M12 — Kamera ganda, share, caption, saran** — kode selesai; `flutter analyze` bersih, `flutter test` 156/156, `deno test` 66/66, pgTAP 274/274 (Postgres 16 lokal dengan tiruan auth + storage + Vault). Belum terverifikasi: jepret otomatis kamera kedua di HP asli, simpan ke galeri & menu bagikan, build Android dengan plugin baru (lihat catatan M12).
 
 ## Catatan keputusan
 
@@ -320,4 +320,15 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
   3. Feed pakai **caption manual**; kartu kepribadian hanya di koleksi.
   4. Form saran fitur / laporan bug di pengaturan → tabel Supabase.
 - **Manual setelah merge:** `npx supabase db push`, build APK baru (paket ML Kit).
+
+### M12 (6 Nov 2026)
+- **Kamera ganda (keputusan user: 1 tap dua foto, urutan bisa dipilih):** pill "hewan dulu" / "lo dulu" (mengganti kamera ke belakang/depan). Sekali tekan shutter: foto pertama dari kamera aktif, lalu kamera satunya dibuka dan jepret otomatis setelah jeda `autoCaptureDelayProvider` (600 ms; nol di test) supaya cahaya & fokus menyesuaikan. Ganti kamera hanya sebelum jepret; foto kedua selalu dari kamera satunya. Kamera kedua gagal → "coba lagi" langsung membuka & menjepret lagi. Tidak ada hitung mundur (user memilih "langsung dua-duanya").
+- **Caption (keputusan: kepribadian hanya di koleksi, feed pakai caption manual):** migrasi `20261106090000_caption_feedback.sql` — `catches.caption` (maks 150, tidak bisa diubah langsung), `create_catch` v6 (+ `p_caption`, dirapikan & dipotong 150), `circle_feed` v4 (`caption` menggantikan `personality`). Layar hasil: field "CAPTION BUAT FEED" (opsional). Kartu feed menampilkan caption; catch lama tanpa caption tidak menampilkan teks. Test 04/08 diperbarui.
+- **Simpan / bagikan (keputusan: hanya catch sendiri; isi foto hewan + selfie pojok + watermark furreal + tanggal + nama & caption):**
+  - Paket `share_plus` ^13.3.1 & `gal` ^2.3.3 (disetujui user).
+  - Tombol di kartu feed milik sendiri (bukan yang terkunci) → sheet: foto diunduh dari storage, digabung jadi PNG 1080×1350 di HP (`composeShareImage`, dart:ui), pratinjau, "simpan" (album "furreal") dan "bagikan" (menu Android). Pesan hasil ditampilkan di sheet (snackbar tertutup sheet).
+  - Manifest: `WRITE_EXTERNAL_STORAGE` hanya sampai Android 10 (`maxSdkVersion=29`) + `requestLegacyExternalStorage`, syarat `gal` untuk HP lama. Catch tetap tidak bisa diambil dari galeri.
+  - Watermark memakai teks "furreal" di pil aksen (font sistem; TextPainter tidak memuat Google Fonts secara sinkron).
+- **Saran (keputusan: tabel Supabase):** tabel `feedback` (RLS, insert atas nama sendiri saja, tanpa baca lewat API). Pengaturan → "kirim saran": pilih "saran fitur"/"laporan bug", tulis (maks 1000), kirim. `app_version` diisi dari `FLUTTER_BUILD_NAME/NUMBER` saat `flutter build` (kosong saat `flutter run`). Dibaca di dashboard Supabase → Table Editor → `feedback`.
+- **Manual setelah merge:** `npx supabase db push`, build APK baru (plugin `share_plus`, `gal`).
 
