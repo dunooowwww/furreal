@@ -27,23 +27,24 @@ insert into public.animals (id, owner_id, name, kind, animal_type, encounter_cou
 
 insert into public.catches
   (id, user_id, animal_id, animal_photo_path, selfie_photo_path, ai_type, personality, ai_personality,
-   location_hidden, is_late, catch_date, created_at)
+   location_hidden, is_late, catch_date, created_at, caption)
 values
   -- alice hari ini (lebih dulu)
   ('aaaaaaaa-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', 'dddddddd-0000-0000-0000-000000000001',
    '11111111-1111-1111-1111-111111111111/aaaaaaaa-0000-0000-0000-000000000001/animal.jpg',
    '11111111-1111-1111-1111-111111111111/aaaaaaaa-0000-0000-0000-000000000001/selfie.jpg',
-   'kucing', 'bos parkiran.', 'si penjaga parkiran.', true, false, public.jakarta_today(), now() - interval '30 minutes'),
+   'kucing', 'bos parkiran.', 'si penjaga parkiran.', true, false, public.jakarta_today(), now() - interval '30 minutes',
+   'milo lagi nunggu jatah'),
   -- bob hari ini (lebih baru, telat)
   ('aaaaaaaa-0000-0000-0000-000000000002', '22222222-2222-2222-2222-222222222222', 'dddddddd-0000-0000-0000-000000000002',
    '22222222-2222-2222-2222-222222222222/aaaaaaaa-0000-0000-0000-000000000002/animal.jpg',
    '22222222-2222-2222-2222-222222222222/aaaaaaaa-0000-0000-0000-000000000002/selfie.jpg',
-   'bebek', null, 'patroli selokan.', true, true, public.jakarta_today(), now() - interval '5 minutes'),
+   'bebek', null, 'patroli selokan.', true, true, public.jakarta_today(), now() - interval '5 minutes', null),
   -- bob kemarin: tidak boleh muncul di feed hari ini
   ('aaaaaaaa-0000-0000-0000-000000000003', '22222222-2222-2222-2222-222222222222', 'dddddddd-0000-0000-0000-000000000002',
    '22222222-2222-2222-2222-222222222222/aaaaaaaa-0000-0000-0000-000000000003/animal.jpg',
    '22222222-2222-2222-2222-222222222222/aaaaaaaa-0000-0000-0000-000000000003/selfie.jpg',
-   'bebek', null, null, true, false, public.jakarta_today() - 1, now() - interval '1 day');
+   'bebek', null, null, true, false, public.jakarta_today() - 1, now() - interval '1 day', null);
 
 delete from public.daily_drops; -- cron lokal mungkin sudah membuat baris hari ini
 insert into public.daily_drops (drop_date, sent_at)
@@ -151,14 +152,15 @@ delete from public.comments where id = 'eeeeeeee-0000-0000-0000-000000000001';
 delete from public.reactions where user_id = '22222222-2222-2222-2222-222222222222';
 
 select results_eq(
-  $$select catch_id::text, display_name, animal_name, animal_type, encounter_count, personality,
+  $$select catch_id::text, display_name, animal_name, animal_type, encounter_count, caption,
            is_late, late_minutes
     from public.circle_feed('cccccccc-0000-0000-0000-000000000001')$$,
   $$values
-    -- Pak Kwek punya 2 catch (hari ini + kemarin); sejak M5 dihitung trigger
-    ('aaaaaaaa-0000-0000-0000-000000000002', 'Bob', 'Pak Kwek', 'bebek', 2, 'patroli selokan.', true, 40),
-    ('aaaaaaaa-0000-0000-0000-000000000001', 'Alice', 'Milo', 'kucing', 1, 'bos parkiran.', false, null::int)$$,
-  'feed: hanya catch hari ini, terbaru dulu, jenis & kepribadian final, telat berapa menit'
+    -- Pak Kwek punya 2 catch (hari ini + kemarin); sejak M5 dihitung trigger.
+    -- M12: feed memakai caption manual, bukan kepribadian.
+    ('aaaaaaaa-0000-0000-0000-000000000002', 'Bob', 'Pak Kwek', 'bebek', 2, null::text, true, 40),
+    ('aaaaaaaa-0000-0000-0000-000000000001', 'Alice', 'Milo', 'kucing', 1, 'milo lagi nunggu jatah', false, null::int)$$,
+  'feed: hanya catch hari ini, terbaru dulu, jenis final + caption, telat berapa menit'
 );
 
 select results_eq(

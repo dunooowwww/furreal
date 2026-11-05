@@ -69,7 +69,7 @@ select is(
   'bob hanya bisa membaca foto catch kemarin'
 );
 select results_eq(
-  $$select username, locked, animal_name, personality, animal_photo_path, selfie_photo_path, like_count, comment_count
+  $$select username, locked, animal_name, caption, animal_photo_path, selfie_photo_path, like_count, comment_count
     from public.circle_feed('cccccccc-0000-0000-0000-000000000001')$$,
   $$values ('alice'::text, true, null::text, null::text, null::text, null::text, 0, 0)$$,
   'feed: catch alice muncul terkunci, tanpa isi'
@@ -130,9 +130,9 @@ select is(
   'setelah catch, foto alice hari ini terbaca'
 );
 select results_eq(
-  $$select username, locked, animal_name, personality, like_count, comment_count
+  $$select username, locked, animal_name, like_count, comment_count
     from public.circle_feed('cccccccc-0000-0000-0000-000000000001') where username = 'alice'$$,
-  $$values ('alice'::text, false, 'Milo'::text, 'bos kos.'::text, 1, 1)$$,
+  $$values ('alice'::text, false, 'Milo'::text, 1, 1)$$,
   'feed: catch alice terbuka lengkap'
 );
 select is(
