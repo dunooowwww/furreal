@@ -92,4 +92,48 @@ void main() {
   test('label bulan', () {
     expect(monthLabel(DateTime(2026, 1, 3)), 'januari 2026');
   });
+
+  group('hapus & bagikan dari riwayat', () {
+    Future<(FakeCatchRepository, FakeCollectionRepository)> openDetail(
+      WidgetTester tester,
+    ) async {
+      final history = [
+        historyCatch('c2', DateTime.utc(2026, 11, 7), caption: 'nunggu jatah'),
+        historyCatch('c1', DateTime.utc(2026, 11, 2)),
+      ];
+      final collection = FakeCollectionRepository()..history = history;
+      final catches = FakeCatchRepository()..history = history;
+      await pumpHome(tester, collection: collection, catches: catches);
+      await openCollection(tester);
+      await tapFinder(tester, find.byKey(const Key('tab-history')));
+      await tapFinder(tester, find.byKey(const Key('history-c2')));
+      return (catches, collection);
+    }
+
+    testWidgets('bagikan → gambar dibuat dari foto catch itu', (tester) async {
+      composedShares.clear();
+      await openDetail(tester);
+      await tapFinder(tester, find.byKey(const Key('history-share')));
+      expect(find.byKey(const Key('share-preview')), findsOneWidget);
+      expect(composedShares, [(animalName: 'Milo', caption: 'nunggu jatah')]);
+    });
+
+    testWidgets('hapus perlu konfirmasi, lalu hilang dari riwayat', (
+      tester,
+    ) async {
+      final (catches, _) = await openDetail(tester);
+      await tapFinder(tester, find.byKey(const Key('history-delete')));
+      expect(find.text('hapus catch 7 nov 2026?'), findsOneWidget);
+      await tapText(tester, 'batal');
+      expect(catches.deletedIds, isEmpty);
+
+      await tapFinder(tester, find.byKey(const Key('history-delete')));
+      await tapFinder(tester, find.byKey(const Key('confirm-delete-history')));
+      expect(catches.deletedIds, ['c2']);
+      expect(find.byKey(const Key('history-detail')), findsNothing);
+      expect(find.byKey(const Key('history-c2')), findsNothing);
+      expect(find.text('1 hari catch'), findsOneWidget);
+      expect(find.text('catch dihapus.'), findsOneWidget);
+    });
+  });
 }

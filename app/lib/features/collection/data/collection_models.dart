@@ -175,6 +175,7 @@ class HistoryCatch {
     required this.createdAt,
     required this.animalPhotoPath,
     required this.selfiePhotoPath,
+    this.animalId,
     this.animalName,
     this.animalType,
     this.caption,
@@ -196,6 +197,7 @@ class HistoryCatch {
       createdAt: DateTime.parse(json['created_at'] as String),
       animalPhotoPath: animalPath,
       selfiePhotoPath: selfiePath,
+      animalId: json['animal_id'] as String?,
       animalName: animal?['name'] as String?,
       animalType: animal?['animal_type'] as String?,
       caption: json['caption'] as String?,
@@ -215,6 +217,7 @@ class HistoryCatch {
   final DateTime createdAt;
   final String animalPhotoPath;
   final String selfiePhotoPath;
+  final String? animalId;
   final String? animalName;
   final String? animalType;
   final String? caption;

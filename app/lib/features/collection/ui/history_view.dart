@@ -2,7 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme.dart';
+import '../../../shared/errors.dart';
 import '../../../shared/widgets/remote_photo.dart';
+import '../../catch_result/state/catch_providers.dart';
+import '../../catch_result/ui/edit_catch_sheet.dart'
+    show refreshAfterCatchChange;
+import '../../feed/ui/share_sheet.dart';
 import '../data/collection_models.dart';
 import '../state/collection_providers.dart';
 import 'animal_detail_sheet.dart' show shortDate;
@@ -236,9 +241,97 @@ class HistoryDetailSheet extends ConsumerWidget {
               style: const TextStyle(fontSize: 16, height: 1.4),
             ),
           ],
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
+                  key: const Key('history-share'),
+                  onPressed: () => showShareTargetSheet(
+                    context,
+                    ShareTarget(
+                      animalPhotoPath: item.animalPhotoPath,
+                      selfiePhotoPath: item.selfiePhotoPath,
+                      animalName: item.animalName,
+                      caption: item.caption,
+                      date: item.createdAt,
+                    ),
+                  ),
+                  icon: const Icon(Icons.ios_share, size: 18),
+                  label: const Text('bagikan'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  key: const Key('history-delete'),
+                  onPressed: () async {
+                    final navigator = Navigator.of(context);
+                    if (await _confirmDelete(context, ref, item)) {
+                      navigator.pop();
+                    }
+                  },
+                  icon: const Icon(Icons.delete_outline, size: 18),
+                  label: const Text('hapus'),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
+  }
+}
+
+/// Konfirmasi lalu hapus catch dari riwayat (foto ikut terhapus, streak
+/// dihitung ulang). True = terhapus.
+Future<bool> _confirmDelete(
+  BuildContext context,
+  WidgetRef ref,
+  HistoryCatch item,
+) async {
+  final ok = await showDialog<bool>(
+    context: context,
+    useRootNavigator: true,
+    builder: (context) => AlertDialog(
+      title: Text('hapus catch ${shortDate(item.catchDate)}?'),
+      content: const Text(
+        'foto & caption-nya dihapus permanen dari riwayat dan feed. '
+        'streak lo dihitung ulang, jadi bisa turun.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, false),
+          child: const Text('batal'),
+        ),
+        TextButton(
+          key: const Key('confirm-delete-history'),
+          onPressed: () => Navigator.pop(context, true),
+          style: TextButton.styleFrom(
+            foregroundColor: Theme.of(context).colorScheme.error,
+          ),
+          child: const Text('hapus'),
+        ),
+      ],
+    ),
+  );
+  if (ok != true || !context.mounted) return false;
+  final messenger = ScaffoldMessenger.of(context);
+  try {
+    await ref
+        .read(catchRepositoryProvider)
+        .deleteCatch(
+          catchId: item.id,
+          animalId: item.animalId,
+          animalPhotoPath: item.animalPhotoPath,
+          selfiePhotoPath: item.selfiePhotoPath,
+        );
+    refreshAfterCatchChange(ref);
+    messenger.showSnackBar(const SnackBar(content: Text('catch dihapus.')));
+    return true;
+  } catch (e) {
+    messenger.showSnackBar(SnackBar(content: Text(friendlyError(e))));
+    return false;
   }
 }
 

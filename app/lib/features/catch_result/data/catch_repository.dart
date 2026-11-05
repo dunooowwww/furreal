@@ -136,6 +136,15 @@ abstract interface class CatchRepository {
   /// Hapus catch hari ini beserta fotonya (streak dihitung ulang di server).
   Future<void> deleteTodayCatch();
 
+  /// Hapus catch mana pun milik sendiri (riwayat, M16) beserta fotonya.
+  /// Hewannya ikut terhapus kalau tidak punya catch lain.
+  Future<void> deleteCatch({
+    required String catchId,
+    required String? animalId,
+    required String animalPhotoPath,
+    required String selfiePhotoPath,
+  });
+
   /// Ubah nama hewan (berlaku untuk semua catch hewan itu) dan caption catch
   /// hari ini (M13).
   Future<void> editTodayCatch({
@@ -267,16 +276,30 @@ class SupabaseCatchRepository implements CatchRepository {
   Future<void> deleteTodayCatch() async {
     final today = await todayCatch();
     if (today == null) return;
+    await deleteCatch(
+      catchId: today.id,
+      animalId: today.animalId,
+      animalPhotoPath: today.animalPhotoPath,
+      selfiePhotoPath: today.selfiePhotoPath,
+    );
+  }
+
+  @override
+  Future<void> deleteCatch({
+    required String catchId,
+    required String? animalId,
+    required String animalPhotoPath,
+    required String selfiePhotoPath,
+  }) async {
     await _photos.remove([
-      today.animalPhotoPath,
-      today.selfiePhotoPath,
+      animalPhotoPath,
+      selfiePhotoPath,
       // potongan hewan (M11), kalau ada
-      '$_userId/${today.id}/cutout.png',
+      '$_userId/$catchId/cutout.png',
     ]);
-    await _client.from('catches').delete().eq('id', today.id);
-    // Hapus hewannya hanya kalau dibuat oleh catch ini (tanpa catch lain).
+    await _client.from('catches').delete().eq('id', catchId);
+    // Hapus hewannya hanya kalau tidak punya catch lain lagi.
     // Hewan "ketemu lagi" tetap, encounter_count-nya turun lewat trigger.
-    final animalId = today.animalId;
     if (animalId != null) {
       final others = await _client
           .from('catches')

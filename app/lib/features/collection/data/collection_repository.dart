@@ -95,7 +95,8 @@ class SupabaseCollectionRepository implements CollectionRepository {
     var query = _client
         .from('catches')
         .select(
-          'id, catch_date, created_at, animal_photo_path, selfie_photo_path, '
+          'id, animal_id, catch_date, created_at, animal_photo_path, '
+          'selfie_photo_path, '
           'caption, timing, is_late, animals(name, animal_type)',
         )
         .eq('user_id', _userId);
