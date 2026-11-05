@@ -622,6 +622,40 @@ class FakeCollectionRepository implements CollectionRepository {
 
   @override
   Future<YesterdayCatch?> yesterdayCatch() async => yesterday;
+
+  final edited = <String>[];
+  final removed = <String>[];
+
+  /// Kalau diisi, editAnimal/removeAnimal melempar error ini.
+  Object? error;
+
+  @override
+  Future<void> editAnimal(
+    String animalId, {
+    required String name,
+    required AnimalKind kind,
+    required String? animalType,
+    required String? personality,
+  }) async {
+    final e = error;
+    if (e != null) throw e;
+    edited.add(animalId);
+    final i = animals.indexWhere((a) => a.id == animalId);
+    animals[i] = animals[i].copyWith(
+      name: name,
+      kind: kind,
+      animalType: () => animalType,
+      lastPersonality: personality == null ? null : () => personality,
+    );
+  }
+
+  @override
+  Future<void> removeAnimal(String animalId) async {
+    final e = error;
+    if (e != null) throw e;
+    removed.add(animalId);
+    animals.removeWhere((a) => a.id == animalId);
+  }
 }
 
 CollectionAnimal animal({

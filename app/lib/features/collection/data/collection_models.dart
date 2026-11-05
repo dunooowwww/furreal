@@ -73,6 +73,32 @@ class CollectionAnimal {
   /// Tanggal & label area catch terakhir (null kalau lokasi disembunyikan).
   final DateTime? lastCatchDate;
   final String? lastAreaLabel;
+
+  CollectionAnimal copyWith({
+    String? name,
+    AnimalKind? kind,
+    String? Function()? animalType,
+    String? Function()? lastPersonality,
+  }) => CollectionAnimal(
+    id: id,
+    name: name ?? this.name,
+    kind: kind ?? this.kind,
+    animalType: animalType == null ? this.animalType : animalType(),
+    encounterCount: encounterCount,
+    firstSeenAt: firstSeenAt,
+    lastSeenAt: lastSeenAt,
+    lastPhotoPath: lastPhotoPath,
+    lastPersonality: lastPersonality == null
+        ? this.lastPersonality
+        : lastPersonality(),
+    lastPhotoUrl: lastPhotoUrl,
+    lastCatchId: lastCatchId,
+    lastCutoutPath: lastCutoutPath,
+    lastCutoutUrl: lastCutoutUrl,
+    cutoutAttempted: cutoutAttempted,
+    lastCatchDate: lastCatchDate,
+    lastAreaLabel: lastAreaLabel,
+  );
 }
 
 /// Nomor koleksi: #1 = hewan yang paling dulu ditemui.

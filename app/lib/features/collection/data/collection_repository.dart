@@ -1,7 +1,8 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../shared/dates.dart';
-import '../../catch_result/data/catch_repository.dart' show catchPhotosBucket;
+import '../../catch_result/data/catch_repository.dart'
+    show AnimalKind, catchPhotosBucket;
 import 'collection_models.dart';
 
 const _signedUrlTtlSeconds = 3600;
@@ -12,6 +13,19 @@ abstract interface class CollectionRepository {
   Future<Streak> myStreak();
 
   Future<YesterdayCatch?> yesterdayCatch();
+
+  /// Ubah data kartu (M15). [personality] null/kosong = pakai kepribadian
+  /// catch terakhir.
+  Future<void> editAnimal(
+    String animalId, {
+    required String name,
+    required AnimalKind kind,
+    required String? animalType,
+    required String? personality,
+  });
+
+  /// Hapus hewan dari koleksi; catch & fotonya tetap ada (M15).
+  Future<void> removeAnimal(String animalId);
 }
 
 class SupabaseCollectionRepository implements CollectionRepository {
@@ -47,6 +61,28 @@ class SupabaseCollectionRepository implements CollectionRepository {
       for (final row in rows) CollectionAnimal.fromJson(row, signedUrls: urls),
     ];
   }
+
+  @override
+  Future<void> editAnimal(
+    String animalId, {
+    required String name,
+    required AnimalKind kind,
+    required String? animalType,
+    required String? personality,
+  }) => _client.rpc<void>(
+    'edit_animal',
+    params: {
+      'p_animal_id': animalId,
+      'p_name': name,
+      'p_kind': kind.dbValue,
+      'p_animal_type': animalType,
+      'p_personality': personality,
+    },
+  );
+
+  @override
+  Future<void> removeAnimal(String animalId) =>
+      _client.rpc<void>('remove_animal', params: {'p_animal_id': animalId});
 
   @override
   Future<Streak> myStreak() async {
