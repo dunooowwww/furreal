@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:furreal/app/splash_overlay.dart';
 import 'package:furreal/app/app.dart';
 import 'package:furreal/features/account/data/account_repository.dart';
 import 'package:furreal/features/account/data/avatar_picker.dart';
@@ -902,6 +903,7 @@ Future<void> pumpApp(
           circles ?? FakeCircleRepository(),
         ),
         autoCaptureDelayProvider.overrideWithValue(Duration.zero),
+        splashDurationProvider.overrideWithValue(Duration.zero),
         catchSharerProvider.overrideWithValue(sharer ?? FakeCatchSharer()),
         shareImageComposerProvider.overrideWithValue(fakeComposeShareImage),
         feedbackRepositoryProvider.overrideWithValue(
