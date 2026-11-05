@@ -468,6 +468,7 @@ class FakeCatchRepository implements CatchRepository {
       animalName: details.animalName,
       kind: details.kind,
       animalType: details.animalType,
+      caption: details.caption,
     );
     return timing;
   }
@@ -483,6 +484,33 @@ class FakeCatchRepository implements CatchRepository {
   Future<void> deleteTodayCatch() async {
     deleted++;
     today = null;
+  }
+
+  final edits = <({String animalName, String? caption})>[];
+
+  /// Kalau diisi, editTodayCatch melempar error ini.
+  Object? editError;
+
+  @override
+  Future<void> editTodayCatch({
+    required String animalName,
+    required String? caption,
+  }) async {
+    final error = editError;
+    if (error != null) throw error;
+    edits.add((animalName: animalName, caption: caption));
+    final t = today;
+    if (t == null) return;
+    today = TodayCatch(
+      id: t.id,
+      animalPhotoPath: t.animalPhotoPath,
+      selfiePhotoPath: t.selfiePhotoPath,
+      animalId: t.animalId,
+      animalName: animalName,
+      kind: t.kind,
+      animalType: t.animalType,
+      caption: caption,
+    );
   }
 }
 
@@ -677,6 +705,11 @@ class FakeCatchSharer implements CatchSharer {
     required String name,
     String? text,
   }) async => shared.add(name);
+
+  final sharedTexts = <String>[];
+
+  @override
+  Future<void> shareText(String text) async => sharedTexts.add(text);
 }
 
 class FakeFeedbackRepository implements FeedbackRepository {
