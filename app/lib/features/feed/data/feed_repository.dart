@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../catch_result/data/catch_repository.dart' show catchPhotosBucket;
@@ -24,6 +26,9 @@ abstract interface class FeedRepository {
 
   /// Hanya komentar sendiri (dijaga RLS).
   Future<void> deleteComment(String commentId);
+
+  /// Foto catch dari storage (untuk gambar yang disimpan/dibagikan, M12).
+  Future<Uint8List> downloadPhoto(String path);
 }
 
 class SupabaseFeedRepository implements FeedRepository {
@@ -113,4 +118,8 @@ class SupabaseFeedRepository implements FeedRepository {
   Future<void> deleteComment(String commentId) async {
     await _client.from('comments').delete().eq('id', commentId);
   }
+
+  @override
+  Future<Uint8List> downloadPhoto(String path) =>
+      _client.storage.from(catchPhotosBucket).download(path);
 }

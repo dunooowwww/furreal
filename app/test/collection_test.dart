@@ -204,7 +204,6 @@ void main() {
     Future<void> toResult(WidgetTester tester) async {
       await tapText(tester, 'buka kamera');
       await tapFinder(tester, find.byKey(const Key('shutter')));
-      await tapFinder(tester, find.byKey(const Key('shutter')));
     }
 
     testWidgets('daftar hewan sendiri, jenis sama AI di atas, lalu posting', (

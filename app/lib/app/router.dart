@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/account/ui/edit_profile_screen.dart';
+import '../features/account/ui/feedback_screen.dart';
 import '../features/account/ui/privacy_policy_screen.dart';
 import '../features/account/ui/settings_screen.dart';
 import '../features/auth/ui/forgot_password_screen.dart';
@@ -38,6 +39,7 @@ class Routes {
   static const settings = '/settings';
   static const editProfile = '/settings/profile';
   static const myCircles = '/settings/circles';
+  static const feedback = '/settings/feedback';
 
   /// Boleh dibuka di tahap mana pun, termasuk sebelum login.
   static const privacy = '/privacy';
@@ -130,6 +132,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Routes.editProfile,
         builder: (context, state) => const EditProfileScreen(),
+      ),
+      GoRoute(
+        path: Routes.feedback,
+        builder: (context, state) => const FeedbackScreen(),
       ),
       GoRoute(
         path: Routes.myCircles,

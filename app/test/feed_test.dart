@@ -27,7 +27,7 @@ FeedItem item({
   int laughs = 0,
   int comments = 0,
   bool liked = false,
-  String? personality = 'bos kamar 4b.',
+  String? caption = 'bos kamar 4b.',
 }) => FeedItem(
   catchId: id,
   userId: 'u-$id',
@@ -38,7 +38,7 @@ FeedItem item({
   animalName: animal,
   animalType: type,
   encounterCount: encounters,
-  personality: personality,
+  caption: caption,
   animalPhotoPath: 'u-$id/$id/animal.jpg',
   selfiePhotoPath: 'u-$id/$id/selfie.jpg',
   likeCount: likes,
@@ -68,7 +68,7 @@ FakeFeedRepository sampleFeed() => FakeFeedRepository(
         type: 'bebek',
         late: true,
         lateMinutes: 40,
-        personality: 'patroli selokan tiap pagi.',
+        caption: 'patroli selokan tiap pagi.',
       ),
     ],
     'lab': [
@@ -147,6 +147,8 @@ void main() {
     expect(inCard('d', find.text('Mochi')), findsOneWidget);
     expect(inCard('d', find.text('kucing')), findsOneWidget);
     expect(inCard('d', find.text('ketemu ke-12x')), findsOneWidget);
+    // M12: feed menampilkan caption manual (kepribadian hanya di koleksi).
+    expect(inCard('d', find.byKey(const Key('caption-d'))), findsOneWidget);
     expect(inCard('d', find.text('bos kamar 4b.')), findsOneWidget);
     expect(
       inCard('d', find.byKey(const Key('photo-u-d/d/animal.jpg'))),

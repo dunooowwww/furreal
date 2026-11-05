@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:furreal/app/app.dart';
 import 'package:furreal/features/account/data/account_repository.dart';
 import 'package:furreal/features/account/data/avatar_picker.dart';
+import 'package:furreal/features/account/data/feedback_repository.dart';
 import 'package:furreal/features/account/state/account_providers.dart';
 import 'package:furreal/features/auth/data/auth_repository.dart';
 import 'package:furreal/features/auth/data/profile_repository.dart';
@@ -29,6 +30,7 @@ import 'package:furreal/features/daily_drop/state/daily_drop_providers.dart';
 import 'package:furreal/features/notifications/data/push_messaging.dart';
 import 'package:furreal/features/notifications/state/notification_providers.dart';
 import 'package:furreal/features/circles/state/circle_providers.dart';
+import 'package:furreal/features/feed/data/catch_share.dart';
 import 'package:furreal/features/feed/data/feed_models.dart';
 import 'package:furreal/features/feed/data/feed_repository.dart';
 import 'package:furreal/features/feed/state/feed_providers.dart';
@@ -333,6 +335,11 @@ class FakeCircleRepository implements CircleRepository {
   }
 }
 
+/// PNG 1x1 kedua (warna lain), supaya foto kamera depan bisa dibedakan.
+final testPhotoFront = base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP438MAAAQZAYzvQbwjAAAAAElFTkSuQmCC',
+);
+
 /// PNG 1x1 valid, supaya Image.memory tidak error di test.
 final testPhoto = base64Decode(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
@@ -360,7 +367,7 @@ class FakeCatchCamera implements CatchCamera {
   @override
   Future<Uint8List> takePicture() async {
     shots.add(current!);
-    return testPhoto;
+    return current == CameraLens.front ? testPhotoFront : testPhoto;
   }
 
   @override
@@ -400,6 +407,7 @@ class FakeCatchRepository implements CatchRepository {
   Completer<void>? identifyGate;
 
   final prepared = <PreparedCatch>[];
+  final capturedPhotos = <CapturedPhotos>[];
   final identified = <String>[];
   final discarded = <String>[];
   final submitted = <CatchDetails>[];
@@ -417,6 +425,7 @@ class FakeCatchRepository implements CatchRepository {
 
   @override
   Future<PreparedCatch> prepare(CapturedPhotos photos) async {
+    capturedPhotos.add(photos);
     if (uploadFailures > 0) {
       uploadFailures--;
       throw const StorageException('upload gagal');
@@ -545,6 +554,14 @@ class FakeFeedRepository implements FeedRepository {
     );
   }
 
+  final downloads = <String>[];
+
+  @override
+  Future<Uint8List> downloadPhoto(String path) async {
+    downloads.add(path);
+    return testPhoto;
+  }
+
   @override
   Future<void> deleteComment(String commentId) async {
     deletedComments.add(commentId);
@@ -638,6 +655,53 @@ class FakeCutoutRepository implements CutoutRepository {
   @override
   Future<void> save(String catchId, Uint8List? png) async =>
       saved.add((catchId: catchId, hasCutout: png != null));
+}
+
+class FakeCatchSharer implements CatchSharer {
+  final saved = <String>[];
+  final shared = <String>[];
+
+  /// Kalau diisi, saveToGallery melempar (mis. izin galeri ditolak).
+  Object? saveError;
+
+  @override
+  Future<void> saveToGallery(Uint8List png, {required String name}) async {
+    final e = saveError;
+    if (e != null) throw e;
+    saved.add(name);
+  }
+
+  @override
+  Future<void> share(
+    Uint8List png, {
+    required String name,
+    String? text,
+  }) async => shared.add(name);
+}
+
+class FakeFeedbackRepository implements FeedbackRepository {
+  final sent = <({FeedbackCategory category, String message})>[];
+  Object? error;
+
+  @override
+  Future<void> submit(FeedbackCategory category, String message) async {
+    final e = error;
+    if (e != null) throw e;
+    sent.add((category: category, message: message));
+  }
+}
+
+/// Komposer gambar palsu: langsung balas, tanpa dart:ui.
+final composedShares = <({String animalName, String? caption})>[];
+Future<Uint8List> fakeComposeShareImage({
+  required Uint8List animalPhoto,
+  required Uint8List selfiePhoto,
+  required String animalName,
+  required DateTime date,
+  String? caption,
+}) async {
+  composedShares.add((animalName: animalName, caption: caption));
+  return testPhoto;
 }
 
 class FakeDailyDropRepository implements DailyDropRepository {
@@ -747,6 +811,8 @@ Future<void> pumpApp(
   FakeAvatarPicker? avatarPicker,
   FakeCutoutMaker? cutoutMaker,
   FakeCutoutRepository? cutouts,
+  FakeCatchSharer? sharer,
+  FakeFeedbackRepository? feedback,
   VoidCallback? onOpenSettings,
 }) async {
   tester.view.physicalSize = const Size(1080, 2400);
@@ -763,6 +829,12 @@ Future<void> pumpApp(
         ),
         circleRepositoryProvider.overrideWithValue(
           circles ?? FakeCircleRepository(),
+        ),
+        autoCaptureDelayProvider.overrideWithValue(Duration.zero),
+        catchSharerProvider.overrideWithValue(sharer ?? FakeCatchSharer()),
+        shareImageComposerProvider.overrideWithValue(fakeComposeShareImage),
+        feedbackRepositoryProvider.overrideWithValue(
+          feedback ?? FakeFeedbackRepository(),
         ),
         catchCameraFactoryProvider.overrideWithValue(
           () => camera ?? FakeCatchCamera(),

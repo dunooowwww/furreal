@@ -6,3 +6,9 @@ import '../data/catch_camera.dart';
 final catchCameraFactoryProvider = Provider<CatchCamera Function()>(
   (ref) => PluginCatchCamera.new,
 );
+
+/// Jeda sebelum foto kedua dijepret otomatis (kamera menyesuaikan cahaya).
+/// Di test dibuat nol.
+final autoCaptureDelayProvider = Provider<Duration>(
+  (ref) => const Duration(milliseconds: 600),
+);

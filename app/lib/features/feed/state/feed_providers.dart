@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/supabase.dart';
 import '../../../shared/analytics.dart';
 import '../../circles/state/circle_providers.dart';
+import '../data/catch_share.dart';
 import '../data/feed_models.dart';
 import '../data/feed_repository.dart';
 
@@ -114,3 +115,10 @@ final commentsProvider = FutureProvider.autoDispose
     .family<List<FeedComment>, String>(
       (ref, catchId) => ref.watch(feedRepositoryProvider).comments(catchId),
     );
+
+final catchSharerProvider = Provider<CatchSharer>((ref) => PluginCatchSharer());
+
+/// Pembuat gambar simpan/bagikan; diganti di test (dart:ui butuh async asli).
+final shareImageComposerProvider = Provider<ShareImageComposer>(
+  (ref) => composeShareImage,
+);

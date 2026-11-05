@@ -30,7 +30,6 @@ Future<void> pumpReady(WidgetTester tester, FakeCatchRepository catches) =>
 Future<void> toResult(WidgetTester tester) async {
   await tapText(tester, 'buka kamera');
   await tapFinder(tester, find.byKey(const Key('shutter')));
-  await tapFinder(tester, find.byKey(const Key('shutter')));
 }
 
 Future<void> nameAndPost(WidgetTester tester) async {
@@ -45,7 +44,7 @@ void main() {
     await pumpReady(tester, catches);
 
     await tapText(tester, 'buka kamera');
-    await tapFinder(tester, find.byKey(const Key('shutter')));
+    // Sekali tap: dua foto langsung (AI masih loading, jadi tanpa pumpAndSettle).
     await tester.tap(find.byKey(const Key('shutter')));
     for (var i = 0; i < 5; i++) {
       await tester.pump(const Duration(milliseconds: 100));
