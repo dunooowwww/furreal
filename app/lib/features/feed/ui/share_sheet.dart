@@ -8,20 +8,49 @@ import '../data/catch_share.dart';
 import '../data/feed_models.dart';
 import '../state/feed_providers.dart';
 
+/// Isi gambar yang dibagikan: catch sendiri dari feed (M12) atau riwayat (M16).
+class ShareTarget {
+  const ShareTarget({
+    required this.animalPhotoPath,
+    required this.selfiePhotoPath,
+    required this.animalName,
+    required this.date,
+    this.caption,
+  });
+
+  factory ShareTarget.fromFeed(FeedItem item) => ShareTarget(
+    animalPhotoPath: item.animalPhotoPath!,
+    selfiePhotoPath: item.selfiePhotoPath!,
+    animalName: item.animalName,
+    caption: item.caption,
+    date: item.createdAt,
+  );
+
+  final String animalPhotoPath;
+  final String selfiePhotoPath;
+  final String? animalName;
+  final String? caption;
+  final DateTime date;
+}
+
 /// Simpan / bagikan gambar catch sendiri (foto + selfie + watermark).
-Future<void> showShareSheet(BuildContext context, FeedItem item) {
+Future<void> showShareSheet(BuildContext context, FeedItem item) =>
+    showShareTargetSheet(context, ShareTarget.fromFeed(item));
+
+Future<void> showShareTargetSheet(BuildContext context, ShareTarget target) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    builder: (_) => ShareSheet(item: item),
+    useRootNavigator: true,
+    builder: (_) => ShareSheet(item: target),
   );
 }
 
 class ShareSheet extends ConsumerStatefulWidget {
   const ShareSheet({super.key, required this.item});
 
-  final FeedItem item;
+  final ShareTarget item;
 
   @override
   ConsumerState<ShareSheet> createState() => _ShareSheetState();
@@ -44,15 +73,15 @@ class _ShareSheetState extends ConsumerState<ShareSheet> {
     final item = widget.item;
     final repo = ref.read(feedRepositoryProvider);
     final photos = await Future.wait([
-      repo.downloadPhoto(item.animalPhotoPath!),
-      repo.downloadPhoto(item.selfiePhotoPath!),
+      repo.downloadPhoto(item.animalPhotoPath),
+      repo.downloadPhoto(item.selfiePhotoPath),
     ]);
     return ref.read(shareImageComposerProvider)(
       animalPhoto: photos[0],
       selfiePhoto: photos[1],
       animalName: item.animalName ?? 'tanpa nama',
       caption: item.caption,
-      date: item.createdAt,
+      date: item.date,
     );
   }
 

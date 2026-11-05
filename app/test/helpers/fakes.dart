@@ -487,6 +487,28 @@ class FakeCatchRepository implements CatchRepository {
     today = null;
   }
 
+  final deletedIds = <String>[];
+
+  /// Riwayat palsu yang ikut berkurang saat deleteCatch (M16).
+  List<HistoryCatch>? history;
+
+  @override
+  Future<void> deleteCatch({
+    required String catchId,
+    required String? animalId,
+    required String animalPhotoPath,
+    required String selfiePhotoPath,
+  }) async {
+    final error = deleteError;
+    if (error != null) throw error;
+    deletedIds.add(catchId);
+    history?.removeWhere((c) => c.id == catchId);
+    if (today?.id == catchId) today = null;
+  }
+
+  /// Kalau diisi, deleteCatch melempar error ini.
+  Object? deleteError;
+
   final edits = <({String animalName, String? caption})>[];
 
   /// Kalau diisi, editTodayCatch melempar error ini.
