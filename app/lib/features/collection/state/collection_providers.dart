@@ -36,6 +36,65 @@ final yesterdayCatchProvider = FutureProvider<YesterdayCatch?>((ref) async {
   return ref.watch(collectionRepositoryProvider).yesterdayCatch();
 });
 
+/// Riwayat catch sendiri (M16), dimuat per halaman.
+class CatchHistory {
+  const CatchHistory(this.items, {required this.hasMore});
+
+  final List<HistoryCatch> items;
+  final bool hasMore;
+}
+
+class CatchHistoryController extends AsyncNotifier<CatchHistory> {
+  bool _loadingMore = false;
+
+  @override
+  Future<CatchHistory> build() async {
+    final userId = await ref.watch(authUserIdProvider.future);
+    if (userId == null) return const CatchHistory([], hasMore: false);
+    final page = await ref.watch(collectionRepositoryProvider).myCatches();
+    return CatchHistory(page, hasMore: page.length >= historyPageSize);
+  }
+
+  Future<void> loadMore() async {
+    final current = state.value;
+    if (current == null || !current.hasMore || _loadingMore) return;
+    _loadingMore = true;
+    try {
+      final page = await ref
+          .read(collectionRepositoryProvider)
+          .myCatches(before: current.items.last.catchDate);
+      state = AsyncData(
+        CatchHistory([
+          ...current.items,
+          ...page,
+        ], hasMore: page.length >= historyPageSize),
+      );
+    } finally {
+      _loadingMore = false;
+    }
+  }
+}
+
+final catchHistoryProvider =
+    AsyncNotifierProvider<CatchHistoryController, CatchHistory>(
+      CatchHistoryController.new,
+    );
+
+/// Tab koleksi: kartu atau riwayat.
+enum CollectionTab { cards, history }
+
+class CollectionTabNotifier extends Notifier<CollectionTab> {
+  @override
+  CollectionTab build() => CollectionTab.cards;
+
+  void set(CollectionTab tab) => state = tab;
+}
+
+final collectionTabProvider =
+    NotifierProvider<CollectionTabNotifier, CollectionTab>(
+      CollectionTabNotifier.new,
+    );
+
 /// null = semua.
 class CollectionFilter extends Notifier<AnimalKind?> {
   @override
@@ -53,6 +112,7 @@ final catchDerivedProviders = <ProviderOrFamily>[
   collectionProvider,
   streakProvider,
   yesterdayCatchProvider,
+  catchHistoryProvider,
 ];
 
 final cutoutMakerProvider = Provider<CutoutMaker>((ref) => MlKitCutoutMaker());

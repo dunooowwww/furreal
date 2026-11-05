@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:furreal/app/splash_overlay.dart';
 import 'package:furreal/app/app.dart';
 import 'package:furreal/features/account/data/account_repository.dart';
 import 'package:furreal/features/account/data/avatar_picker.dart';
@@ -622,6 +623,56 @@ class FakeCollectionRepository implements CollectionRepository {
 
   @override
   Future<YesterdayCatch?> yesterdayCatch() async => yesterday;
+
+  final edited = <String>[];
+  final removed = <String>[];
+
+  /// Kalau diisi, editAnimal/removeAnimal melempar error ini.
+  Object? error;
+
+  @override
+  Future<void> editAnimal(
+    String animalId, {
+    required String name,
+    required AnimalKind kind,
+    required String? animalType,
+    required String? personality,
+  }) async {
+    final e = error;
+    if (e != null) throw e;
+    edited.add(animalId);
+    final i = animals.indexWhere((a) => a.id == animalId);
+    animals[i] = animals[i].copyWith(
+      name: name,
+      kind: kind,
+      animalType: () => animalType,
+      lastPersonality: personality == null ? null : () => personality,
+    );
+  }
+
+  /// Riwayat catch sendiri, terbaru dulu.
+  List<HistoryCatch> history = [];
+  final historyQueries = <DateTime?>[];
+
+  @override
+  Future<List<HistoryCatch>> myCatches({
+    DateTime? before,
+    int limit = historyPageSize,
+  }) async {
+    historyQueries.add(before);
+    return history
+        .where((c) => before == null || c.catchDate.isBefore(before))
+        .take(limit)
+        .toList();
+  }
+
+  @override
+  Future<void> removeAnimal(String animalId) async {
+    final e = error;
+    if (e != null) throw e;
+    removed.add(animalId);
+    animals.removeWhere((a) => a.id == animalId);
+  }
 }
 
 CollectionAnimal animal({
@@ -868,6 +919,7 @@ Future<void> pumpApp(
           circles ?? FakeCircleRepository(),
         ),
         autoCaptureDelayProvider.overrideWithValue(Duration.zero),
+        splashDurationProvider.overrideWithValue(Duration.zero),
         catchSharerProvider.overrideWithValue(sharer ?? FakeCatchSharer()),
         shareImageComposerProvider.overrideWithValue(fakeComposeShareImage),
         feedbackRepositoryProvider.overrideWithValue(

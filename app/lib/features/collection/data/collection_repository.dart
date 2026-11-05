@@ -1,10 +1,14 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../shared/dates.dart';
-import '../../catch_result/data/catch_repository.dart' show catchPhotosBucket;
+import '../../catch_result/data/catch_repository.dart'
+    show AnimalKind, catchPhotosBucket;
 import 'collection_models.dart';
 
 const _signedUrlTtlSeconds = 3600;
+
+/// Berapa catch dimuat per halaman riwayat.
+const historyPageSize = 30;
 
 abstract interface class CollectionRepository {
   Future<List<CollectionAnimal>> myCollection();
@@ -12,6 +16,23 @@ abstract interface class CollectionRepository {
   Future<Streak> myStreak();
 
   Future<YesterdayCatch?> yesterdayCatch();
+
+  /// Ubah data kartu (M15). [personality] null/kosong = pakai kepribadian
+  /// catch terakhir.
+  Future<void> editAnimal(
+    String animalId, {
+    required String name,
+    required AnimalKind kind,
+    required String? animalType,
+    required String? personality,
+  });
+
+  /// Hapus hewan dari koleksi; catch & fotonya tetap ada (M15).
+  Future<void> removeAnimal(String animalId);
+
+  /// Riwayat catch sendiri, terbaru dulu, [limit] per halaman. [before] =
+  /// tanggal catch terakhir halaman sebelumnya.
+  Future<List<HistoryCatch>> myCatches({DateTime? before, int limit});
 }
 
 class SupabaseCollectionRepository implements CollectionRepository {
@@ -47,6 +68,56 @@ class SupabaseCollectionRepository implements CollectionRepository {
       for (final row in rows) CollectionAnimal.fromJson(row, signedUrls: urls),
     ];
   }
+
+  @override
+  Future<void> editAnimal(
+    String animalId, {
+    required String name,
+    required AnimalKind kind,
+    required String? animalType,
+    required String? personality,
+  }) => _client.rpc<void>(
+    'edit_animal',
+    params: {
+      'p_animal_id': animalId,
+      'p_name': name,
+      'p_kind': kind.dbValue,
+      'p_animal_type': animalType,
+      'p_personality': personality,
+    },
+  );
+
+  @override
+  Future<List<HistoryCatch>> myCatches({
+    DateTime? before,
+    int limit = historyPageSize,
+  }) async {
+    var query = _client
+        .from('catches')
+        .select(
+          'id, catch_date, created_at, animal_photo_path, selfie_photo_path, '
+          'caption, timing, is_late, animals(name, animal_type)',
+        )
+        .eq('user_id', _userId);
+    if (before != null) query = query.lt('catch_date', isoDate(before));
+    final rows =
+        (await query
+                .order('catch_date', ascending: false)
+                .order('created_at', ascending: false)
+                .limit(limit))
+            .cast<Map<String, dynamic>>();
+    final urls = await _sign([
+      for (final r in rows) ...[
+        r['animal_photo_path'] as String,
+        r['selfie_photo_path'] as String,
+      ],
+    ]);
+    return [for (final r in rows) HistoryCatch.fromJson(r, signedUrls: urls)];
+  }
+
+  @override
+  Future<void> removeAnimal(String animalId) =>
+      _client.rpc<void>('remove_animal', params: {'p_animal_id': animalId});
 
   @override
   Future<Streak> myStreak() async {

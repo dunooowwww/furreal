@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme.dart';
 import '../data/collection_models.dart';
+import '../state/collection_providers.dart';
 import 'animal_card.dart';
+import 'edit_animal_sheet.dart';
 
 const _months = [
   'jan', 'feb', 'mar', 'apr', 'mei', 'jun', //
@@ -38,14 +41,22 @@ Future<void> showAnimalDetail(
   );
 }
 
-class AnimalDetailSheet extends StatelessWidget {
+class AnimalDetailSheet extends ConsumerWidget {
   const AnimalDetailSheet({super.key, required this.animal, this.number});
 
   final CollectionAnimal animal;
   final int? number;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Ikuti hasil edit (M15); kalau sudah tidak ada, tampilkan data awal.
+    final animal =
+        ref
+            .watch(collectionProvider)
+            .value
+            ?.where((a) => a.id == this.animal.id)
+            .firstOrNull ??
+        this.animal;
     final label = FurrealText.mono(fontSize: 11)
         .copyWith(color: FurrealColors.textSecondary, letterSpacing: 0.5);
 
@@ -101,6 +112,33 @@ class AnimalDetailSheet extends StatelessWidget {
                       style: FurrealText.display(fontSize: 22),
                     ),
                   ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  key: const Key('animal-edit'),
+                  onPressed: () => showEditAnimalSheet(context, animal),
+                  icon: const Icon(Icons.edit_outlined, size: 18),
+                  label: const Text('edit'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  key: const Key('animal-remove'),
+                  onPressed: () async {
+                    final navigator = Navigator.of(context);
+                    if (await confirmRemoveAnimal(context, ref, animal)) {
+                      navigator.pop();
+                    }
+                  },
+                  icon: const Icon(Icons.delete_outline, size: 18),
+                  label: const Text('hapus'),
                 ),
               ),
             ],

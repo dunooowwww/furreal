@@ -9,6 +9,7 @@ import '../features/feed/state/feed_providers.dart';
 import '../features/notifications/data/push_messaging.dart';
 import '../features/notifications/state/notification_providers.dart';
 import 'router.dart';
+import 'splash_overlay.dart';
 import 'theme.dart';
 
 class FurrealApp extends ConsumerStatefulWidget {
@@ -106,6 +107,7 @@ class _FurrealAppState extends ConsumerState<FurrealApp> {
       theme: buildTheme(),
       scaffoldMessengerKey: _messenger,
       routerConfig: ref.watch(routerProvider),
+      builder: (context, child) => SplashOverlay(child: child!),
     );
   }
 }
