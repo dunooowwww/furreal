@@ -453,3 +453,7 @@ verify_jwt = true
 # M10: kabari anggota circle setelah pemilik JWT posting catch (sekali per catch).
 [functions.notify-catch]
 verify_jwt = true
+
+# M14: dipanggil pg_cron (antrean reaksi/komentar & pengingat streak) dengan Bearer DAILY_DROP_SECRET.
+[functions.send-activity]
+verify_jwt = false
