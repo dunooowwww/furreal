@@ -83,9 +83,8 @@ void main() {
       expect(inKey('stat-streak', find.text('4')), findsOneWidget);
 
       expect(inKey('animal-mochi', find.text('Mochi')), findsOneWidget);
-      expect(inKey('animal-mochi', find.text('kucing')), findsOneWidget);
       expect(
-        inKey('animal-mochi', find.text('ketemu 5x · peliharaan')),
+        inKey('animal-mochi', find.text('kucing · ketemu 5x')),
         findsOneWidget,
       );
       expect(
@@ -138,7 +137,9 @@ void main() {
       final detail = find.byKey(const Key('animal-detail'));
       expect(detail, findsOneWidget);
       Finder inDetail(Finder f) => find.descendant(of: detail, matching: f);
-      expect(inDetail(find.text('Mochi')), findsOneWidget);
+      // Nama di kartu dan di judul detail.
+      expect(inDetail(find.text('Mochi')), findsNWidgets(2));
+      expect(inDetail(find.byKey(const Key('holo-gesture'))), findsOneWidget);
       expect(inDetail(find.text('kucing · peliharaan')), findsOneWidget);
       expect(inDetail(find.text('5x')), findsOneWidget);
       expect(inDetail(find.text('1 sep 2026')), findsOneWidget);
@@ -242,7 +243,7 @@ void main() {
         findsOneWidget,
       );
 
-      await tapText(tester, 'posting ke circle');
+      await postToCircle(tester);
       expect(
         find.text('pilih dulu hewan yang lo temuin lagi.'),
         findsOneWidget,
@@ -251,7 +252,7 @@ void main() {
 
       await tapFinder(tester, find.byKey(const Key('reencounter-mochi')));
       final loadsBefore = collection.loads;
-      await tapText(tester, 'posting ke circle');
+      await postToCircle(tester);
 
       final posted = catches.submitted.single;
       expect(posted.existingAnimalId, 'mochi');
@@ -284,7 +285,7 @@ void main() {
       await tapFinder(tester, find.byKey(const Key('reencounter-mochi')));
       await tapFinder(tester, find.text('hewan baru').last);
       await enter(tester, 'animal-name', 'Luna');
-      await tapText(tester, 'posting ke circle');
+      await postToCircle(tester);
 
       expect(catches.submitted.single.existingAnimalId, isNull);
       expect(catches.submitted.single.animalName, 'Luna');

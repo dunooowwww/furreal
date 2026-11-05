@@ -2,7 +2,7 @@
 
 > Dokumen ini adalah spesifikasi teknis untuk membangun MVP furreal.
 > Baca bagian yang relevan dengan milestone yang sedang dikerjakan saja.
-> Versi produk: PRD v1.2 · Diperbarui: 25 Okt 2026
+> Versi produk: PRD v1.3 · Diperbarui: 5 Nov 2026
 
 ---
 
@@ -33,7 +33,8 @@ bernama yang dibagikan ke circle teman. Koleksi berpusat pada **individu hewan**
 `firebase_analytics`, `firebase_crashlytics`, `geolocator`, `geocoding`, `go_router`,
 `flutter_riverpod`, `google_fonts`, `cached_network_image`, `flutter_image_compress` (kompres foto, ditambahkan v0.4),
 `image_picker` (foto profil dari galeri, ditambahkan v1.0; catch tetap kamera saja),
-`google_sign_in` (masuk dengan Google, ditambahkan v1.1).
+`google_sign_in` (masuk dengan Google, ditambahkan v1.1),
+`google_mlkit_subject_segmentation` (potong hewan dari foto di HP untuk kartu koleksi, ditambahkan v1.3; Android 7+).
 Jangan tambah paket lain tanpa alasan yang jelas.
 
 ## 3. Struktur repo
@@ -80,9 +81,9 @@ Mockup referensi: canvas "Catch UI" (nama lama, isinya prototype furreal) (5 lay
 | 0b | Circle | Buat circle (dapat kode undangan 6 karakter) atau gabung via kode. User boleh ikut beberapa circle; minimal satu untuk masuk beranda |
 | 1 | Beranda | Logo, streak, kartu izin notifikasi (penjelasan dulu, baru dialog sistem; muncul setelah onboarding kalau izin belum ada), kartu "daily drop": belum turun ("catch duluan?", kamera tetap kebuka sejak v1.2) / sisa waktu tepat-waktu (hitung mundur 1 jam) / telat, status circle hari ini ("x dari y udah catch"), tangkapan kemarin, tab bar. Tarik ke bawah untuk cek drop lagi |
 | 2 | Kamera | Bisa dibuka kapan saja (v1.2; sebelumnya dikunci sampai drop turun). Gelap, full screen, sisa waktu tepat-waktu (atau "telat" / "drop belum turun · catch ditandai sebelum drop") di bawah header. 2 langkah berurutan: "1/2 · foto hewan" (default kamera belakang) lalu "2/2 · foto lo" (selfie/reaksi, default kamera depan). Tombol ganti kamera di tiap langkah, jadi kamera mana pun boleh untuk foto mana pun. Tanpa akses galeri. Izin kamera ditolak → layar penjelasan + tombol buka pengaturan |
-| 3 | Hasil tangkapan | Kartu foto + jenis hewan + kartu kepribadian AI, input nama, pilihan "hewan baru / ketemu lagi", label area, tombol posting |
+| 3 | Hasil tangkapan | Kartu foto + jenis hewan + kartu kepribadian AI, input nama, pilihan "hewan baru / ketemu lagi", label area, tombol posting. Setelah posting (v1.3): kartu koleksi "BARU DAPET!" / "KETEMU LAGI!" dengan efek holo, tombol "masuk koleksi" |
 | 4 | Feed circle | Header "feed" + pilihan circle (kalau ikut >1 circle) + "hari ini · x dari y udah catch". Banner "lo belum catch hari ini" + tombol kamera (sebelum drop turun: "daily drop belum turun, tapi lo boleh catch duluan"). **Feed dikunci ala BeReal (v1.0):** sebelum user catch hari ini, kartu teman hari ini tampil terkunci (nama, foto profil, jam, tepat waktu/telat saja; isi "catch dulu buat lihat", tanpa reaksi/komentar). Kartu catch anggota circle hari ini (Asia/Jakarta), terbaru dulu: foto profil & nama, waktu relatif, label sebelum drop/tepat waktu/telat, foto hewan + selfie kecil, nama, jenis, "first catch"/"ketemu ke-Nx", kartu kepribadian. Reaksi suka & lucu (toggle optimistis), komentar di bottom sheet (maks 300, hapus milik sendiri). Pull-to-refresh, tanpa realtime |
-| 5 | Koleksi | Statistik (hewan, jenis, streak), filter semua/peliharaan/liar, grid 2 kolom kartu hewan (foto terakhir, nama, jenis, "ketemu Nx"), tap → detail (pertemuan, pertama ditemui, kartu kepribadian terakhir). Rarity/musim/kartu terkunci di luar MVP |
+| 5 | Koleksi | Statistik (hewan, jenis, streak), filter semua/peliharaan/liar, grid 2 kolom **kartu koleksi** (v1.3): logo "Furreal", nomor `#0001` (urutan hewan pertama ditemui), hewan hasil potongan di atas foto asli yang diburamkan (tanpa potongan → foto biasa), pita nama, "jenis · ketemu Nx". Tap → detail: kartu besar dengan efek holo yang miring & berkilau mengikuti jari, tagline (kalimat pertama kepribadian), info jenis · lokasi · tanggal, kotak "Kepribadian:" (sisa kepribadian), lalu pertemuan & pertama ditemui. Warna pastel per jenis. Desain sendiri, bukan tiruan kartu bermerek. Rarity/badge kelangkaan, musim, kartu terkunci di luar MVP |
 | 6 | Pengaturan | Dari foto profil di header beranda (v1.0): foto/nama & @username, edit profil (foto dari galeri, nama tampilan, username), circle lo, kebijakan privasi, keluar, hapus akun (wajib ketik username, lalu kembali ke login). Kebijakan privasi juga bisa dibuka dari layar login |
 | 6a | Circle lo | Per circle: nama, kode undangan + salin, anggota (foto, nama, @username), keluar circle (konfirmasi; circle terakhir → kembali ke layar buat/gabung; anggota terakhir → circle terhapus). Tombol buat/gabung circle lain |
 
@@ -130,6 +131,7 @@ daily_drops     (drop_date date PK, scheduled_at timestamptz,   -- jam acak, rah
 - **Lokasi:** JANGAN simpan koordinat. App mengubah lokasi menjadi label area (contoh: "sekitar Depok, Sleman") di HP, lalu hanya `area_label` yang dikirim.
 - **Streak** diperbarui oleh trigger Postgres saat insert `catches`: +1 kalau `last_catch_date` = kemarin, tetap kalau hari yang sama, reset ke 1 kalau terlewat; catch bertanggal lampau diabaikan; `longest` ikut naik. Saat ditampilkan (`my_streak()`), streak yang `last_catch_date`-nya lebih lama dari kemarin dianggap 0.
 - **Daily drop ala BeReal (v1.2, menggantikan kunci v0.8):** catch boleh kapan saja di hari itu; `FR005` tidak dipakai lagi. Server memberi label `catches.timing`: `early` (drop belum turun), `on_time` (≤ 1 jam setelah `daily_drops.sent_at`), `late`. `is_late` tetap diisi (= `timing = 'late'`). Feed tetap terkunci sampai user catch (v1.0).
+- **Potongan hewan (v1.3):** setelah posting, app memotong hewan dari foto hewan dengan ML Kit di HP (subjek terbesar, minimal 3% foto) dan meng-upload `{uid}/{catch_id}/cutout.png` (PNG transparan, maks 720px), lalu `set_catch_cutout(catch, true)`. Tidak ada hewan → `set_catch_cutout(catch, false)`. `catches.cutout_path` + `cutout_attempted` hanya lewat RPC itu. Catch lama dipotong di HP saat koleksi dibuka (maks 8 per kali, tidak diulang di sesi yang sama; error ML Kit tidak menandai catch). `my_collection()` menyertakan catch terakhir, potongan, tanggal, dan label area.
 - **Notifikasi "teman udah catch" (v1.2):** setelah posting, app memanggil Edge Function `notify-catch`; `catches.notified_at` menjaga satu catch hanya dikabarkan sekali.
 - **Token FCM:** satu token per profil, disimpan lewat RPC `set_fcm_token(token)` (null saat keluar). Token yang sama dilepas dari akun lain (satu HP = satu akun). `fcm_token` tetap tidak bisa dibaca atau diubah langsung lewat API.
 - **Ketemu lagi:** user memilih `animal_id` yang sudah ada miliknya (`create_catch(..., p_animal_id)`) → `encounter_count` (= jumlah catch hewan itu) dan `last_seen_at` dihitung trigger, bukan dari app. Catch hanya boleh terhubung ke hewan milik pemilik catch (trigger, error `FR004`). Nama & peliharaan/liar mengikuti hewan lama.
@@ -142,6 +144,7 @@ daily_drops     (drop_date date PK, scheduled_at timestamptz,   -- jam acak, rah
 - `animals`, `catches`: pemilik bisa membaca, membuat, dan mengubah miliknya (catch + hewan baru dibuat atomik lewat RPC `create_catch`, idempoten untuk `catch_id` yang sama; kolom hasil server seperti `catch_date`, `is_late`, `user_id` tidak bisa diubah user); anggota circle yang sama hanya bisa membaca. **Catch tidak bisa dihapus user** (audit 27 Okt): hapus akun lewat `delete-account`, hapus untuk development lewat `supabase/scripts/reset_dev_today.ts`.
 - `reactions`, `comments`: bisa dibuat dan dibaca jika user berbagi circle dengan pemilik catch; hanya bisa menghapus milik sendiri.
 - Storage `catch-photos`: path `{user_id}/{catch_id}/animal.jpg` dan `selfie.jpg`. Upload hanya ke folder sendiri; foto yang belum diposting boleh ditimpa/dihapus pemiliknya, foto catch yang sudah diposting tidak (`is_posted_catch_photo`); baca hanya jika berbagi circle (dan aturan kunci feed). Akses lewat signed URL.
+- Storage `catch-photos` juga menerima `cutout.png` (PNG) sejak v1.3, dengan aturan baca yang sama.
 - Storage `avatars` (v1.0): path `{user_id}/{uuid}.jpg`, JPEG maks 1 MB. Upload/ubah/hapus hanya di folder sendiri; baca milik sendiri atau satu circle. `profiles.avatar_path` wajib di folder sendiri (check constraint).
 - `leave_circle(circle_id)` (v1.0): keluar circle; circle tanpa anggota ikut terhapus.
 - Buat helper SQL `shares_circle(a uuid, b uuid) returns boolean` untuk dipakai di semua policy.
@@ -210,6 +213,8 @@ Kerjakan **satu milestone per sesi**. Setiap milestone selesai = test lulus + `f
 | M8 | Login baru & splash (dari feedback tes pertama) | Daftar email + username + password (verifikasi kode email sekali), masuk pakai username + password, lupa password lewat kode email, masuk dengan Google (`google_sign_in`), splash screen + ikon launcher furreal |
 | M9 | Pengaturan & feed ala BeReal (dari feedback tes pertama) | Layar pengaturan (edit profil + foto profil dari galeri, kelola circle: kode, anggota, keluar, buat/gabung), feed teman hari ini terkunci di server sampai user catch, hapus akun ikut menghapus foto profil, RLS test lulus |
 | M10 | Daily drop ala BeReal (dari feedback tes pertama) | Kamera tidak dikunci sebelum drop (label `early`/`on_time`/`late` dari server), notifikasi drop dilewati untuk yang sudah catch, notifikasi "teman udah catch" ke anggota circle lewat `notify-catch` (sekali per catch), RLS/test lulus |
+| M11 | Kartu koleksi (dari feedback) | Hewan dipotong di HP (ML Kit) saat posting & untuk catch lama, kartu koleksi bergaya referensi user di grid, detail (holo geser jari), dan "baru dapet!" setelah posting; RLS/test lulus |
+| M12 | Kamera ganda, share, caption, saran (rencana dari feedback) | 1 tap jepret hewan + selfie (urutan bisa dipilih), simpan/bagikan gambar catch sendiri (foto + selfie + watermark furreal + tanggal + nama & caption), caption manual di feed (kepribadian hanya di koleksi), form saran fitur/laporan bug di pengaturan (tabel Supabase) |
 
 ## 8. Kebutuhan non-fungsional
 

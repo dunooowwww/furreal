@@ -35,7 +35,7 @@ Future<void> toResult(WidgetTester tester) async {
 
 Future<void> nameAndPost(WidgetTester tester) async {
   await enter(tester, 'animal-name', 'Milo');
-  await tapText(tester, 'posting ke circle');
+  await postToCircle(tester);
 }
 
 void main() {

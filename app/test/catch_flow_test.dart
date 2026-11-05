@@ -97,13 +97,13 @@ void main() {
         findsOneWidget,
       );
 
-      await tapText(tester, 'posting ke circle');
+      await postToCircle(tester);
       expect(find.text('kasih nama dulu hewannya.'), findsOneWidget);
       expect(catches.submitted, isEmpty);
 
       await enter(tester, 'animal-name', '  Milo ');
       await tapText(tester, 'liar');
-      await tapText(tester, 'posting ke circle');
+      await postToCircle(tester);
 
       final posted = catches.submitted.single;
       expect(posted.animalName, 'Milo');
@@ -134,7 +134,7 @@ void main() {
     await tapFinder(tester, find.byKey(const Key('hide-location')));
     expect(find.text('lokasi disembunyikan'), findsOneWidget);
     await enter(tester, 'animal-name', 'Mochi');
-    await tapText(tester, 'posting ke circle');
+    await postToCircle(tester);
 
     expect(catches.submitted.single.areaLabel, isNull);
     expect(catches.submitted.single.locationHidden, isTrue);
@@ -162,7 +162,7 @@ void main() {
     );
     expect(find.byKey(const Key('hide-location')), findsNothing);
     await enter(tester, 'animal-name', 'Kiko');
-    await tapText(tester, 'posting ke circle');
+    await postToCircle(tester);
 
     expect(catches.submitted.single.areaLabel, isNull);
     expect(catches.submitted.single.locationHidden, isTrue);
@@ -182,7 +182,7 @@ void main() {
     );
     await captureBoth(tester);
     await enter(tester, 'animal-name', 'Milo');
-    await tapText(tester, 'posting ke circle');
+    await postToCircle(tester);
 
     expect(
       find.text('kamu udah catch hari ini. besok lagi ya!'),

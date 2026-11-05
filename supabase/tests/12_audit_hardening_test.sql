@@ -3,7 +3,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
-select plan(12);
+select plan(14);
 
 insert into auth.users (id, email) values
   ('11111111-1111-1111-1111-111111111111', 'alice@example.com'),
@@ -19,7 +19,7 @@ insert into storage.objects (bucket_id, name, owner)
 select 'catch-photos', '11111111-1111-1111-1111-111111111111/' || c || '/' || f,
        '11111111-1111-1111-1111-111111111111'
 from (values ('aaaaaaaa-0000-0000-0000-000000000001'), ('aaaaaaaa-0000-0000-0000-000000000002')) as x(c),
-     (values ('animal.jpg'), ('selfie.jpg')) as y(f);
+     (values ('animal.jpg'), ('selfie.jpg'), ('cutout.png')) as y(f);
 
 delete from public.daily_drops;
 
@@ -93,6 +93,17 @@ select is(
   pg_temp.touch_photo('11111111-1111-1111-1111-111111111111/aaaaaaaa-0000-0000-0000-000000000002/animal.jpg'),
   1,
   'pemilik masih bisa menimpa foto yang belum diposting'
+);
+
+-- potongan hewan (M11) diunggah setelah posting dan boleh diunggah ulang
+select ok(
+  not public.is_posted_catch_photo('11111111-1111-1111-1111-111111111111/aaaaaaaa-0000-0000-0000-000000000001/cutout.png'),
+  'cutout.png tidak ikut terkunci setelah posting'
+);
+select is(
+  pg_temp.touch_photo('11111111-1111-1111-1111-111111111111/aaaaaaaa-0000-0000-0000-000000000001/cutout.png'),
+  1,
+  'pemilik masih bisa menimpa cutout.png catch yang sudah diposting'
 );
 
 reset role;
