@@ -61,3 +61,21 @@ class RemotePhotoPlaceholder extends StatelessWidget {
 final remotePhotoBuilderProvider = Provider<RemotePhotoBuilder>(
   (ref) => cachedRemotePhoto,
 );
+
+/// Seperti [cachedRemotePhoto] tapi utuh (contain), untuk potongan hewan PNG
+/// transparan di kartu koleksi.
+Widget cachedRemoteCutout(BuildContext context, String? url, String cacheKey) {
+  if (url == null) return const SizedBox.shrink();
+  return CachedNetworkImage(
+    imageUrl: url,
+    cacheKey: cacheKey,
+    fit: BoxFit.contain,
+    fadeInDuration: const Duration(milliseconds: 150),
+    placeholder: (_, _) => const SizedBox.shrink(),
+    errorWidget: (_, _, _) => const SizedBox.shrink(),
+  );
+}
+
+final remoteCutoutBuilderProvider = Provider<RemotePhotoBuilder>(
+  (ref) => cachedRemoteCutout,
+);

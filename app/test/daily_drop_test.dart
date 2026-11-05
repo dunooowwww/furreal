@@ -185,7 +185,7 @@ void main() {
     await tapFinder(tester, find.byKey(const Key('shutter')));
     await tapFinder(tester, find.byKey(const Key('shutter')));
     await enter(tester, 'animal-name', 'Milo');
-    await tapText(tester, 'posting ke circle');
+    await postToCircle(tester);
 
     expect(
       find.text('daily drop belum turun. tunggu notifikasinya ya.'),

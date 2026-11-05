@@ -2,7 +2,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
-select plan(13);
+select plan(14);
 
 insert into auth.users (id, email) values
   ('11111111-1111-1111-1111-111111111111', 'alice@example.com'),
@@ -60,6 +60,11 @@ select results_eq(
             '11111111-1111-1111-1111-111111111111/aaaaaaaa-0000-0000-0000-000000000001/cutout.png'::text,
             true)$$,
   'koleksi menyertakan catch terakhir + potongannya'
+);
+select results_eq(
+  $$select last_catch_date, last_area_label from public.my_collection()$$,
+  $$values (public.jakarta_today() - 1, null::text)$$,
+  'koleksi menyertakan tanggal & label area catch terakhir (untuk kartu)'
 );
 select is(public.set_catch_cutout('aaaaaaaa-0000-0000-0000-000000000001', false), null,
   'tanpa hewan terdeteksi: path dikosongkan');

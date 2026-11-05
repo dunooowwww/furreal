@@ -37,9 +37,12 @@ class SupabaseCollectionRepository implements CollectionRepository {
   Future<List<CollectionAnimal>> myCollection() async {
     final rows = (await _client.rpc('my_collection') as List)
         .cast<Map<String, dynamic>>();
-    final urls = await _sign(
-      rows.map((r) => r['last_animal_photo_path']).whereType<String>(),
-    );
+    final urls = await _sign([
+      for (final r in rows) ...[
+        ?r['last_animal_photo_path'] as String?,
+        ?r['last_cutout_path'] as String?,
+      ],
+    ]);
     return [
       for (final row in rows) CollectionAnimal.fromJson(row, signedUrls: urls),
     ];

@@ -13,6 +13,12 @@ class CollectionAnimal {
     required this.lastPhotoPath,
     required this.lastPersonality,
     this.lastPhotoUrl,
+    this.lastCatchId,
+    this.lastCutoutPath,
+    this.lastCutoutUrl,
+    this.cutoutAttempted = false,
+    this.lastCatchDate,
+    this.lastAreaLabel,
   });
 
   factory CollectionAnimal.fromJson(
@@ -20,6 +26,7 @@ class CollectionAnimal {
     Map<String, String> signedUrls = const {},
   }) {
     final path = json['last_animal_photo_path'] as String?;
+    final cutout = json['last_cutout_path'] as String?;
     return CollectionAnimal(
       id: json['animal_id'] as String,
       name: json['name'] as String,
@@ -31,6 +38,15 @@ class CollectionAnimal {
       lastPhotoPath: path,
       lastPersonality: json['last_personality'] as String?,
       lastPhotoUrl: path == null ? null : signedUrls[path],
+      lastCatchId: json['last_catch_id'] as String?,
+      lastCutoutPath: cutout,
+      lastCutoutUrl: cutout == null ? null : signedUrls[cutout],
+      cutoutAttempted: json['last_cutout_attempted'] as bool? ?? false,
+      lastCatchDate: switch (json['last_catch_date']) {
+        final String d => DateTime.parse(d),
+        _ => null,
+      },
+      lastAreaLabel: json['last_area_label'] as String?,
     );
   }
 
@@ -44,6 +60,39 @@ class CollectionAnimal {
   final String? lastPhotoPath;
   final String? lastPersonality;
   final String? lastPhotoUrl;
+
+  /// Catch terakhir dan potongan hewannya (M11). Tanpa potongan, kartu
+  /// memakai foto biasa.
+  final String? lastCatchId;
+  final String? lastCutoutPath;
+  final String? lastCutoutUrl;
+
+  /// Sudah pernah dicoba dipotong (berhasil atau tidak ada hewannya).
+  final bool cutoutAttempted;
+
+  /// Tanggal & label area catch terakhir (null kalau lokasi disembunyikan).
+  final DateTime? lastCatchDate;
+  final String? lastAreaLabel;
+}
+
+/// Nomor koleksi: #1 = hewan yang paling dulu ditemui.
+Map<String, int> collectionNumbers(List<CollectionAnimal> animals) {
+  final sorted = [...animals]
+    ..sort((a, b) {
+      final byDate = a.firstSeenAt.compareTo(b.firstSeenAt);
+      return byDate != 0 ? byDate : a.id.compareTo(b.id);
+    });
+  return {for (var i = 0; i < sorted.length; i++) sorted[i].id: i + 1};
+}
+
+/// Kepribadian AI dipecah: kalimat pertama jadi tagline kartu, sisanya
+/// isi kotak "kepribadian". Satu kalimat saja → semuanya tagline.
+({String? tagline, String? traits}) splitPersonality(String? personality) {
+  final text = personality?.trim();
+  if (text == null || text.isEmpty) return (tagline: null, traits: null);
+  final match = RegExp(r'^(.+?[.!?])\s+(.+)$', dotAll: true).firstMatch(text);
+  if (match == null) return (tagline: text, traits: null);
+  return (tagline: match.group(1)!.trim(), traits: match.group(2)!.trim());
 }
 
 /// Streak yang ditampilkan (sudah 0 kalau putus, lihat `my_streak()`).

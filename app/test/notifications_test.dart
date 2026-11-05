@@ -46,7 +46,7 @@ Future<void> postCatch(WidgetTester tester, String name) async {
   await tapFinder(tester, find.byKey(const Key('shutter')));
   await tapFinder(tester, find.byKey(const Key('shutter')));
   await enter(tester, 'animal-name', name);
-  await tapText(tester, 'posting ke circle');
+  await postToCircle(tester);
 }
 
 void main() {

@@ -60,7 +60,8 @@ $$;
 revoke execute on function public.set_catch_cutout(uuid, boolean) from public, anon;
 grant execute on function public.set_catch_cutout(uuid, boolean) to authenticated;
 
--- Koleksi v2: + catch terakhir (id), potongannya, dan apakah sudah dicoba.
+-- Koleksi v2: + catch terakhir (id, tanggal, label area), potongannya, dan
+-- apakah sudah dicoba. Dipakai kartu koleksi.
 drop function public.my_collection();
 
 create function public.my_collection()
@@ -76,7 +77,9 @@ returns table (
   last_personality text,
   last_catch_id uuid,
   last_cutout_path text,
-  last_cutout_attempted boolean
+  last_cutout_attempted boolean,
+  last_catch_date date,
+  last_area_label text
 )
 language sql
 stable
@@ -85,10 +88,12 @@ as $$
   select a.id, a.name, a.kind, a.animal_type, a.encounter_count,
          a.first_seen_at, a.last_seen_at,
          lc.animal_photo_path, lc.personality,
-         lc.id, lc.cutout_path, coalesce(lc.cutout_attempted, false)
+         lc.id, lc.cutout_path, coalesce(lc.cutout_attempted, false),
+         lc.catch_date, lc.area_label
   from public.animals a
   left join lateral (
     select c.id, c.animal_photo_path, c.cutout_path, c.cutout_attempted,
+           c.catch_date, c.area_label,
            coalesce(c.personality, c.ai_personality) as personality
     from public.catches c
     where c.animal_id = a.id
