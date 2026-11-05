@@ -163,7 +163,7 @@ void main() {
               isLate: false,
               animalName: 'Mochi',
               animalType: 'kucing',
-              personality: null,
+              caption: null,
               lateMinutes: null,
               encounterCount: 1,
               animalPhotoPath: 'u-d/d/animal.jpg',

@@ -127,6 +127,7 @@ void main() {
       expect(catches.submitted, isEmpty);
 
       await enter(tester, 'animal-name', '  Milo ');
+      await enter(tester, 'caption', '  ketemu di parkiran  ');
       await tapText(tester, 'liar');
       await postToCircle(tester);
 
@@ -140,6 +141,11 @@ void main() {
       expect(catches.identified, ['catch-1']);
       expect(posted.animalType, 'kucing');
       expect(posted.personality, mockKucing.personality);
+      expect(
+        posted.caption,
+        'ketemu di parkiran',
+        reason: 'caption feed dirapikan',
+      );
       expect(catches.discarded, isEmpty);
 
       // kembali ke beranda dengan status sudah catch

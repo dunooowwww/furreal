@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
 import '../../../app/theme.dart';
+import '../../auth/state/auth_providers.dart';
 import '../../catch_result/state/catch_providers.dart';
 import '../../circles/data/circle_repository.dart';
 import '../../circles/state/circle_providers.dart';
@@ -13,6 +14,7 @@ import '../data/feed_models.dart';
 import '../state/feed_providers.dart';
 import 'comments_sheet.dart';
 import 'feed_card.dart';
+import 'share_sheet.dart';
 
 /// Feed circle hari ini (prototype "Feed circle").
 class FeedScreen extends ConsumerWidget {
@@ -28,6 +30,7 @@ class FeedScreen extends ConsumerWidget {
     final circle = circles.firstWhere((c) => c.id == circleId);
     final feed = ref.watch(feedControllerProvider(circleId));
     final caughtToday = ref.watch(todayCatchProvider).value != null;
+    final myId = ref.watch(authUserIdProvider).value;
 
     Future<void> refresh() async {
       ref.invalidate(todayCatchProvider);
@@ -89,6 +92,9 @@ class FeedScreen extends ConsumerWidget {
                           circleId: circleId,
                           catchId: item.catchId,
                         ),
+                        onShare: item.userId == myId
+                            ? () => showShareSheet(context, item)
+                            : null,
                       ),
                       const SizedBox(height: 16),
                     ],

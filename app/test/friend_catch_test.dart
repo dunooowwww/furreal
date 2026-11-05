@@ -20,7 +20,7 @@ FeedItem dinda({CatchTiming? timing, bool isLate = false}) => FeedItem(
   animalName: 'Mochi',
   animalType: 'kucing',
   encounterCount: 1,
-  personality: null,
+  caption: null,
   animalPhotoPath: 'u-d/d/animal.jpg',
   selfiePhotoPath: 'u-d/d/selfie.jpg',
   likeCount: 0,

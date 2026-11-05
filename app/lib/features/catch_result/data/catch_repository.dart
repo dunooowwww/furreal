@@ -27,6 +27,9 @@ const catchPhotosBucket = 'catch-photos';
 const animalTypeMaxLength = 40;
 const personalityMaxLength = 300;
 
+/// Sama dengan check constraint `catches.caption` (M12).
+const captionMaxLength = 150;
+
 /// Foto sudah ter-upload ke `{user_id}/{id}/`, baris catch belum dibuat.
 class PreparedCatch {
   const PreparedCatch({
@@ -50,6 +53,7 @@ class CatchDetails {
     required this.areaLabel,
     required this.locationHidden,
     this.existingAnimalId,
+    this.caption,
   });
 
   /// "Ketemu lagi": hewan lama milik sendiri. null = hewan baru.
@@ -60,8 +64,11 @@ class CatchDetails {
   /// Jenis final (pilihan/koreksi user), boleh kosong.
   final String? animalType;
 
-  /// Kartu kepribadian final (boleh diedit user), boleh kosong.
+  /// Kartu kepribadian final (boleh diedit user), boleh kosong. Untuk koleksi.
   final String? personality;
+
+  /// Caption manual untuk feed (M12), boleh kosong.
+  final String? caption;
   final String? areaLabel;
   final bool locationHidden;
 }
@@ -222,6 +229,7 @@ class SupabaseCatchRepository implements CatchRepository {
         'p_animal_type': details.animalType,
         'p_personality': details.personality,
         'p_animal_id': details.existingAnimalId,
+        'p_caption': details.caption,
       },
     );
     final json = row as Map<String, dynamic>;

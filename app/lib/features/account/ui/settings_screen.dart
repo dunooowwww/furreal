@@ -91,6 +91,13 @@ class SettingsScreen extends ConsumerWidget {
               child: Column(
                 children: [
                   ListTile(
+                    leading: const Icon(Icons.lightbulb_outline),
+                    title: const Text('kirim saran'),
+                    subtitle: const Text('ide fitur atau laporan bug'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push(Routes.feedback),
+                  ),
+                  ListTile(
                     leading: const Icon(Icons.privacy_tip_outlined),
                     title: const Text('kebijakan privasi'),
                     trailing: const Icon(Icons.chevron_right),
