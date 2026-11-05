@@ -13,7 +13,7 @@ Semua secret (keystore, password, service role key, service account) **tidak per
 ## 2. Supabase produksi
 - [ ] Buat project di supabase.com (region Singapore), lalu `npx supabase link --project-ref <ref>`.
 - [ ] `npx supabase db push` (semua migrasi; `pg_cron` & `pg_net` dibuat oleh migrasi M6).
-- [ ] Deploy function: `npx supabase functions deploy identify-animal send-daily-drop delete-account`.
+- [ ] Deploy function: `npx supabase functions deploy identify-animal send-daily-drop delete-account notify-catch send-activity`.
 - [ ] Secrets: `npx supabase secrets set AI_PROVIDER=... AI_MODEL=... AI_API_KEY=... DAILY_DROP_SECRET=<acak-panjang> FCM_SERVICE_ACCOUNT_JSON='<json satu baris>'`.
 - [ ] Vault (SQL editor), dengan nilai `DAILY_DROP_SECRET` yang sama:
   ```sql

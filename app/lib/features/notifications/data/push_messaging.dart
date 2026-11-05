@@ -20,7 +20,8 @@ enum DropMessage {
   opened,
 }
 
-/// Notifikasi "teman udah catch" (M10).
+/// Notifikasi yang mengarah ke feed: "teman udah catch" (M10) atau reaksi /
+/// komentar di catch sendiri (M14).
 class FriendCatchMessage {
   const FriendCatchMessage({required this.opened, this.title});
 
@@ -28,6 +29,17 @@ class FriendCatchMessage {
   final bool opened;
 
   /// Judul notifikasi, mis. "dinda udah catch!".
+  final String? title;
+}
+
+/// Pengingat streak jam 20:00 WIB (M14).
+class StreakReminderMessage {
+  const StreakReminderMessage({required this.opened, this.title});
+
+  /// true = user mengetuk notifikasinya; false = masuk saat app terbuka.
+  final bool opened;
+
+  /// Judul notifikasi, mis. "streak 3 hari lo hampir putus!".
   final String? title;
 }
 
@@ -45,6 +57,8 @@ abstract interface class PushMessaging {
   Stream<DropMessage> get dropMessages;
 
   Stream<FriendCatchMessage> get friendCatches;
+
+  Stream<StreakReminderMessage> get streakReminders;
 }
 
 /// Dipakai kalau Firebase tidak tersedia; app tetap jalan tanpa notifikasi.
@@ -69,6 +83,9 @@ class DisabledPushMessaging implements PushMessaging {
 
   @override
   Stream<FriendCatchMessage> get friendCatches => const Stream.empty();
+
+  @override
+  Stream<StreakReminderMessage> get streakReminders => const Stream.empty();
 }
 
 class FirebasePushMessaging implements PushMessaging {
@@ -85,9 +102,13 @@ class FirebasePushMessaging implements PushMessaging {
     switch (m.data['type']) {
       case 'daily_drop':
         _drops.add(opened ? DropMessage.opened : DropMessage.foreground);
-      case 'friend_catch':
+      case 'friend_catch' || 'activity':
         _friendCatches.add(
           FriendCatchMessage(opened: opened, title: m.notification?.title),
+        );
+      case 'streak_reminder':
+        _streaks.add(
+          StreakReminderMessage(opened: opened, title: m.notification?.title),
         );
     }
   }
@@ -95,6 +116,7 @@ class FirebasePushMessaging implements PushMessaging {
   final FirebaseMessaging _messaging;
   final _drops = StreamController<DropMessage>.broadcast();
   final _friendCatches = StreamController<FriendCatchMessage>.broadcast();
+  final _streaks = StreamController<StreakReminderMessage>.broadcast();
 
   static PushPermission _map(NotificationSettings s) =>
       switch (s.authorizationStatus) {
@@ -122,6 +144,9 @@ class FirebasePushMessaging implements PushMessaging {
 
   @override
   Stream<FriendCatchMessage> get friendCatches => _friendCatches.stream;
+
+  @override
+  Stream<StreakReminderMessage> get streakReminders => _streaks.stream;
 }
 
 /// Simpan token FCM milik user yang login (null = hapus, saat keluar).

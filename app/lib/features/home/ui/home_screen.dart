@@ -1,14 +1,13 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
 import '../../../app/theme.dart';
-import '../../../shared/errors.dart';
 import '../../auth/state/auth_providers.dart';
 import '../../catch_result/data/catch_repository.dart';
 import '../../catch_result/state/catch_providers.dart';
+import '../../catch_result/ui/edit_catch_sheet.dart';
 import '../../circles/data/circle_repository.dart';
 import '../../circles/state/circle_providers.dart';
 import '../../collection/data/collection_models.dart';
@@ -101,21 +100,8 @@ class _TodayCardState extends ConsumerState<_TodayCard> {
 
   Future<void> _deleteToday() async {
     setState(() => _deleting = true);
-    final messenger = ScaffoldMessenger.of(context);
-    try {
-      await ref.read(catchRepositoryProvider).deleteTodayCatch();
-      ref.invalidate(todayCatchProvider);
-      for (final p in catchDerivedProviders) {
-        ref.invalidate(p);
-      }
-      messenger.showSnackBar(
-        const SnackBar(content: Text('catch hari ini dihapus (debug).')),
-      );
-    } catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(friendlyError(e))));
-    } finally {
-      if (mounted) setState(() => _deleting = false);
-    }
+    await confirmDeleteTodayCatch(context, ref);
+    if (mounted) setState(() => _deleting = false);
   }
 
   @override
@@ -216,14 +202,36 @@ class _TodayCardState extends ConsumerState<_TodayCard> {
       'besok ada daily drop lagi.',
       style: TextStyle(color: FurrealColors.textSecondary),
     ),
-    // Hanya untuk tes berulang di mode debug; tidak ada di build rilis.
-    if (kDebugMode) ...[
-      const SizedBox(height: 12),
-      OutlinedButton(
-        onPressed: _deleting ? null : _deleteToday,
-        child: Text(_deleting ? 'menghapus…' : 'hapus catch hari ini (debug)'),
+    if ((caught.caption ?? '').isNotEmpty) ...[
+      const SizedBox(height: 8),
+      Text(
+        '"${caught.caption}"',
+        key: const Key('today-caption'),
+        style: const TextStyle(fontSize: 15, fontStyle: FontStyle.italic),
       ),
     ],
+    const SizedBox(height: 12),
+    Row(
+      children: [
+        Expanded(
+          child: OutlinedButton.icon(
+            key: const Key('today-edit'),
+            onPressed: () => showEditCatchSheet(context, caught),
+            icon: const Icon(Icons.edit_outlined, size: 18),
+            label: const Text('edit'),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: OutlinedButton.icon(
+            key: const Key('today-delete'),
+            onPressed: _deleting ? null : _deleteToday,
+            icon: const Icon(Icons.delete_outline, size: 18),
+            label: Text(_deleting ? 'menghapus…' : 'hapus'),
+          ),
+        ),
+      ],
+    ),
   ];
 }
 

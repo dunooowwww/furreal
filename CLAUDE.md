@@ -27,6 +27,7 @@ cd app && flutter build appbundle --release --dart-define-from-file=.env.prod
 ```
 
 Daily drop dijadwalkan `pg_cron` (09:55 WIB + dispatch tiap menit) lewat `pg_net` ke `send-daily-drop`.
+Notifikasi reaksi/komentar (antrean, tiap menit) & pengingat streak (20:00 WIB) lewat `pg_cron` → `send-activity` (M14).
 Catch boleh kapan saja (label early/on_time/late dari server, M10); posting memanggil `notify-catch`. Firebase opsional: tanpa `app/android/app/google-services.json`
 app jalan tanpa notifikasi/metrik (setup: `docs/PLAN.md` catatan M6).
 

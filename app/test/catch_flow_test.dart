@@ -266,25 +266,4 @@ void main() {
     expect(catches.discarded, ['catch-1']);
     expect(catches.submitted, isEmpty);
   });
-
-  testWidgets('debug: hapus catch hari ini supaya bisa catch lagi', (
-    tester,
-  ) async {
-    final catches = FakeCatchRepository(
-      today: const TodayCatch(
-        id: 'catch-1',
-        animalPhotoPath: 'a',
-        selfiePhotoPath: 's',
-        animalName: 'Milo',
-        kind: AnimalKind.pet,
-      ),
-    );
-    await pumpReadyApp(tester, catches: catches);
-
-    expect(find.text('peliharaan'), findsOneWidget);
-    expect(find.byKey(const Key('today-animal')), findsOneWidget);
-    await tapText(tester, 'hapus catch hari ini (debug)');
-    expect(catches.deleted, 1);
-    expect(find.text('buka kamera'), findsOneWidget);
-  });
 }

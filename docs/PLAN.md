@@ -17,6 +17,8 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
 - [ ] **M10 — Daily drop ala BeReal** — kode selesai; `flutter analyze` bersih, `flutter test` 132/132, `deno test` 66/66, pgTAP 249/249 (Postgres 16 lokal dengan tiruan auth + storage + Vault). Belum terverifikasi: notifikasi "teman udah catch" sampai di HP, catch sebelum drop di produksi (lihat catatan M10).
 - [ ] **M11 — Kartu koleksi** — kode selesai; `flutter analyze` bersih, `flutter test` 148/148, `deno test` 66/66, pgTAP 263/263 (Postgres 16 lokal dengan tiruan auth + storage + Vault). Belum terverifikasi: kualitas potongan ML Kit di HP asli, build Android dengan paket ML Kit (lihat catatan M11).
 - [ ] **M12 — Kamera ganda, share, caption, saran** — kode selesai; `flutter analyze` bersih, `flutter test` 156/156, `deno test` 66/66, pgTAP 274/274 (Postgres 16 lokal dengan tiruan auth + storage + Vault). Belum terverifikasi: jepret otomatis kamera kedua di HP asli, simpan ke galeri & menu bagikan, build Android dengan plugin baru (lihat catatan M12).
+- [ ] **M13 — Ajak teman, edit & hapus catch** — kode selesai; `flutter analyze` bersih, `flutter test` 162/162, `deno test` 66/66, pgTAP 283/283 (Postgres 16 lokal dengan tiruan auth + storage + Vault). Belum terverifikasi: menu bagikan undangan & edit/hapus di HP asli, migrasi di produksi (lihat catatan M13).
+- [ ] **M14 — Notifikasi aktivitas & pengingat streak** — kode selesai; `flutter analyze` bersih, `flutter test` 165/165, `deno test` 75/75, pgTAP 298/298 (Postgres 16 lokal dengan tiruan auth + storage + Vault, `pg_net` tiruan). Belum terverifikasi: notifikasi sampai di HP, cron 20:00 di produksi (lihat catatan M14).
 
 ## Catatan keputusan
 
@@ -332,3 +334,18 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
 - **Saran (keputusan: tabel Supabase):** tabel `feedback` (RLS, insert atas nama sendiri saja, tanpa baca lewat API). Pengaturan → "kirim saran": pilih "saran fitur"/"laporan bug", tulis (maks 1000), kirim. `app_version` diisi dari `FLUTTER_BUILD_NAME/NUMBER` saat `flutter build` (kosong saat `flutter run`). Dibaca di dashboard Supabase → Table Editor → `feedback`.
 - **Manual setelah merge:** `npx supabase db push`, build APK baru (plugin `share_plus`, `gal`).
 
+### M13 (7 Nov 2026)
+- **Permintaan user:** fitur sebelum dites ke teman — ajak teman lewat kode undangan, edit/hapus catch sendiri (dan M14: notifikasi reaksi/komentar + pengingat streak).
+- **Edit & hapus catch:** migrasi `20261107090000_edit_catch.sql` — RPC `edit_catch` (pemilik saja, P0002 kalau bukan miliknya; caption dirapikan, kosong = null, maks 150) dan trigger `catches_recompute_streak_after_delete` (memanggil `recompute_streak`; dilewati saat hapus berantai lewat `pg_trigger_depth() < 1`). Test `13_edit_catch_test.sql` (9).
+  - Beranda: tombol debug "hapus catch hari ini" diganti tombol "edit" & "hapus" untuk semua build. Edit = sheet nama hewan + caption (nama berlaku untuk hewan itu di koleksi). Hapus = dialog konfirmasi, foto + potongan dihapus dari storage, hewan ikut dihapus kalau baru dibuat oleh catch itu.
+  - Feed: kartu catch sendiri hari ini punya tombol ⋮ → "edit nama & caption" / "hapus catch". Sheet dibuka di root navigator supaya tidak tertutup tab bar.
+  - Hanya catch hari ini yang bisa diubah dari app (feed memang hanya hari ini); catch lama tetap.
+- **Ajak teman:** tombol "ajak teman" di pengaturan → circle lo dan di layar circle baru dibuat. Teks: nama circle, kode, cara gabung, dan `download app: <INVITE_LINK>` kalau `INVITE_LINK` diisi di `.env.local`/`.env.prod` (mis. link Firebase App Distribution). Tanpa deep link (butuh domain + App Links; bisa nanti).
+- **Manual setelah merge:** `npx supabase db push --remote`; isi `INVITE_LINK` (opsional) lalu build APK baru.
+
+### M14 (8 Nov 2026)
+- **Reaksi & komentar:** migrasi `20261108090000_activity_streak_notifications.sql`. Antrean di DB (trigger), bukan dipanggil app, supaya tidak bisa dipakai spam dan tetap jalan walau app ditutup. Dikirim pg_cron tiap menit, jadi beberapa reaksi dalam semenit jadi satu notifikasi. Toggle reaksi berulang tidak mengirim ulang (unique index per pelaku & catch). Hanya pemilik catch yang dikabari (bukan sesama komentator).
+- **Pengingat streak:** 20:00 WIB, hanya untuk streak yang masih hidup (catch terakhir kemarin) dan belum catch hari ini. Belum ada pengaturan untuk mematikannya di app; user bisa mematikan channel "pengingat streak" di pengaturan Android.
+- **Edge Function `send-activity`:** satu fungsi untuk dua job, secret & Vault dipakai ulang dari daily drop. Tanpa FCM → antrean dibiarkan (tidak diklaim).
+- **App:** channel Android `activity` & `streak_reminder` (MainActivity). Push `activity` diperlakukan seperti `friend_catch`; `streak_reminder` → snackbar "catch" / buka beranda.
+- **Manual setelah merge:** `npx supabase db push --remote`, `npx supabase functions deploy send-activity`, build APK baru (channel baru). Tidak ada secret/Vault baru.
