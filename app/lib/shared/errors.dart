@@ -46,7 +46,8 @@ String friendlyError(Object error) {
       case 'FR002':
         return 'foto belum ke-upload. coba posting lagi.';
       case 'FR006':
-        return 'terlalu banyak percobaan masuk. tunggu 15 menit ya.';
+        return 'terlalu banyak percobaan masuk pakai username ini. tunggu 15 menit, '
+            'atau masuk pakai email.';
       case 'FR005':
         return 'daily drop belum turun. tunggu notifikasinya ya.';
       case '23505':

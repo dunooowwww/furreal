@@ -2,7 +2,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
-select plan(31);
+select plan(32);
 
 -- alice & bob satu circle, carol di luar circle.
 insert into auth.users (id, email) values
@@ -151,7 +151,10 @@ select is(
   'foto alice hari ini terkunci sebelum bob catch'
 );
 
-delete from public.catches;
+select lives_ok(
+  $$delete from public.catches$$,
+  'anggota circle menghapus 0 baris (RLS hanya mengizinkan milik sendiri)'
+);
 delete from public.animals;
 update public.catches set location_hidden = false, area_label = 'diretas';
 
@@ -207,7 +210,7 @@ select is(
   'daily_drops terisi untuk test is_late'
 );
 
--- === alice: hapus catch hari ini lalu catch ulang (alur debug) ==============
+-- === alice: hapus catch hari ini lalu catch ulang ============================
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}', true);
 

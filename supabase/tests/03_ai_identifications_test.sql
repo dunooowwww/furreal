@@ -120,7 +120,10 @@ select lives_ok(
 );
 
 -- tanpa hasil AI (atau hasil AI milik user lain) → ai_* kosong
+-- (user tidak bisa menghapus catch sejak audit 27 Okt, jadi dihapus admin)
+reset role;
 delete from public.catches;
+set local role authenticated;
 insert into storage.objects (bucket_id, name) values
   ('catch-photos', '11111111-1111-1111-1111-111111111111/aaaaaaaa-0000-0000-0000-000000000002/animal.jpg'),
   ('catch-photos', '11111111-1111-1111-1111-111111111111/aaaaaaaa-0000-0000-0000-000000000002/selfie.jpg');

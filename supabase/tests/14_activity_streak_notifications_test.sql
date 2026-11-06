@@ -32,6 +32,9 @@ create function pg_temp.as_user(p_id text) returns void language sql as $$
   select set_config('request.jwt.claims', json_build_object('sub', p_id, 'role', 'authenticated')::text, true);
 $$;
 
+-- seed.sql (supabase db reset) mengisi Vault; test ini butuh Vault kosong.
+delete from vault.secrets where name in ('daily_drop_url', 'daily_drop_secret');
+
 select is(public.dispatch_activity_notifications(), null, 'tanpa antrean, dispatch tidak memanggil apa pun');
 
 -- === carol bereaksi & komentar di catch alice (lewat API) =====================

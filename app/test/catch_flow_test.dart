@@ -43,6 +43,12 @@ Future<void> captureBoth(WidgetTester tester) async {
   expect(find.text('dapet!'), findsOneWidget);
 }
 
+/// Tombol back sistem (lewat Navigator, jadi PopScope ikut menahan).
+Future<void> pressBack(WidgetTester tester, Finder onScreen) async {
+  Navigator.of(tester.element(onScreen)).maybePop();
+  await tester.pumpAndSettle();
+}
+
 void main() {
   testWidgets('kamera: pilih "lo dulu" → selfie dulu (depan), hewan otomatis', (
     tester,
@@ -255,6 +261,8 @@ void main() {
     await pumpReadyApp(tester);
     await captureBoth(tester);
     await tapFinder(tester, find.byTooltip('foto ulang'));
+    expect(find.text('foto ulang?'), findsOneWidget);
+    await tapFinder(tester, find.byKey(const Key('confirm-discard')));
     expect(find.text('1/2 · foto hewan'), findsOneWidget);
   });
 
@@ -263,6 +271,43 @@ void main() {
     await pumpReadyApp(tester, catches: catches);
     await captureBoth(tester);
     await tapFinder(tester, find.byTooltip('foto ulang'));
+    await tapFinder(tester, find.byKey(const Key('confirm-discard')));
+    expect(catches.discarded, ['catch-1']);
+    expect(catches.submitted, isEmpty);
+  });
+
+  testWidgets('foto ulang dibatalkan → tetap di layar hasil, foto aman', (
+    tester,
+  ) async {
+    final catches = FakeCatchRepository();
+    await pumpReadyApp(tester, catches: catches);
+    await captureBoth(tester);
+    await tapFinder(tester, find.byTooltip('foto ulang'));
+    await tapText(tester, 'lanjut catch');
+    expect(find.text('dapet!'), findsOneWidget);
+    expect(catches.discarded, isEmpty);
+  });
+
+  testWidgets('back di layar hasil minta konfirmasi sebelum foto dibuang', (
+    tester,
+  ) async {
+    final catches = FakeCatchRepository();
+    await pumpReadyApp(tester, catches: catches);
+    await captureBoth(tester);
+    await enter(tester, 'animal-name', 'Milo');
+
+    // Tombol posting selalu terlihat (judul "dapet!" bisa tergulir keluar).
+    final postButton = find.text('posting ke circle');
+    await pressBack(tester, postButton);
+    expect(find.text('buang catch ini?'), findsOneWidget);
+    await tapText(tester, 'lanjut catch');
+    expect(postButton, findsOneWidget);
+    expect(find.text('Milo'), findsOneWidget);
+    expect(catches.discarded, isEmpty);
+
+    await pressBack(tester, postButton);
+    await tapFinder(tester, find.byKey(const Key('confirm-discard')));
+    expect(find.text('buka kamera'), findsOneWidget);
     expect(catches.discarded, ['catch-1']);
     expect(catches.submitted, isEmpty);
   });
