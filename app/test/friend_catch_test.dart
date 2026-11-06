@@ -20,7 +20,7 @@ FeedItem dinda({CatchTiming? timing, bool isLate = false}) => FeedItem(
   animalName: 'Mochi',
   animalType: 'kucing',
   encounterCount: 1,
-  personality: null,
+  caption: null,
   animalPhotoPath: 'u-d/d/animal.jpg',
   selfiePhotoPath: 'u-d/d/selfie.jpg',
   likeCount: 0,
@@ -106,6 +106,54 @@ void main() {
       push.catches.add(const FriendCatchMessage(opened: true));
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('feed-summary')), findsOneWidget);
+      expect(find.byType(SnackBar), findsNothing);
+    });
+  });
+
+  group('notifikasi M14', () {
+    testWidgets('reaksi/komentar (lewat stream feed) diketuk → feed', (
+      tester,
+    ) async {
+      final push = FakePushMessaging(current: PushPermission.granted);
+      await pumpHome(tester, push: push);
+      push.catches.add(
+        const FriendCatchMessage(
+          opened: false,
+          title: 'dinda komentar di catch Milo',
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.text('dinda komentar di catch Milo'), findsOneWidget);
+    });
+
+    testWidgets(
+      'pengingat streak saat app terbuka → snackbar, "catch" buka kamera',
+      (tester) async {
+        final push = FakePushMessaging(current: PushPermission.granted);
+        await pumpHome(tester, push: push);
+        push.streaks.add(
+          const StreakReminderMessage(
+            opened: false,
+            title: 'streak 3 hari lo hampir putus!',
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('streak 3 hari lo hampir putus!'), findsOneWidget);
+        await tapText(tester, 'catch');
+        expect(find.text('1/2 · foto hewan'), findsOneWidget);
+      },
+    );
+
+    testWidgets('pengingat streak diketuk → tetap/kembali ke beranda', (
+      tester,
+    ) async {
+      final push = FakePushMessaging(current: PushPermission.granted);
+      await pumpHome(tester, push: push);
+      await tester.tap(find.text('feed').last);
+      await tester.pumpAndSettle();
+      push.streaks.add(const StreakReminderMessage(opened: true));
+      await tester.pumpAndSettle();
+      expect(find.text('buka kamera'), findsOneWidget);
       expect(find.byType(SnackBar), findsNothing);
     });
   });

@@ -1,15 +1,18 @@
--- Perbaikan audit: catch tidak bisa dihapus user, foto catch yang sudah
--- terposting dikunci, create_catch idempoten untuk p_catch_id yang sama.
+-- Perbaikan audit (setelah digabung dengan M13): foto catch yang sudah
+-- terposting tidak bisa ditimpa, create_catch idempoten untuk p_catch_id yang
+-- sama, dan hapus lalu catch ulang tidak mengirim notifikasi teman dua kali.
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path = public, extensions;
-select plan(14);
+select plan(19);
 
 insert into auth.users (id, email) values
   ('11111111-1111-1111-1111-111111111111', 'alice@example.com'),
   ('22222222-2222-2222-2222-222222222222', 'bob@example.com');
 insert into public.circles (id, name, invite_code, created_by) values
   ('cccccccc-0000-0000-0000-000000000001', 'kos', 'KSE234', '11111111-1111-1111-1111-111111111111');
+update public.profiles set username = 'alice', display_name = 'Alice' where id = '11111111-1111-1111-1111-111111111111';
+update public.profiles set username = 'bob', fcm_token = 'tok-bob' where id = '22222222-2222-2222-2222-222222222222';
 insert into public.circle_members (circle_id, user_id) values
   ('cccccccc-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111'),
   ('cccccccc-0000-0000-0000-000000000001', '22222222-2222-2222-2222-222222222222');
@@ -68,13 +71,6 @@ select throws_ok(
   'catch dengan id lain di hari yang sama tetap ditolak'
 );
 
--- === catch tidak bisa dihapus (tidak bisa catch ulang / spam notifikasi) ====
-select throws_ok(
-  $$delete from public.catches where id = 'aaaaaaaa-0000-0000-0000-000000000001'$$,
-  '42501', null,
-  'pemilik tidak bisa menghapus catch-nya'
-);
-
 -- === foto yang sudah terposting dikunci, foto batal tetap bisa dibuang ======
 select ok(
   public.is_posted_catch_photo('11111111-1111-1111-1111-111111111111/aaaaaaaa-0000-0000-0000-000000000001/animal.jpg'),
@@ -115,16 +111,60 @@ select ok(
     select 1 from pg_policies
     where schemaname = 'storage' and tablename = 'objects' and cmd = 'DELETE'
       and qual like '%is_own_catch_photo_path(name)%'
-      and qual like '%NOT is_posted_catch_photo(name)%'
+      and qual not like '%is_posted_catch_photo%'
   ),
-  'hapus foto catch hanya untuk foto yang belum diposting'
+  'hapus foto catch sendiri tetap boleh (app menghapus foto saat catch dihapus)'
 );
 select ok(
-  not exists (
+  exists (
     select 1 from pg_policies
-    where schemaname = 'public' and tablename = 'catches' and cmd = 'DELETE'
+    where schemaname = 'storage' and tablename = 'objects' and cmd = 'UPDATE'
+      and qual like '%NOT is_posted_catch_photo(name)%'
   ),
-  'tidak ada policy hapus di catches'
+  'timpa foto catch yang sudah diposting dilarang'
+);
+
+-- === notifikasi teman: sekali per user per hari, walau hapus lalu catch ulang
+set local role service_role;
+select is(
+  (select count(*)::int from public.claim_catch_notification(
+     'aaaaaaaa-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111')),
+  1,
+  'catch pertama alice hari ini mengabari bob'
+);
+select is(
+  (select count(*)::int from public.claim_catch_notification(
+     'aaaaaaaa-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111')),
+  0,
+  'catch yang sama tidak dikabarkan dua kali'
+);
+reset role;
+
+set local role authenticated;
+select pg_temp.as_user('11111111-1111-1111-1111-111111111111');
+select lives_ok(
+  $$delete from public.catches where id = 'aaaaaaaa-0000-0000-0000-000000000001'$$,
+  'pemilik bisa menghapus catch-nya'
+);
+select lives_ok(
+  $$select public.create_catch('aaaaaaaa-0000-0000-0000-000000000002', 'Kiko', 'wild', null, true)$$,
+  'setelah dihapus, pemilik bisa catch ulang'
+);
+reset role;
+
+set local role service_role;
+select is(
+  (select count(*)::int from public.claim_catch_notification(
+     'aaaaaaaa-0000-0000-0000-000000000002', '11111111-1111-1111-1111-111111111111')),
+  0,
+  'hapus lalu catch ulang tidak mengabari teman lagi hari itu'
+);
+reset role;
+select is(
+  (select count(*)::int from public.catch_notification_log
+    where user_id = '11111111-1111-1111-1111-111111111111'),
+  1,
+  'catatan notifikasi tetap ada walau catch-nya dihapus'
 );
 
 select * from finish();

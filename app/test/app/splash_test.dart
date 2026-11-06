@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:furreal/app/session.dart';
+import 'package:furreal/app/splash_overlay.dart';
 import 'package:furreal/app/splash_screen.dart';
 import 'package:furreal/app/theme.dart';
 
@@ -39,5 +40,28 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('coba lagi'), findsOneWidget);
+  });
+
+  testWidgets('splash animasi menutupi app sebentar lalu hilang', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          builder: (context, child) => SplashOverlay(child: child!),
+          home: const Scaffold(body: Text('beranda')),
+        ),
+      ),
+    );
+    expect(find.byKey(const Key('splash-overlay')), findsOneWidget);
+    expect(find.text('beranda'), findsOneWidget, reason: 'app jalan di bawah');
+
+    await tester.pump(const Duration(milliseconds: 800));
+    expect(find.byKey(const Key('splash-overlay')), findsOneWidget);
+    expect(find.text('furreal'), findsOneWidget);
+
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('splash-overlay')), findsNothing);
+    expect(find.text('beranda'), findsOneWidget);
   });
 }

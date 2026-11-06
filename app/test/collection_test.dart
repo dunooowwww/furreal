@@ -204,7 +204,6 @@ void main() {
     Future<void> toResult(WidgetTester tester) async {
       await tapText(tester, 'buka kamera');
       await tapFinder(tester, find.byKey(const Key('shutter')));
-      await tapFinder(tester, find.byKey(const Key('shutter')));
     }
 
     testWidgets('daftar hewan sendiri, jenis sama AI di atas, lalu posting', (
@@ -299,6 +298,84 @@ void main() {
         'mochi',
         'oyen',
       ]);
+    });
+  });
+
+  group('edit & hapus kartu koleksi', () {
+    Future<FakeCollectionRepository> openDetail(
+      WidgetTester tester, {
+      Object? error,
+    }) async {
+      final repo = FakeCollectionRepository(animals: [...collectionSample])
+        ..error = error;
+      await pumpHome(tester, collection: repo);
+      await openCollection(tester);
+      await tapFinder(tester, find.byKey(const Key('animal-mochi')));
+      return repo;
+    }
+
+    testWidgets('edit nama, kind, jenis, kepribadian', (tester) async {
+      final repo = await openDetail(tester);
+      await tapFinder(tester, find.byKey(const Key('animal-edit')));
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('animal-edit-personality')),
+          matching: find.text('bos kamar 4b.'),
+        ),
+        findsOneWidget,
+        reason: 'terisi kepribadian sekarang',
+      );
+
+      await enter(tester, 'animal-edit-name', '   ');
+      await tapFinder(tester, find.byKey(const Key('animal-edit-save')));
+      expect(find.text('nama hewan nggak boleh kosong.'), findsOneWidget);
+      expect(repo.edited, isEmpty);
+
+      await enter(tester, 'animal-edit-name', ' Mochi Gendut ');
+      await tapFinder(tester, find.text('liar').last);
+      await enter(tester, 'animal-edit-type', ' Musang ');
+      await enter(tester, 'animal-edit-personality', 'raja genteng.');
+      await tapFinder(tester, find.byKey(const Key('animal-edit-save')));
+
+      expect(repo.edited, ['mochi']);
+      final mochi = repo.animals.firstWhere((a) => a.id == 'mochi');
+      expect(mochi.name, 'Mochi Gendut');
+      expect(mochi.kind, AnimalKind.wild);
+      expect(mochi.animalType, 'musang');
+      expect(mochi.lastPersonality, 'raja genteng.');
+      expect(find.text('kartu diperbarui.'), findsOneWidget);
+      // Detail ikut berubah tanpa ditutup.
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('animal-detail')),
+          matching: find.text('musang · liar'),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('edit gagal → pesan di sheet', (tester) async {
+      await openDetail(tester, error: Exception('offline'));
+      await tapFinder(tester, find.byKey(const Key('animal-edit')));
+      await tapFinder(tester, find.byKey(const Key('animal-edit-save')));
+      expect(find.byKey(const Key('animal-edit-error')), findsOneWidget);
+    });
+
+    testWidgets('hapus perlu konfirmasi, lalu hilang dari koleksi', (
+      tester,
+    ) async {
+      final repo = await openDetail(tester);
+      await tapFinder(tester, find.byKey(const Key('animal-remove')));
+      expect(find.text('hapus Mochi dari koleksi?'), findsOneWidget);
+      await tapText(tester, 'batal');
+      expect(repo.removed, isEmpty);
+
+      await tapFinder(tester, find.byKey(const Key('animal-remove')));
+      await tapFinder(tester, find.byKey(const Key('confirm-remove-animal')));
+      expect(repo.removed, ['mochi']);
+      expect(find.byKey(const Key('animal-detail')), findsNothing);
+      expect(find.byKey(const Key('animal-mochi')), findsNothing);
+      expect(find.text('Mochi dihapus dari koleksi.'), findsOneWidget);
     });
   });
 }

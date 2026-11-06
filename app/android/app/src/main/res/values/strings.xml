@@ -5,4 +5,8 @@
     <string name="daily_drop_channel_description">kabar waktunya catch, sekali sehari.</string>
     <string name="friend_catch_channel_name">teman udah catch</string>
     <string name="friend_catch_channel_description">kabar waktu teman satu circle posting catch.</string>
+    <string name="activity_channel_name">reaksi &amp; komentar</string>
+    <string name="activity_channel_description">kabar waktu teman ngereaksi atau komentar di catch lo.</string>
+    <string name="streak_channel_name">pengingat streak</string>
+    <string name="streak_channel_description">diingatkan jam 8 malam kalau streak lo hampir putus.</string>
 </resources>

@@ -7,6 +7,7 @@ import '../data/collection_models.dart';
 import '../state/collection_providers.dart';
 import 'animal_card.dart';
 import 'animal_detail_sheet.dart';
+import 'history_view.dart';
 
 /// Koleksi hewan (prototype "Koleksi"). Rarity & musim di luar MVP (PRD §9).
 class CollectionScreen extends ConsumerWidget {
@@ -19,10 +20,12 @@ class CollectionScreen extends ConsumerWidget {
     ref.watch(cutoutBackfillProvider);
     final streak = ref.watch(streakProvider).value ?? Streak.none;
     final filter = ref.watch(collectionFilterProvider);
+    final tab = ref.watch(collectionTabProvider);
 
     Future<void> refresh() async {
       ref.invalidate(collectionProvider);
       ref.invalidate(streakProvider);
+      ref.invalidate(catchHistoryProvider);
       await ref.read(collectionProvider.future);
     }
 
@@ -34,27 +37,47 @@ class CollectionScreen extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(20, 24, 20, 24),
         children: [
           Text('koleksi', style: FurrealText.display(fontSize: 30)),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              for (final (t, label) in [
+                (CollectionTab.cards, 'kartu'),
+                (CollectionTab.history, 'riwayat'),
+              ]) ...[
+                _FilterPill(
+                  key: Key('tab-${t.name}'),
+                  label: label,
+                  selected: tab == t,
+                  onTap: () => ref.read(collectionTabProvider.notifier).set(t),
+                ),
+                const SizedBox(width: 8),
+              ],
+            ],
+          ),
           const SizedBox(height: 18),
-          switch (collection) {
-            AsyncData(:final value) => _buildBody(
-              context,
-              ref,
-              value,
-              streak,
-              filter,
-            ),
-            AsyncError() => const Padding(
-              padding: EdgeInsets.only(top: 48),
-              child: Text(
-                'koleksi gagal dimuat. tarik ke bawah buat coba lagi.',
-                textAlign: TextAlign.center,
+          if (tab == CollectionTab.history)
+            const HistoryView()
+          else
+            switch (collection) {
+              AsyncData(:final value) => _buildBody(
+                context,
+                ref,
+                value,
+                streak,
+                filter,
               ),
-            ),
-            _ => const Padding(
-              padding: EdgeInsets.only(top: 48),
-              child: Center(child: CircularProgressIndicator()),
-            ),
-          },
+              AsyncError() => const Padding(
+                padding: EdgeInsets.only(top: 48),
+                child: Text(
+                  'koleksi gagal dimuat. tarik ke bawah buat coba lagi.',
+                  textAlign: TextAlign.center,
+                ),
+              ),
+              _ => const Padding(
+                padding: EdgeInsets.only(top: 48),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+            },
         ],
       ),
     );
@@ -205,6 +228,7 @@ class _Stat extends StatelessWidget {
 
 class _FilterPill extends StatelessWidget {
   const _FilterPill({
+    super.key,
     required this.label,
     required this.selected,
     required this.onTap,

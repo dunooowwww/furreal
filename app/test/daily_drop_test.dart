@@ -183,7 +183,6 @@ void main() {
     );
     await tapText(tester, 'buka kamera');
     await tapFinder(tester, find.byKey(const Key('shutter')));
-    await tapFinder(tester, find.byKey(const Key('shutter')));
     await enter(tester, 'animal-name', 'Milo');
     await postToCircle(tester);
 

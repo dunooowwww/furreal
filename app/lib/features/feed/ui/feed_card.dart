@@ -15,12 +15,20 @@ class FeedCard extends ConsumerWidget {
     required this.item,
     required this.onReact,
     required this.onComments,
+    this.onShare,
+    this.onEdit,
     this.now,
   });
 
   final FeedItem item;
   final void Function(ReactionType type) onReact;
   final VoidCallback onComments;
+
+  /// Hanya untuk catch sendiri: simpan / bagikan gambarnya (M12).
+  final VoidCallback? onShare;
+
+  /// Hanya untuk catch sendiri: edit caption/nama atau hapus (M13).
+  final VoidCallback? onEdit;
 
   /// Untuk test; default DateTime.now().
   final DateTime? now;
@@ -62,6 +70,20 @@ class FeedCard extends ConsumerWidget {
                   ),
                 ),
                 _TimelinessChip(item: item),
+                if (onShare != null && !item.locked)
+                  IconButton(
+                    key: Key('share-${item.catchId}'),
+                    tooltip: 'simpan / bagikan',
+                    onPressed: onShare,
+                    icon: const Icon(Icons.ios_share, size: 20),
+                  ),
+                if (onEdit != null)
+                  IconButton(
+                    key: Key('edit-${item.catchId}'),
+                    tooltip: 'edit / hapus',
+                    onPressed: onEdit,
+                    icon: const Icon(Icons.more_vert, size: 20),
+                  ),
               ],
             ),
           ),
@@ -136,10 +158,11 @@ class FeedCard extends ConsumerWidget {
                         color: FurrealColors.textSecondary,
                       ),
                     ),
-                  if (item.personality != null) ...[
+                  if (item.caption != null) ...[
                     const SizedBox(height: 8),
                     Text(
-                      item.personality!,
+                      item.caption!,
+                      key: Key('caption-${item.catchId}'),
                       style: const TextStyle(fontSize: 14, height: 1.4),
                     ),
                   ],

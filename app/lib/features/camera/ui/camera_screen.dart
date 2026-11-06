@@ -6,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import '../../../app/router.dart';
 import '../../../app/theme.dart';
 import '../../../shared/app_settings.dart';
-import '../../../shared/widgets/discard_photos_dialog.dart';
 import '../../daily_drop/data/daily_drop.dart';
 import '../../daily_drop/state/daily_drop_providers.dart';
 import '../data/captured_photos.dart';
@@ -23,28 +22,24 @@ class _Dark {
   static const outline = Color(0xFF3A3A3A);
 }
 
-class _Step {
-  const _Step({required this.label, required this.hint, required this.lens});
+/// Foto mana yang diambil duluan (dipilih user sebelum memotret).
+enum CaptureOrder { animalFirst, selfieFirst }
 
-  final String label;
-  final String hint;
-  final CameraLens lens;
+String _stepLabel(CaptureOrder order, int step) {
+  final animalNow = (order == CaptureOrder.animalFirst) == (step == 0);
+  return '${step + 1}/2 · ${animalNow ? 'foto hewan' : 'foto lo'}';
 }
 
-const _steps = [
-  _Step(
-    label: '1/2 · foto hewan',
-    hint: 'arahin ke hewan, pastiin keliatan jelas',
-    lens: CameraLens.back,
-  ),
-  _Step(
-    label: '2/2 · foto lo',
-    hint: 'sekarang foto reaksi lo',
-    lens: CameraLens.front,
-  ),
-];
+String _stepHint(CaptureOrder order, int step) {
+  if (step == 1) return 'tahan… kamera satunya jepret otomatis';
+  return order == CaptureOrder.animalFirst
+      ? 'arahin ke hewan. abis itu selfie lo kejepret otomatis'
+      : 'siapin muka lo. abis itu hewannya kejepret otomatis';
+}
 
-/// Kamera catch 2 langkah: foto hewan, lalu foto lo. Tanpa akses galeri.
+/// Kamera catch: sekali jepret dapat dua foto (ala BeReal). Foto pertama
+/// dari kamera yang sedang aktif, lalu kamera satunya terbuka dan jepret
+/// otomatis. Urutan hewan/lo bisa dipilih. Tanpa akses galeri.
 class CameraScreen extends ConsumerStatefulWidget {
   const CameraScreen({super.key});
 
@@ -56,8 +51,11 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     with WidgetsBindingObserver {
   late final CatchCamera _camera = ref.read(catchCameraFactoryProvider)();
   int _step = 0;
-  CameraLens _lens = _steps.first.lens;
-  Uint8List? _animalPhoto;
+  CaptureOrder _order = CaptureOrder.animalFirst;
+  CameraLens _lens = CameraLens.back;
+
+  /// Foto pertama (hewan atau lo, tergantung [_order]).
+  Uint8List? _firstPhoto;
   bool _ready = false;
   bool _busy = false;
   bool _permissionDenied = false;
@@ -116,14 +114,17 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
     }
   }
 
-  /// Tutup kamera. Setelah foto hewan diambil, tanya dulu sebelum dibuang.
-  Future<void> _close() async {
-    if (_animalPhoto != null && !await confirmDiscardPhotos(context)) return;
-    if (mounted) context.pop();
-  }
-
   void _flip() =>
       _open(_lens == CameraLens.back ? CameraLens.front : CameraLens.back);
+
+  /// Ganti urutan; kamera ikut pindah (hewan = belakang, lo = depan).
+  void _setOrder(CaptureOrder order) {
+    if (order == _order || _step != 0) return;
+    setState(() => _order = order);
+    _open(
+      order == CaptureOrder.animalFirst ? CameraLens.back : CameraLens.front,
+    );
+  }
 
   void _toggleFlash() {
     setState(() => _flashAuto = !_flashAuto);
@@ -131,23 +132,47 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
   }
 
   Future<void> _shoot() async {
-    if (!_ready || _busy) return;
+    if (!_ready || _busy || _step != 0) return;
     setState(() => _busy = true);
     try {
       final photo = await _camera.takePicture();
       if (!mounted) return;
-      if (_step == 0) {
-        setState(() {
-          _animalPhoto = photo;
-          _step = 1;
-        });
-        await _open(_steps[1].lens);
-      } else {
-        context.pushReplacement(
-          Routes.catchResult,
-          extra: CapturedPhotos(animal: _animalPhoto!, selfie: photo),
-        );
-      }
+      setState(() {
+        _firstPhoto = photo;
+        _step = 1;
+      });
+    } catch (_) {
+      if (mounted) setState(() => _failed = true);
+      return;
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+    await _shootSecond();
+  }
+
+  /// Buka kamera satunya lalu jepret otomatis. Dipakai lagi kalau user
+  /// menekan "coba lagi" setelah kamera kedua gagal dibuka.
+  Future<void> _shootSecond() async {
+    final second = _lens == CameraLens.back
+        ? CameraLens.front
+        : CameraLens.back;
+    if (!_ready || _lens != second) await _open(second);
+    if (!mounted || !_ready) return;
+    setState(() => _busy = true);
+    try {
+      // Beri waktu kamera menyesuaikan cahaya & fokus.
+      await Future<void>.delayed(ref.read(autoCaptureDelayProvider));
+      final photo = await _camera.takePicture();
+      if (!mounted) return;
+      final first = _firstPhoto!;
+      final animalFirst = _order == CaptureOrder.animalFirst;
+      context.pushReplacement(
+        Routes.catchResult,
+        extra: CapturedPhotos(
+          animal: animalFirst ? first : photo,
+          selfie: animalFirst ? photo : first,
+        ),
+      );
     } catch (_) {
       if (mounted) setState(() => _failed = true);
     } finally {
@@ -157,58 +182,56 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
 
   @override
   Widget build(BuildContext context) {
-    final step = _steps[_step];
-    return PopScope(
-      canPop: _animalPhoto == null,
-      onPopInvokedWithResult: (didPop, _) {
-        if (!didPop) _close();
-      },
-      child: AnnotatedRegion<SystemUiOverlayStyle>(
-        value: SystemUiOverlayStyle.light,
-        child: Scaffold(
-          backgroundColor: _Dark.background,
-          body: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-              child: _permissionDenied
-                  ? _PermissionDenied(
-                      onClose: _close,
-                      onOpenSettings: () => ref.read(openAppSettingsProvider)(),
-                      onRetry: () => _open(_lens),
-                    )
-                  : Column(
-                      children: [
-                        _TopBar(
-                          label: step.label,
-                          onClose: _close,
-                          onFlip: _busy ? null : _flip,
-                        ),
-                        const _DropTimer(),
-                        const SizedBox(height: 16),
-                        Expanded(child: _buildViewfinder(step)),
-                        const SizedBox(height: 16),
-                        _BottomBar(
-                          flashAuto: _flashAuto,
-                          onShoot: _ready && !_busy ? _shoot : null,
-                          onFlash: _toggleFlash,
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'REAL-TIME ONLY · NO FILTER',
-                          style: FurrealText.mono(fontSize: 11)
-                              .copyWith(color: _Dark.faint, letterSpacing: 0.5),
-                        ),
-                      ],
-                    ),
-            ),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light,
+      child: Scaffold(
+        backgroundColor: _Dark.background,
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+            child: _permissionDenied
+                ? _PermissionDenied(
+                    onClose: () => context.pop(),
+                    onOpenSettings: () => ref.read(openAppSettingsProvider)(),
+                    onRetry: () => _open(_lens),
+                  )
+                : Column(
+                    children: [
+                      _TopBar(
+                        label: _stepLabel(_order, _step),
+                        onClose: () => context.pop(),
+                        onFlip: _busy || _step != 0 ? null : _flip,
+                      ),
+                      const _DropTimer(),
+                      const SizedBox(height: 12),
+                      _OrderToggle(
+                        order: _order,
+                        onChanged: _busy || _step != 0 ? null : _setOrder,
+                      ),
+                      const SizedBox(height: 16),
+                      Expanded(child: _buildViewfinder()),
+                      const SizedBox(height: 16),
+                      _BottomBar(
+                        flashAuto: _flashAuto,
+                        onShoot: _ready && !_busy && _step == 0 ? _shoot : null,
+                        onFlash: _toggleFlash,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'REAL-TIME ONLY · NO FILTER',
+                        style: FurrealText.mono(fontSize: 11)
+                            .copyWith(color: _Dark.faint, letterSpacing: 0.5),
+                      ),
+                    ],
+                  ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildViewfinder(_Step step) {
-    final animalPhoto = _animalPhoto;
+  Widget _buildViewfinder() {
+    final firstPhoto = _firstPhoto;
     return ClipRRect(
       borderRadius: BorderRadius.circular(FurrealShape.cardRadius),
       child: ColoredBox(
@@ -227,7 +250,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                       style: TextStyle(color: _Dark.muted),
                     ),
                     TextButton(
-                      onPressed: () => _open(_lens),
+                      onPressed: () =>
+                          _step == 1 ? _shootSecond() : _open(_lens),
                       style: TextButton.styleFrom(
                         foregroundColor: Colors.white,
                       ),
@@ -246,20 +270,20 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                 child: CustomPaint(painter: _CornersPainter()),
               ),
             ),
-            if (_step == 1 && animalPhoto != null)
+            if (_step == 1 && firstPhoto != null)
               Positioned(
                 top: 16,
                 left: 16,
                 width: 96,
                 height: 128,
                 child: Container(
-                  key: const Key('animal-thumbnail'),
+                  key: const Key('first-thumbnail'),
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(18),
                     border: Border.all(color: Colors.white, width: 2),
                   ),
                   clipBehavior: Clip.antiAlias,
-                  child: Image.memory(animalPhoto, fit: BoxFit.cover),
+                  child: Image.memory(firstPhoto, fit: BoxFit.cover),
                 ),
               ),
             Positioned(
@@ -278,7 +302,8 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                     border: Border.all(color: _Dark.outline),
                   ),
                   child: Text(
-                    step.hint,
+                    _stepHint(_order, _step),
+                    key: const Key('camera-hint'),
                     style: const TextStyle(color: Colors.white, fontSize: 13),
                   ),
                 ),
@@ -315,6 +340,56 @@ class _RoundButton extends StatelessWidget {
         disabledBackgroundColor: _Dark.control,
         disabledForegroundColor: _Dark.faint,
       ),
+    );
+  }
+}
+
+/// Pilih urutan: hewan dulu (kamera belakang) atau lo dulu (kamera depan).
+class _OrderToggle extends StatelessWidget {
+  const _OrderToggle({required this.order, required this.onChanged});
+
+  final CaptureOrder order;
+  final ValueChanged<CaptureOrder>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget pill(CaptureOrder value, String label) {
+      final selected = order == value;
+      return Semantics(
+        button: true,
+        selected: selected,
+        child: GestureDetector(
+          key: Key('order-${value.name}'),
+          onTap: onChanged == null ? null : () => onChanged!(value),
+          child: Container(
+            height: 36,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: selected ? Colors.white : _Dark.control,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: _Dark.outline),
+            ),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: selected ? FurrealColors.ink : _Dark.muted,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        pill(CaptureOrder.animalFirst, 'hewan dulu'),
+        const SizedBox(width: 8),
+        pill(CaptureOrder.selfieFirst, 'lo dulu'),
+      ],
     );
   }
 }

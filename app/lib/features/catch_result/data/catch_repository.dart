@@ -27,6 +27,9 @@ const catchPhotosBucket = 'catch-photos';
 const animalTypeMaxLength = 40;
 const personalityMaxLength = 300;
 
+/// Sama dengan check constraint `catches.caption` (M12).
+const captionMaxLength = 150;
+
 /// Foto sudah ter-upload ke `{user_id}/{id}/`, baris catch belum dibuat.
 class PreparedCatch {
   const PreparedCatch({
@@ -50,6 +53,7 @@ class CatchDetails {
     required this.areaLabel,
     required this.locationHidden,
     this.existingAnimalId,
+    this.caption,
   });
 
   /// "Ketemu lagi": hewan lama milik sendiri. null = hewan baru.
@@ -60,8 +64,11 @@ class CatchDetails {
   /// Jenis final (pilihan/koreksi user), boleh kosong.
   final String? animalType;
 
-  /// Kartu kepribadian final (boleh diedit user), boleh kosong.
+  /// Kartu kepribadian final (boleh diedit user), boleh kosong. Untuk koleksi.
   final String? personality;
+
+  /// Caption manual untuk feed (M12), boleh kosong.
+  final String? caption;
   final String? areaLabel;
   final bool locationHidden;
 }
@@ -76,6 +83,7 @@ class TodayCatch {
     this.animalName,
     this.kind,
     this.animalType,
+    this.caption,
   });
 
   factory TodayCatch.fromJson(Map<String, dynamic> json) {
@@ -88,6 +96,7 @@ class TodayCatch {
       animalName: animal?['name'] as String?,
       kind: AnimalKind.fromDb(animal?['kind'] as String?),
       animalType: animal?['animal_type'] as String?,
+      caption: json['caption'] as String?,
     );
   }
 
@@ -98,6 +107,9 @@ class TodayCatch {
   final String? animalName;
   final AnimalKind? kind;
   final String? animalType;
+
+  /// Caption feed (M12).
+  final String? caption;
 }
 
 abstract interface class CatchRepository {
@@ -120,6 +132,25 @@ abstract interface class CatchRepository {
 
   /// Hapus foto yang sudah ter-upload kalau user batal posting.
   Future<void> discard(PreparedCatch prepared);
+
+  /// Hapus catch hari ini beserta fotonya (streak dihitung ulang di server).
+  Future<void> deleteTodayCatch();
+
+  /// Hapus catch mana pun milik sendiri (riwayat, M16) beserta fotonya.
+  /// Hewannya ikut terhapus kalau tidak punya catch lain.
+  Future<void> deleteCatch({
+    required String catchId,
+    required String? animalId,
+    required String animalPhotoPath,
+    required String selfiePhotoPath,
+  });
+
+  /// Ubah nama hewan (berlaku untuk semua catch hewan itu) dan caption catch
+  /// hari ini (M13).
+  Future<void> editTodayCatch({
+    required String animalName,
+    required String? caption,
+  });
 }
 
 class SupabaseCatchRepository implements CatchRepository {
@@ -137,7 +168,7 @@ class SupabaseCatchRepository implements CatchRepository {
     final row = await _client
         .from('catches')
         .select(
-          'id, animal_id, animal_photo_path, selfie_photo_path, '
+          'id, animal_id, animal_photo_path, selfie_photo_path, caption, '
           'animals(name, kind, animal_type)',
         )
         .eq('user_id', _userId)
@@ -219,6 +250,7 @@ class SupabaseCatchRepository implements CatchRepository {
         'p_animal_type': details.animalType,
         'p_personality': details.personality,
         'p_animal_id': details.existingAnimalId,
+        'p_caption': details.caption,
       },
     );
     final json = row as Map<String, dynamic>;
@@ -238,5 +270,63 @@ class SupabaseCatchRepository implements CatchRepository {
     await _photos
         .remove([prepared.animalPath, prepared.selfiePath])
         .catchError((_) => <FileObject>[]);
+  }
+
+  @override
+  Future<void> deleteTodayCatch() async {
+    final today = await todayCatch();
+    if (today == null) return;
+    await deleteCatch(
+      catchId: today.id,
+      animalId: today.animalId,
+      animalPhotoPath: today.animalPhotoPath,
+      selfiePhotoPath: today.selfiePhotoPath,
+    );
+  }
+
+  @override
+  Future<void> deleteCatch({
+    required String catchId,
+    required String? animalId,
+    required String animalPhotoPath,
+    required String selfiePhotoPath,
+  }) async {
+    await _photos.remove([
+      animalPhotoPath,
+      selfiePhotoPath,
+      // potongan hewan (M11), kalau ada
+      '$_userId/$catchId/cutout.png',
+    ]);
+    await _client.from('catches').delete().eq('id', catchId);
+    // Hapus hewannya hanya kalau tidak punya catch lain lagi.
+    // Hewan "ketemu lagi" tetap, encounter_count-nya turun lewat trigger.
+    if (animalId != null) {
+      final others = await _client
+          .from('catches')
+          .select('id')
+          .eq('animal_id', animalId)
+          .limit(1);
+      if (others.isEmpty) {
+        await _client.from('animals').delete().eq('id', animalId);
+      }
+    }
+  }
+
+  @override
+  Future<void> editTodayCatch({
+    required String animalName,
+    required String? caption,
+  }) async {
+    final today = await todayCatch();
+    if (today == null) return;
+    await _client.rpc<void>(
+      'edit_catch',
+      params: {'p_catch_id': today.id, 'p_caption': caption},
+    );
+    final animalId = today.animalId;
+    final name = animalName.trim();
+    if (animalId != null && name.isNotEmpty && name != today.animalName) {
+      await _client.from('animals').update({'name': name}).eq('id', animalId);
+    }
   }
 }

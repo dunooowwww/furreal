@@ -5,9 +5,11 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:furreal/app/splash_overlay.dart';
 import 'package:furreal/app/app.dart';
 import 'package:furreal/features/account/data/account_repository.dart';
 import 'package:furreal/features/account/data/avatar_picker.dart';
+import 'package:furreal/features/account/data/feedback_repository.dart';
 import 'package:furreal/features/account/state/account_providers.dart';
 import 'package:furreal/features/auth/data/auth_repository.dart';
 import 'package:furreal/features/auth/data/profile_repository.dart';
@@ -29,6 +31,7 @@ import 'package:furreal/features/daily_drop/state/daily_drop_providers.dart';
 import 'package:furreal/features/notifications/data/push_messaging.dart';
 import 'package:furreal/features/notifications/state/notification_providers.dart';
 import 'package:furreal/features/circles/state/circle_providers.dart';
+import 'package:furreal/features/feed/data/catch_share.dart';
 import 'package:furreal/features/feed/data/feed_models.dart';
 import 'package:furreal/features/feed/data/feed_repository.dart';
 import 'package:furreal/features/feed/state/feed_providers.dart';
@@ -333,6 +336,11 @@ class FakeCircleRepository implements CircleRepository {
   }
 }
 
+/// PNG 1x1 kedua (warna lain), supaya foto kamera depan bisa dibedakan.
+final testPhotoFront = base64Decode(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAADElEQVR4nGP438MAAAQZAYzvQbwjAAAAAElFTkSuQmCC',
+);
+
 /// PNG 1x1 valid, supaya Image.memory tidak error di test.
 final testPhoto = base64Decode(
   'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
@@ -360,7 +368,7 @@ class FakeCatchCamera implements CatchCamera {
   @override
   Future<Uint8List> takePicture() async {
     shots.add(current!);
-    return testPhoto;
+    return current == CameraLens.front ? testPhotoFront : testPhoto;
   }
 
   @override
@@ -400,10 +408,12 @@ class FakeCatchRepository implements CatchRepository {
   Completer<void>? identifyGate;
 
   final prepared = <PreparedCatch>[];
+  final capturedPhotos = <CapturedPhotos>[];
   final identified = <String>[];
   final discarded = <String>[];
   final submitted = <CatchDetails>[];
   final notified = <String>[];
+  var deleted = 0;
 
   /// Label waktu yang "dihitung server" saat submit.
   CatchTiming timing = CatchTiming.onTime;
@@ -416,6 +426,7 @@ class FakeCatchRepository implements CatchRepository {
 
   @override
   Future<PreparedCatch> prepare(CapturedPhotos photos) async {
+    capturedPhotos.add(photos);
     if (uploadFailures > 0) {
       uploadFailures--;
       throw const StorageException('upload gagal');
@@ -458,6 +469,7 @@ class FakeCatchRepository implements CatchRepository {
       animalName: details.animalName,
       kind: details.kind,
       animalType: details.animalType,
+      caption: details.caption,
     );
     return timing;
   }
@@ -467,6 +479,61 @@ class FakeCatchRepository implements CatchRepository {
     notified.add(catchId);
     final error = notifyError;
     if (error != null) throw error;
+  }
+
+  @override
+  Future<void> deleteTodayCatch() async {
+    deleted++;
+    today = null;
+  }
+
+  final deletedIds = <String>[];
+
+  /// Riwayat palsu yang ikut berkurang saat deleteCatch (M16).
+  List<HistoryCatch>? history;
+
+  @override
+  Future<void> deleteCatch({
+    required String catchId,
+    required String? animalId,
+    required String animalPhotoPath,
+    required String selfiePhotoPath,
+  }) async {
+    final error = deleteError;
+    if (error != null) throw error;
+    deletedIds.add(catchId);
+    history?.removeWhere((c) => c.id == catchId);
+    if (today?.id == catchId) today = null;
+  }
+
+  /// Kalau diisi, deleteCatch melempar error ini.
+  Object? deleteError;
+
+  final edits = <({String animalName, String? caption})>[];
+
+  /// Kalau diisi, editTodayCatch melempar error ini.
+  Object? editError;
+
+  @override
+  Future<void> editTodayCatch({
+    required String animalName,
+    required String? caption,
+  }) async {
+    final error = editError;
+    if (error != null) throw error;
+    edits.add((animalName: animalName, caption: caption));
+    final t = today;
+    if (t == null) return;
+    today = TodayCatch(
+      id: t.id,
+      animalPhotoPath: t.animalPhotoPath,
+      selfiePhotoPath: t.selfiePhotoPath,
+      animalId: t.animalId,
+      animalName: animalName,
+      kind: t.kind,
+      animalType: t.animalType,
+      caption: caption,
+    );
   }
 }
 
@@ -538,6 +605,14 @@ class FakeFeedRepository implements FeedRepository {
     );
   }
 
+  final downloads = <String>[];
+
+  @override
+  Future<Uint8List> downloadPhoto(String path) async {
+    downloads.add(path);
+    return testPhoto;
+  }
+
   @override
   Future<void> deleteComment(String commentId) async {
     deletedComments.add(commentId);
@@ -570,6 +645,56 @@ class FakeCollectionRepository implements CollectionRepository {
 
   @override
   Future<YesterdayCatch?> yesterdayCatch() async => yesterday;
+
+  final edited = <String>[];
+  final removed = <String>[];
+
+  /// Kalau diisi, editAnimal/removeAnimal melempar error ini.
+  Object? error;
+
+  @override
+  Future<void> editAnimal(
+    String animalId, {
+    required String name,
+    required AnimalKind kind,
+    required String? animalType,
+    required String? personality,
+  }) async {
+    final e = error;
+    if (e != null) throw e;
+    edited.add(animalId);
+    final i = animals.indexWhere((a) => a.id == animalId);
+    animals[i] = animals[i].copyWith(
+      name: name,
+      kind: kind,
+      animalType: () => animalType,
+      lastPersonality: personality == null ? null : () => personality,
+    );
+  }
+
+  /// Riwayat catch sendiri, terbaru dulu.
+  List<HistoryCatch> history = [];
+  final historyQueries = <DateTime?>[];
+
+  @override
+  Future<List<HistoryCatch>> myCatches({
+    DateTime? before,
+    int limit = historyPageSize,
+  }) async {
+    historyQueries.add(before);
+    return history
+        .where((c) => before == null || c.catchDate.isBefore(before))
+        .take(limit)
+        .toList();
+  }
+
+  @override
+  Future<void> removeAnimal(String animalId) async {
+    final e = error;
+    if (e != null) throw e;
+    removed.add(animalId);
+    animals.removeWhere((a) => a.id == animalId);
+  }
 }
 
 CollectionAnimal animal({
@@ -633,6 +758,58 @@ class FakeCutoutRepository implements CutoutRepository {
       saved.add((catchId: catchId, hasCutout: png != null));
 }
 
+class FakeCatchSharer implements CatchSharer {
+  final saved = <String>[];
+  final shared = <String>[];
+
+  /// Kalau diisi, saveToGallery melempar (mis. izin galeri ditolak).
+  Object? saveError;
+
+  @override
+  Future<void> saveToGallery(Uint8List png, {required String name}) async {
+    final e = saveError;
+    if (e != null) throw e;
+    saved.add(name);
+  }
+
+  @override
+  Future<void> share(
+    Uint8List png, {
+    required String name,
+    String? text,
+  }) async => shared.add(name);
+
+  final sharedTexts = <String>[];
+
+  @override
+  Future<void> shareText(String text) async => sharedTexts.add(text);
+}
+
+class FakeFeedbackRepository implements FeedbackRepository {
+  final sent = <({FeedbackCategory category, String message})>[];
+  Object? error;
+
+  @override
+  Future<void> submit(FeedbackCategory category, String message) async {
+    final e = error;
+    if (e != null) throw e;
+    sent.add((category: category, message: message));
+  }
+}
+
+/// Komposer gambar palsu: langsung balas, tanpa dart:ui.
+final composedShares = <({String animalName, String? caption})>[];
+Future<Uint8List> fakeComposeShareImage({
+  required Uint8List animalPhoto,
+  required Uint8List selfiePhoto,
+  required String animalName,
+  required DateTime date,
+  String? caption,
+}) async {
+  composedShares.add((animalName: animalName, caption: caption));
+  return testPhoto;
+}
+
 class FakeDailyDropRepository implements DailyDropRepository {
   /// Default: drop turun 10 menit lalu (tepat waktu, kamera terbuka).
   FakeDailyDropRepository([DailyDrop? drop])
@@ -669,6 +846,7 @@ class FakePushMessaging implements PushMessaging {
   final refreshes = StreamController<String>.broadcast();
   final drops = StreamController<DropMessage>.broadcast();
   final catches = StreamController<FriendCatchMessage>.broadcast();
+  final streaks = StreamController<StreakReminderMessage>.broadcast();
 
   @override
   Future<PushPermission> permission() async => current;
@@ -690,6 +868,9 @@ class FakePushMessaging implements PushMessaging {
 
   @override
   Stream<FriendCatchMessage> get friendCatches => catches.stream;
+
+  @override
+  Stream<StreakReminderMessage> get streakReminders => streaks.stream;
 }
 
 class FakePushTokenRepository implements PushTokenRepository {
@@ -740,6 +921,8 @@ Future<void> pumpApp(
   FakeAvatarPicker? avatarPicker,
   FakeCutoutMaker? cutoutMaker,
   FakeCutoutRepository? cutouts,
+  FakeCatchSharer? sharer,
+  FakeFeedbackRepository? feedback,
   VoidCallback? onOpenSettings,
 }) async {
   tester.view.physicalSize = const Size(1080, 2400);
@@ -756,6 +939,13 @@ Future<void> pumpApp(
         ),
         circleRepositoryProvider.overrideWithValue(
           circles ?? FakeCircleRepository(),
+        ),
+        autoCaptureDelayProvider.overrideWithValue(Duration.zero),
+        splashDurationProvider.overrideWithValue(Duration.zero),
+        catchSharerProvider.overrideWithValue(sharer ?? FakeCatchSharer()),
+        shareImageComposerProvider.overrideWithValue(fakeComposeShareImage),
+        feedbackRepositoryProvider.overrideWithValue(
+          feedback ?? FakeFeedbackRepository(),
         ),
         catchCameraFactoryProvider.overrideWithValue(
           () => camera ?? FakeCatchCamera(),

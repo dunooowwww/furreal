@@ -40,6 +40,7 @@ class _CatchResultScreenState extends ConsumerState<CatchResultScreen> {
   final _name = TextEditingController();
   final _manualType = TextEditingController();
   final _personality = TextEditingController();
+  final _caption = TextEditingController();
 
   _Phase _phase = _Phase.uploading;
   PreparedCatch? _prepared;
@@ -78,6 +79,7 @@ class _CatchResultScreenState extends ConsumerState<CatchResultScreen> {
     _name.dispose();
     _manualType.dispose();
     _personality.dispose();
+    _caption.dispose();
     super.dispose();
   }
 
@@ -180,6 +182,7 @@ class _CatchResultScreenState extends ConsumerState<CatchResultScreen> {
           existingAnimalId: existing?.id,
           animalType: _finalType,
           personality: personality.isEmpty ? null : personality,
+          caption: _caption.text.trim().isEmpty ? null : _caption.text.trim(),
           areaLabel: areaLabel,
           locationHidden: areaLabel == null,
         ),
@@ -341,6 +344,23 @@ class _CatchResultScreenState extends ConsumerState<CatchResultScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
+                  // M12: caption tampil di feed; kartu kepribadian di koleksi.
+                  Text('CAPTION BUAT FEED', style: label),
+                  const SizedBox(height: 8),
+                  TextField(
+                    key: const Key('caption'),
+                    controller: _caption,
+                    maxLength: captionMaxLength,
+                    minLines: 1,
+                    maxLines: 3,
+                    decoration: const InputDecoration(
+                      hintText: 'ceritain momennya (opsional)',
+                      border: _fieldBorder,
+                      enabledBorder: _fieldBorder,
+                      focusedBorder: _fieldBorder,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   Text('PERNAH KETEMU DIA?', style: label),
                   const SizedBox(height: 8),
                   Row(

@@ -46,7 +46,6 @@ Future<void> openCollection(WidgetTester tester) async {
 Future<void> catchAndPost(WidgetTester tester, {String name = 'Milo'}) async {
   await tapText(tester, 'buka kamera');
   await tapFinder(tester, find.byKey(const Key('shutter')));
-  await tapFinder(tester, find.byKey(const Key('shutter')));
   await enter(tester, 'animal-name', name);
   await tapText(tester, 'posting ke circle');
 }
@@ -336,7 +335,6 @@ void main() {
         ),
       );
       await tapText(tester, 'buka kamera');
-      await tapFinder(tester, find.byKey(const Key('shutter')));
       await tapFinder(tester, find.byKey(const Key('shutter')));
       await tapText(tester, 'ketemu lagi');
       await tapFinder(tester, find.byKey(const Key('reencounter-mochi')));

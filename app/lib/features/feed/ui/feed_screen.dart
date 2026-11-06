@@ -4,7 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../../app/router.dart';
 import '../../../app/theme.dart';
+import '../../auth/state/auth_providers.dart';
+import '../../catch_result/data/catch_repository.dart';
 import '../../catch_result/state/catch_providers.dart';
+import '../../catch_result/ui/edit_catch_sheet.dart';
 import '../../circles/data/circle_repository.dart';
 import '../../circles/state/circle_providers.dart';
 import '../../daily_drop/data/daily_drop.dart';
@@ -13,6 +16,46 @@ import '../data/feed_models.dart';
 import '../state/feed_providers.dart';
 import 'comments_sheet.dart';
 import 'feed_card.dart';
+import 'share_sheet.dart';
+
+/// Menu catch sendiri di feed: edit atau hapus (M13).
+Future<void> _showOwnCatchMenu(
+  BuildContext context,
+  WidgetRef ref,
+  TodayCatch today,
+) async {
+  final action = await showModalBottomSheet<String>(
+    context: context,
+    useRootNavigator: true,
+    showDragHandle: true,
+    builder: (context) => SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ListTile(
+            key: const Key('menu-edit'),
+            leading: const Icon(Icons.edit_outlined),
+            title: const Text('edit nama & caption'),
+            onTap: () => Navigator.pop(context, 'edit'),
+          ),
+          ListTile(
+            key: const Key('menu-delete'),
+            leading: const Icon(Icons.delete_outline),
+            title: const Text('hapus catch'),
+            onTap: () => Navigator.pop(context, 'delete'),
+          ),
+        ],
+      ),
+    ),
+  );
+  if (!context.mounted) return;
+  switch (action) {
+    case 'edit':
+      await showEditCatchSheet(context, today);
+    case 'delete':
+      await confirmDeleteTodayCatch(context, ref);
+  }
+}
 
 /// Feed circle hari ini (prototype "Feed circle").
 class FeedScreen extends ConsumerWidget {
@@ -27,7 +70,9 @@ class FeedScreen extends ConsumerWidget {
     }
     final circle = circles.firstWhere((c) => c.id == circleId);
     final feed = ref.watch(feedControllerProvider(circleId));
-    final caughtToday = ref.watch(todayCatchProvider).value != null;
+    final today = ref.watch(todayCatchProvider).value;
+    final caughtToday = today != null;
+    final myId = ref.watch(authUserIdProvider).value;
 
     Future<void> refresh() async {
       ref.invalidate(todayCatchProvider);
@@ -89,6 +134,12 @@ class FeedScreen extends ConsumerWidget {
                           circleId: circleId,
                           catchId: item.catchId,
                         ),
+                        onShare: item.userId == myId
+                            ? () => showShareSheet(context, item)
+                            : null,
+                        onEdit: today != null && today.id == item.catchId
+                            ? () => _showOwnCatchMenu(context, ref, today)
+                            : null,
                       ),
                       const SizedBox(height: 16),
                     ],

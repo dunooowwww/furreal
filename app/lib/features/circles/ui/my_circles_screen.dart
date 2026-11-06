@@ -9,6 +9,7 @@ import '../../../shared/widgets/user_avatar.dart';
 import '../../auth/state/auth_providers.dart';
 import '../data/circle_repository.dart';
 import '../state/circle_providers.dart';
+import 'invite_share.dart';
 
 /// Kelola circle: kode undangan, anggota, keluar, buat/gabung yang lain.
 class MyCirclesScreen extends ConsumerWidget {
@@ -185,6 +186,8 @@ class _CircleCardState extends ConsumerState<_CircleCard> {
                 ],
               ),
             ),
+            const SizedBox(height: 8),
+            InviteShareButton(circle: _circle),
             const SizedBox(height: 16),
             Text(
               members.hasValue ? 'ANGGOTA · $memberCount' : 'ANGGOTA',

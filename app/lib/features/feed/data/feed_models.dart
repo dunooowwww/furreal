@@ -21,7 +21,7 @@ class FeedItem {
     required this.animalName,
     required this.animalType,
     required this.encounterCount,
-    required this.personality,
+    required this.caption,
     required this.animalPhotoPath,
     required this.selfiePhotoPath,
     required this.likeCount,
@@ -58,7 +58,7 @@ class FeedItem {
       animalName: json['animal_name'] as String?,
       animalType: json['animal_type'] as String?,
       encounterCount: json['encounter_count'] as int? ?? 1,
-      personality: json['personality'] as String?,
+      caption: json['caption'] as String?,
       animalPhotoPath: animalPath,
       selfiePhotoPath: selfiePath,
       likeCount: json['like_count'] as int? ?? 0,
@@ -88,7 +88,9 @@ class FeedItem {
   final String? animalName;
   final String? animalType;
   final int encounterCount;
-  final String? personality;
+
+  /// Caption manual dari pemilik catch (M12). Kepribadian AI hanya di koleksi.
+  final String? caption;
 
   /// null kalau [locked].
   final String? animalPhotoPath;
@@ -145,7 +147,7 @@ class FeedItem {
     animalName: animalName,
     animalType: animalType,
     encounterCount: encounterCount,
-    personality: personality,
+    caption: caption,
     animalPhotoPath: animalPhotoPath,
     selfiePhotoPath: selfiePhotoPath,
     likeCount: likeCount ?? this.likeCount,

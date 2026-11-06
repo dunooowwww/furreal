@@ -16,8 +16,12 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
 - [ ] **M9 — Pengaturan & feed ala BeReal** — kode selesai; `flutter analyze` bersih, `flutter test` 108/108, `deno test` 56/56, pgTAP 220/220 (Postgres 16 lokal dengan tiruan auth + storage + Vault, `pg_cron` asli, `pg_net` tiruan). Belum terverifikasi: migrasi di Supabase produksi, upload foto profil & kunci feed di HP (lihat catatan M9).
 - [ ] **M10 — Daily drop ala BeReal** — kode selesai; `flutter analyze` bersih, `flutter test` 132/132, `deno test` 66/66, pgTAP 249/249 (Postgres 16 lokal dengan tiruan auth + storage + Vault). Belum terverifikasi: notifikasi "teman udah catch" sampai di HP, catch sebelum drop di produksi (lihat catatan M10).
 - [ ] **M11 — Kartu koleksi** — kode selesai; `flutter analyze` bersih, `flutter test` 148/148, `deno test` 66/66, pgTAP 263/263 (Postgres 16 lokal dengan tiruan auth + storage + Vault). Belum terverifikasi: kualitas potongan ML Kit di HP asli, build Android dengan paket ML Kit (lihat catatan M11).
-- [ ] **M12 — Kamera ganda, share, caption, saran** — belum dikerjakan (keputusan sudah ada di catatan M11).
-- **Perbaikan audit (27 Okt, di luar milestone)** — kode selesai; `flutter analyze` bersih, `flutter test` 134/134, `deno test` 66/66, pgTAP 262/262 sebelum digabung dengan M11; setelah digabung `flutter test` 150/150, pgTAP 278/278 (Postgres 16 lokal dengan tiruan auth + storage + Vault + `pg_net`, `pg_cron` asli). Belum terverifikasi: migrasi di Supabase lokal asli/produksi dan dialog konfirmasi di HP (lihat catatan audit).
+- [ ] **M12 — Kamera ganda, share, caption, saran** — kode selesai; `flutter analyze` bersih, `flutter test` 156/156, `deno test` 66/66, pgTAP 274/274 (Postgres 16 lokal dengan tiruan auth + storage + Vault). Belum terverifikasi: jepret otomatis kamera kedua di HP asli, simpan ke galeri & menu bagikan, build Android dengan plugin baru (lihat catatan M12).
+- [ ] **M13 — Ajak teman, edit & hapus catch** — kode selesai; `flutter analyze` bersih, `flutter test` 162/162, `deno test` 66/66, pgTAP 283/283 (Postgres 16 lokal dengan tiruan auth + storage + Vault). Belum terverifikasi: menu bagikan undangan & edit/hapus di HP asli, migrasi di produksi (lihat catatan M13).
+- [ ] **M14 — Notifikasi aktivitas & pengingat streak** — kode selesai; `flutter analyze` bersih, `flutter test` 165/165, `deno test` 75/75, pgTAP 298/298 (Postgres 16 lokal dengan tiruan auth + storage + Vault, `pg_net` tiruan). Belum terverifikasi: notifikasi sampai di HP, cron 20:00 di produksi (lihat catatan M14).
+- [ ] **M15 — Edit & hapus kartu koleksi** — kode selesai; `flutter analyze` bersih, `flutter test` 168/168, `deno test` 75/75, pgTAP 309/309 (Postgres 16 lokal dengan tiruan auth + storage + Vault). Belum terverifikasi: di HP asli, migrasi di produksi.
+- [ ] **M16 — Splash animasi & riwayat catch** — kode selesai; `flutter analyze` bersih, `flutter test` 173/173, `deno test` 75/75, pgTAP 309/309. Belum terverifikasi: animasi splash & riwayat di HP asli.
+- **Perbaikan audit (27 Okt, digabung dengan M11–M16 pada 6 Nov)** — kode selesai; `flutter analyze` bersih, `flutter test` 177/177, `deno test` 75/75, pgTAP 329/329 (Postgres 16 lokal dengan tiruan auth + storage + Vault + `pg_net`, `pg_cron` asli). Belum terverifikasi: migrasi di Supabase lokal asli/produksi dan dialog konfirmasi di HP.
 
 ## Catatan keputusan
 
@@ -321,6 +325,105 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
   3. Feed pakai **caption manual**; kartu kepribadian hanya di koleksi.
   4. Form saran fitur / laporan bug di pengaturan → tabel Supabase.
 - **Manual setelah merge:** `npx supabase db push`, build APK baru (paket ML Kit).
+
+### M12 (6 Nov 2026)
+- **Kamera ganda (keputusan user: 1 tap dua foto, urutan bisa dipilih):** pill "hewan dulu" / "lo dulu" (mengganti kamera ke belakang/depan). Sekali tekan shutter: foto pertama dari kamera aktif, lalu kamera satunya dibuka dan jepret otomatis setelah jeda `autoCaptureDelayProvider` (600 ms; nol di test) supaya cahaya & fokus menyesuaikan. Ganti kamera hanya sebelum jepret; foto kedua selalu dari kamera satunya. Kamera kedua gagal → "coba lagi" langsung membuka & menjepret lagi. Tidak ada hitung mundur (user memilih "langsung dua-duanya").
+- **Caption (keputusan: kepribadian hanya di koleksi, feed pakai caption manual):** migrasi `20261106090000_caption_feedback.sql` — `catches.caption` (maks 150, tidak bisa diubah langsung), `create_catch` v6 (+ `p_caption`, dirapikan & dipotong 150), `circle_feed` v4 (`caption` menggantikan `personality`). Layar hasil: field "CAPTION BUAT FEED" (opsional). Kartu feed menampilkan caption; catch lama tanpa caption tidak menampilkan teks. Test 04/08 diperbarui.
+- **Simpan / bagikan (keputusan: hanya catch sendiri; isi foto hewan + selfie pojok + watermark furreal + tanggal + nama & caption):**
+  - Paket `share_plus` ^13.3.1 & `gal` ^2.3.3 (disetujui user).
+  - Tombol di kartu feed milik sendiri (bukan yang terkunci) → sheet: foto diunduh dari storage, digabung jadi PNG 1080×1350 di HP (`composeShareImage`, dart:ui), pratinjau, "simpan" (album "furreal") dan "bagikan" (menu Android). Pesan hasil ditampilkan di sheet (snackbar tertutup sheet).
+  - Manifest: `WRITE_EXTERNAL_STORAGE` hanya sampai Android 10 (`maxSdkVersion=29`) + `requestLegacyExternalStorage`, syarat `gal` untuk HP lama. Catch tetap tidak bisa diambil dari galeri.
+  - Watermark memakai teks "furreal" di pil aksen (font sistem; TextPainter tidak memuat Google Fonts secara sinkron).
+- **Saran (keputusan: tabel Supabase):** tabel `feedback` (RLS, insert atas nama sendiri saja, tanpa baca lewat API). Pengaturan → "kirim saran": pilih "saran fitur"/"laporan bug", tulis (maks 1000), kirim. `app_version` diisi dari `FLUTTER_BUILD_NAME/NUMBER` saat `flutter build` (kosong saat `flutter run`). Dibaca di dashboard Supabase → Table Editor → `feedback`.
+- **Manual setelah merge:** `npx supabase db push`, build APK baru (plugin `share_plus`, `gal`).
+
+### M13 (7 Nov 2026)
+- **Permintaan user:** fitur sebelum dites ke teman — ajak teman lewat kode undangan, edit/hapus catch sendiri (dan M14: notifikasi reaksi/komentar + pengingat streak).
+- **Edit & hapus catch:** migrasi `20261107090000_edit_catch.sql` — RPC `edit_catch` (pemilik saja, P0002 kalau bukan miliknya; caption dirapikan, kosong = null, maks 150) dan trigger `catches_recompute_streak_after_delete` (memanggil `recompute_streak`; dilewati saat hapus berantai lewat `pg_trigger_depth() < 1`). Test `13_edit_catch_test.sql` (9).
+  - Beranda: tombol debug "hapus catch hari ini" diganti tombol "edit" & "hapus" untuk semua build. Edit = sheet nama hewan + caption (nama berlaku untuk hewan itu di koleksi). Hapus = dialog konfirmasi, foto + potongan dihapus dari storage, hewan ikut dihapus kalau baru dibuat oleh catch itu.
+  - Feed: kartu catch sendiri hari ini punya tombol ⋮ → "edit nama & caption" / "hapus catch". Sheet dibuka di root navigator supaya tidak tertutup tab bar.
+  - Hanya catch hari ini yang bisa diubah dari app (feed memang hanya hari ini); catch lama tetap.
+- **Ajak teman:** tombol "ajak teman" di pengaturan → circle lo dan di layar circle baru dibuat. Teks: nama circle, kode, cara gabung, dan `download app: <INVITE_LINK>` kalau `INVITE_LINK` diisi di `.env.local`/`.env.prod` (mis. link Firebase App Distribution). Tanpa deep link (butuh domain + App Links; bisa nanti).
+- **Manual setelah merge:** `npx supabase db push --remote`; isi `INVITE_LINK` (opsional) lalu build APK baru.
+
+### M14 (8 Nov 2026)
+- **Reaksi & komentar:** migrasi `20261108090000_activity_streak_notifications.sql`. Antrean di DB (trigger), bukan dipanggil app, supaya tidak bisa dipakai spam dan tetap jalan walau app ditutup. Dikirim pg_cron tiap menit, jadi beberapa reaksi dalam semenit jadi satu notifikasi. Toggle reaksi berulang tidak mengirim ulang (unique index per pelaku & catch). Hanya pemilik catch yang dikabari (bukan sesama komentator).
+- **Pengingat streak:** 20:00 WIB, hanya untuk streak yang masih hidup (catch terakhir kemarin) dan belum catch hari ini. Belum ada pengaturan untuk mematikannya di app; user bisa mematikan channel "pengingat streak" di pengaturan Android.
+- **Edge Function `send-activity`:** satu fungsi untuk dua job, secret & Vault dipakai ulang dari daily drop. Tanpa FCM → antrean dibiarkan (tidak diklaim).
+- **App:** channel Android `activity` & `streak_reminder` (MainActivity). Push `activity` diperlakukan seperti `friend_catch`; `streak_reminder` → snackbar "catch" / buka beranda.
+- **Manual setelah merge:** `npx supabase db push --remote`, `npx supabase functions deploy send-activity`, build APK baru (channel baru). Tidak ada secret/Vault baru.
+
+### M15 (9 Nov 2026)
+- **Permintaan user:** tombol edit & hapus di kartu koleksi (nama, kepribadian, dll.).
+- **Keputusan user:** hapus = **hanya dari koleksi** (catch & foto tetap, feed & streak tidak berubah); yang bisa diedit: nama, peliharaan/liar, jenis, kepribadian.
+- Migrasi `20261109090000_edit_collection.sql`: `animals.personality` (menimpa kepribadian catch terakhir di kartu), `animals.removed_at` (soft delete), RPC `edit_animal` & `remove_animal`, `my_collection` v3 (tanpa hewan terhapus). Test `15_edit_collection_test.sql` (11).
+- App: detail koleksi punya tombol "edit" (sheet: nama, segmented peliharaan/liar, jenis, kepribadian) dan "hapus" (dialog konfirmasi, detail ditutup). Detail mengikuti data terbaru setelah edit; beranda & feed ikut dimuat ulang.
+- Nomor kartu (#0001) dihitung dari urutan hewan yang tersisa, jadi bisa bergeser setelah ada yang dihapus.
+- **Manual setelah merge:** `npx supabase db push --remote`, build APK baru.
+
+### M16 (9 Nov 2026)
+- **Permintaan user:** splash animasi sebelum masuk app; riwayat feed harian tetap tersimpan sebagai halaman lain di koleksi. Ide "kartu full background" dibatalkan user (kartu tetap pakai potongan hewan).
+- **Keputusan user:** splash animasi (bukan cuma splash statis M8); riwayat = **catch sendiri saja** (bukan feed circle hari lalu).
+- **Splash:** `SplashOverlay` di `MaterialApp.router(builder:)`: tapak kaki memantul, 4 jejak kecil muncul bergantian, logo & tagline naik, ±1,5 dtk lalu memudar 0,3 dtk. Sebagai lapisan (bukan rute) supaya router & notifikasi yang diketuk saat cold start tetap langsung ke tujuan. Latar = splash native, jadi mulus. Durasi `splashDurationProvider` (nol di test). Splash rute (loading/gagal) M8 tetap.
+- **Riwayat:** tanpa migrasi (RLS catch milik sendiri sudah boleh dibaca). Tab "kartu" / "riwayat" di koleksi; query `catches` milik sendiri terbaru dulu, 30 per halaman (kursor `catch_date`), signed URL per halaman. Ikut dimuat ulang setelah catch dibuat/diedit/dihapus.
+- **Manual setelah merge:** build APK baru.
+- **Lanjutan (permintaan user):** detail riwayat punya tombol "bagikan" (sheet simpan/bagikan M12, digeneralisasi jadi `ShareTarget`) dan "hapus" (`CatchRepository.deleteCatch`: foto + potongan dihapus dari storage, catch dihapus lewat RLS, streak dihitung ulang oleh trigger M13, hewan ikut dihapus kalau tidak punya catch lain). Tanpa migrasi. `flutter test` 175/175.
+
+### Perbaikan audit (27 Okt 2026, digabung dengan M11–M16 pada 6 Nov)
+- **Asal:** audit keamanan & UX sebelum closed testing. Dikerjakan 4 temuan teratas; sisanya (reaksi gagal tanpa pesan, copy "kamu" vs "lo", jatah AI terpotong sebelum cek foto) belum.
+- **Keputusan setelah digabung (user):** hapus catch sendiri **boleh** (fitur M13 dan riwayat M16). Larangan hapus dari audit dicabut (`20261110090000_audit_allow_delete.sql`: hak & policy `delete` di `catches` dikembalikan, policy hapus foto kembali tanpa kunci), skrip `reset_dev_today.ts` dibuang karena app sudah punya tombol hapus.
+- **Celah spam notifikasi ditutup dengan cara lain:** tabel `catch_notification_log` (RLS, tanpa grant) + `claim_catch_notification` memasukkan (user, tanggal) sekali; catch kedua di hari yang sama (hapus lalu catch ulang) tidak mengabari teman lagi. Catatan ini tetap ada walau catch-nya dihapus.
+- **Yang tetap dari audit:**
+  - Foto `animal.jpg`/`selfie.jpg` catch yang sudah diposting tidak bisa ditimpa (`is_posted_catch_photo`, `20261027090000` + `20261105120000`; `cutout.png` M11 tidak terkunci karena di-upload setelah posting dan boleh diulang).
+  - `create_catch` idempoten untuk `catch_id` yang sama (posting ulang setelah balasan hilang mengembalikan catch yang ada). M12 sempat menulis ulang fungsi ini tanpa pengaman itu; v7 di migrasi `20261110090000` mengembalikannya (9 argumen, termasuk `p_caption`).
+  - Konfirmasi sebelum foto dibuang di layar hasil (`shared/widgets/discard_photos_dialog.dart`, `PopScope`). Di kamera tidak dipakai lagi: sejak M12 satu ketukan mengambil kedua foto.
+  - Pesan `FR006`: "terlalu banyak percobaan masuk pakai username ini. tunggu 15 menit, atau masuk pakai email."
+- **Perbaikan test M14:** `14_activity_streak_notifications_test.sql` kini mengosongkan Vault dulu; `seed.sql` mengisinya sehingga `vault.create_secret` bentrok di `supabase test db` asli.
+- **Lingkungan test (sesi cloud):** Flutter 3.47.7 dari storage.googleapis.com, Deno 2.9.6 dari paket npm `deno`, `postgresql-16-pgtap` + `postgresql-16-cron` via apt; skema auth/storage/Vault dan `pg_net` ditiru.
+- **Manual setelah merge:** `npx supabase db push` (tidak ada Edge Function yang berubah), build APK baru.
+
+### M12 (6 Nov 2026)
+- **Kamera ganda (keputusan user: 1 tap dua foto, urutan bisa dipilih):** pill "hewan dulu" / "lo dulu" (mengganti kamera ke belakang/depan). Sekali tekan shutter: foto pertama dari kamera aktif, lalu kamera satunya dibuka dan jepret otomatis setelah jeda `autoCaptureDelayProvider` (600 ms; nol di test) supaya cahaya & fokus menyesuaikan. Ganti kamera hanya sebelum jepret; foto kedua selalu dari kamera satunya. Kamera kedua gagal → "coba lagi" langsung membuka & menjepret lagi. Tidak ada hitung mundur (user memilih "langsung dua-duanya").
+- **Caption (keputusan: kepribadian hanya di koleksi, feed pakai caption manual):** migrasi `20261106090000_caption_feedback.sql` — `catches.caption` (maks 150, tidak bisa diubah langsung), `create_catch` v6 (+ `p_caption`, dirapikan & dipotong 150), `circle_feed` v4 (`caption` menggantikan `personality`). Layar hasil: field "CAPTION BUAT FEED" (opsional). Kartu feed menampilkan caption; catch lama tanpa caption tidak menampilkan teks. Test 04/08 diperbarui.
+- **Simpan / bagikan (keputusan: hanya catch sendiri; isi foto hewan + selfie pojok + watermark furreal + tanggal + nama & caption):**
+  - Paket `share_plus` ^13.3.1 & `gal` ^2.3.3 (disetujui user).
+  - Tombol di kartu feed milik sendiri (bukan yang terkunci) → sheet: foto diunduh dari storage, digabung jadi PNG 1080×1350 di HP (`composeShareImage`, dart:ui), pratinjau, "simpan" (album "furreal") dan "bagikan" (menu Android). Pesan hasil ditampilkan di sheet (snackbar tertutup sheet).
+  - Manifest: `WRITE_EXTERNAL_STORAGE` hanya sampai Android 10 (`maxSdkVersion=29`) + `requestLegacyExternalStorage`, syarat `gal` untuk HP lama. Catch tetap tidak bisa diambil dari galeri.
+  - Watermark memakai teks "furreal" di pil aksen (font sistem; TextPainter tidak memuat Google Fonts secara sinkron).
+- **Saran (keputusan: tabel Supabase):** tabel `feedback` (RLS, insert atas nama sendiri saja, tanpa baca lewat API). Pengaturan → "kirim saran": pilih "saran fitur"/"laporan bug", tulis (maks 1000), kirim. `app_version` diisi dari `FLUTTER_BUILD_NAME/NUMBER` saat `flutter build` (kosong saat `flutter run`). Dibaca di dashboard Supabase → Table Editor → `feedback`.
+- **Manual setelah merge:** `npx supabase db push`, build APK baru (plugin `share_plus`, `gal`).
+
+### M13 (7 Nov 2026)
+- **Permintaan user:** fitur sebelum dites ke teman — ajak teman lewat kode undangan, edit/hapus catch sendiri (dan M14: notifikasi reaksi/komentar + pengingat streak).
+- **Edit & hapus catch:** migrasi `20261107090000_edit_catch.sql` — RPC `edit_catch` (pemilik saja, P0002 kalau bukan miliknya; caption dirapikan, kosong = null, maks 150) dan trigger `catches_recompute_streak_after_delete` (memanggil `recompute_streak`; dilewati saat hapus berantai lewat `pg_trigger_depth() < 1`). Test `13_edit_catch_test.sql` (9).
+  - Beranda: tombol debug "hapus catch hari ini" diganti tombol "edit" & "hapus" untuk semua build. Edit = sheet nama hewan + caption (nama berlaku untuk hewan itu di koleksi). Hapus = dialog konfirmasi, foto + potongan dihapus dari storage, hewan ikut dihapus kalau baru dibuat oleh catch itu.
+  - Feed: kartu catch sendiri hari ini punya tombol ⋮ → "edit nama & caption" / "hapus catch". Sheet dibuka di root navigator supaya tidak tertutup tab bar.
+  - Hanya catch hari ini yang bisa diubah dari app (feed memang hanya hari ini); catch lama tetap.
+- **Ajak teman:** tombol "ajak teman" di pengaturan → circle lo dan di layar circle baru dibuat. Teks: nama circle, kode, cara gabung, dan `download app: <INVITE_LINK>` kalau `INVITE_LINK` diisi di `.env.local`/`.env.prod` (mis. link Firebase App Distribution). Tanpa deep link (butuh domain + App Links; bisa nanti).
+- **Manual setelah merge:** `npx supabase db push --remote`; isi `INVITE_LINK` (opsional) lalu build APK baru.
+
+### M14 (8 Nov 2026)
+- **Reaksi & komentar:** migrasi `20261108090000_activity_streak_notifications.sql`. Antrean di DB (trigger), bukan dipanggil app, supaya tidak bisa dipakai spam dan tetap jalan walau app ditutup. Dikirim pg_cron tiap menit, jadi beberapa reaksi dalam semenit jadi satu notifikasi. Toggle reaksi berulang tidak mengirim ulang (unique index per pelaku & catch). Hanya pemilik catch yang dikabari (bukan sesama komentator).
+- **Pengingat streak:** 20:00 WIB, hanya untuk streak yang masih hidup (catch terakhir kemarin) dan belum catch hari ini. Belum ada pengaturan untuk mematikannya di app; user bisa mematikan channel "pengingat streak" di pengaturan Android.
+- **Edge Function `send-activity`:** satu fungsi untuk dua job, secret & Vault dipakai ulang dari daily drop. Tanpa FCM → antrean dibiarkan (tidak diklaim).
+- **App:** channel Android `activity` & `streak_reminder` (MainActivity). Push `activity` diperlakukan seperti `friend_catch`; `streak_reminder` → snackbar "catch" / buka beranda.
+- **Manual setelah merge:** `npx supabase db push --remote`, `npx supabase functions deploy send-activity`, build APK baru (channel baru). Tidak ada secret/Vault baru.
+
+### M15 (9 Nov 2026)
+- **Permintaan user:** tombol edit & hapus di kartu koleksi (nama, kepribadian, dll.).
+- **Keputusan user:** hapus = **hanya dari koleksi** (catch & foto tetap, feed & streak tidak berubah); yang bisa diedit: nama, peliharaan/liar, jenis, kepribadian.
+- Migrasi `20261109090000_edit_collection.sql`: `animals.personality` (menimpa kepribadian catch terakhir di kartu), `animals.removed_at` (soft delete), RPC `edit_animal` & `remove_animal`, `my_collection` v3 (tanpa hewan terhapus). Test `15_edit_collection_test.sql` (11).
+- App: detail koleksi punya tombol "edit" (sheet: nama, segmented peliharaan/liar, jenis, kepribadian) dan "hapus" (dialog konfirmasi, detail ditutup). Detail mengikuti data terbaru setelah edit; beranda & feed ikut dimuat ulang.
+- Nomor kartu (#0001) dihitung dari urutan hewan yang tersisa, jadi bisa bergeser setelah ada yang dihapus.
+- **Manual setelah merge:** `npx supabase db push --remote`, build APK baru.
+
+### M16 (9 Nov 2026)
+- **Permintaan user:** splash animasi sebelum masuk app; riwayat feed harian tetap tersimpan sebagai halaman lain di koleksi. Ide "kartu full background" dibatalkan user (kartu tetap pakai potongan hewan).
+- **Keputusan user:** splash animasi (bukan cuma splash statis M8); riwayat = **catch sendiri saja** (bukan feed circle hari lalu).
+- **Splash:** `SplashOverlay` di `MaterialApp.router(builder:)`: tapak kaki memantul, 4 jejak kecil muncul bergantian, logo & tagline naik, ±1,5 dtk lalu memudar 0,3 dtk. Sebagai lapisan (bukan rute) supaya router & notifikasi yang diketuk saat cold start tetap langsung ke tujuan. Latar = splash native, jadi mulus. Durasi `splashDurationProvider` (nol di test). Splash rute (loading/gagal) M8 tetap.
+- **Riwayat:** tanpa migrasi (RLS catch milik sendiri sudah boleh dibaca). Tab "kartu" / "riwayat" di koleksi; query `catches` milik sendiri terbaru dulu, 30 per halaman (kursor `catch_date`), signed URL per halaman. Ikut dimuat ulang setelah catch dibuat/diedit/dihapus.
+- **Manual setelah merge:** build APK baru.
+- **Lanjutan (permintaan user):** detail riwayat punya tombol "bagikan" (sheet simpan/bagikan M12, digeneralisasi jadi `ShareTarget`) dan "hapus" (`CatchRepository.deleteCatch`: foto + potongan dihapus dari storage, catch dihapus lewat RLS, streak dihitung ulang oleh trigger M13, hewan ikut dihapus kalau tidak punya catch lain). Tanpa migrasi. `flutter test` 175/175.
 
 ### Perbaikan audit (27 Okt 2026)
 - **Asal:** audit keamanan & UX sebelum closed testing. Dikerjakan 4 temuan teratas; sisanya (reaksi gagal tanpa pesan, copy "kamu" vs "lo", jatah AI terpotong sebelum cek foto) belum.

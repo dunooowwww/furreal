@@ -40,7 +40,6 @@ Future<void> pumpReadyApp(
 Future<void> captureBoth(WidgetTester tester) async {
   await tapText(tester, 'buka kamera');
   await tapFinder(tester, find.byKey(const Key('shutter')));
-  await tapFinder(tester, find.byKey(const Key('shutter')));
   expect(find.text('dapet!'), findsOneWidget);
 }
 
@@ -51,8 +50,47 @@ Future<void> pressBack(WidgetTester tester, Finder onScreen) async {
 }
 
 void main() {
+  testWidgets('kamera: pilih "lo dulu" → selfie dulu (depan), hewan otomatis', (
+    tester,
+  ) async {
+    final camera = FakeCatchCamera();
+    final catches = FakeCatchRepository();
+    await pumpReadyApp(tester, camera: camera, catches: catches);
+    await tapText(tester, 'buka kamera');
+
+    await tapFinder(tester, find.byKey(const Key('order-selfieFirst')));
+    expect(find.text('1/2 · foto lo'), findsOneWidget);
+    expect(find.byKey(const Key('preview-front')), findsOneWidget);
+    expect(
+      find.text('siapin muka lo. abis itu hewannya kejepret otomatis'),
+      findsOneWidget,
+    );
+    await tapFinder(tester, find.byKey(const Key('shutter')));
+
+    expect(camera.shots, [CameraLens.front, CameraLens.back]);
+    final photos = catches.capturedPhotos.single;
+    expect(photos.selfie, testPhotoFront, reason: 'foto pertama = selfie');
+    expect(photos.animal, testPhoto);
+    expect(find.text('dapet!'), findsOneWidget);
+  });
+
   testWidgets(
-    'kamera → hasil → posting, dengan ganti kamera di kedua langkah',
+    'kamera: ganti kamera sebelum jepret, foto kedua pakai kamera satunya',
+    (tester) async {
+      final camera = FakeCatchCamera();
+      await pumpReadyApp(tester, camera: camera);
+      await tapText(tester, 'buka kamera');
+
+      await tapFinder(tester, find.byTooltip('ganti kamera'));
+      expect(find.byKey(const Key('preview-front')), findsOneWidget);
+      await tapFinder(tester, find.byKey(const Key('shutter')));
+      expect(camera.shots, [CameraLens.front, CameraLens.back]);
+      expect(find.text('dapet!'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'kamera: 1 tap → foto hewan lalu selfie otomatis → hasil → posting',
     (tester) async {
       final camera = FakeCatchCamera();
       final catches = FakeCatchRepository();
@@ -60,29 +98,22 @@ void main() {
 
       await tapText(tester, 'buka kamera');
 
-      // langkah 1: default kamera belakang, user ganti ke depan
+      // default: hewan dulu, kamera belakang
       expect(find.text('1/2 · foto hewan'), findsOneWidget);
       expect(find.text('galeri off'), findsOneWidget);
       expect(find.byKey(const Key('preview-back')), findsOneWidget);
-      await tapFinder(tester, find.byTooltip('ganti kamera'));
-      expect(find.byKey(const Key('preview-front')), findsOneWidget);
+      expect(
+        find.text('arahin ke hewan. abis itu selfie lo kejepret otomatis'),
+        findsOneWidget,
+      );
       await tapFinder(tester, find.byKey(const Key('shutter')));
 
-      // langkah 2: default kamera depan, user ganti ke belakang
-      expect(find.text('2/2 · foto lo'), findsOneWidget);
-      expect(camera.current, CameraLens.front);
-      expect(find.byKey(const Key('animal-thumbnail')), findsOneWidget);
-      await tapFinder(tester, find.byTooltip('ganti kamera'));
-      expect(find.byKey(const Key('preview-back')), findsOneWidget);
-      await tapFinder(tester, find.byKey(const Key('shutter')));
-
-      expect(camera.shots, [CameraLens.front, CameraLens.back]);
-      expect(camera.opened, [
-        CameraLens.back,
-        CameraLens.front,
-        CameraLens.front,
-        CameraLens.back,
-      ]);
+      // sekali tap: belakang lalu depan, otomatis
+      expect(camera.shots, [CameraLens.back, CameraLens.front]);
+      expect(camera.opened, [CameraLens.back, CameraLens.front]);
+      final photos = catches.capturedPhotos.single;
+      expect(photos.animal, testPhoto, reason: 'foto pertama = hewan');
+      expect(photos.selfie, testPhotoFront);
 
       // layar hasil
       expect(find.text('dapet!'), findsOneWidget);
@@ -102,6 +133,7 @@ void main() {
       expect(catches.submitted, isEmpty);
 
       await enter(tester, 'animal-name', '  Milo ');
+      await enter(tester, 'caption', '  ketemu di parkiran  ');
       await tapText(tester, 'liar');
       await postToCircle(tester);
 
@@ -115,6 +147,11 @@ void main() {
       expect(catches.identified, ['catch-1']);
       expect(posted.animalType, 'kucing');
       expect(posted.personality, mockKucing.personality);
+      expect(
+        posted.caption,
+        'ketemu di parkiran',
+        reason: 'caption feed dirapikan',
+      );
       expect(catches.discarded, isEmpty);
 
       // kembali ke beranda dengan status sudah catch
@@ -273,25 +310,5 @@ void main() {
     expect(find.text('buka kamera'), findsOneWidget);
     expect(catches.discarded, ['catch-1']);
     expect(catches.submitted, isEmpty);
-  });
-
-  testWidgets('tutup kamera setelah foto hewan minta konfirmasi', (
-    tester,
-  ) async {
-    await pumpReadyApp(tester);
-    await tapText(tester, 'buka kamera');
-    await tapFinder(tester, find.byKey(const Key('shutter')));
-    expect(find.text('2/2 · foto lo'), findsOneWidget);
-
-    await tapFinder(tester, find.byTooltip('tutup kamera'));
-    expect(find.text('buang catch ini?'), findsOneWidget);
-    await tapText(tester, 'lanjut catch');
-    expect(find.text('2/2 · foto lo'), findsOneWidget);
-    expect(find.byKey(const Key('animal-thumbnail')), findsOneWidget);
-
-    await pressBack(tester, find.text('2/2 · foto lo'));
-    expect(find.text('buang catch ini?'), findsOneWidget);
-    await tapFinder(tester, find.byKey(const Key('confirm-discard')));
-    expect(find.text('buka kamera'), findsOneWidget);
   });
 }

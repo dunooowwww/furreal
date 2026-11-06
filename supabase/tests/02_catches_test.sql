@@ -151,10 +151,9 @@ select is(
   'foto alice hari ini terkunci sebelum bob catch'
 );
 
-select throws_ok(
+select lives_ok(
   $$delete from public.catches$$,
-  '42501', null,
-  'anggota circle tidak bisa menghapus catch'
+  'anggota circle menghapus 0 baris (RLS hanya mengizinkan milik sendiri)'
 );
 delete from public.animals;
 update public.catches set location_hidden = false, area_label = 'diretas';
@@ -211,8 +210,7 @@ select is(
   'daily_drops terisi untuk test is_late'
 );
 
--- === alice: catch tidak bisa dihapus lalu diulang (audit 27 Okt) ===========
--- Hapus catch untuk development: supabase/scripts/reset_dev_today.ts.
+-- === alice: hapus catch hari ini lalu catch ulang ============================
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}', true);
 
@@ -227,15 +225,13 @@ select ok(
   public.is_own_catch_photo_path('11111111-1111-1111-1111-111111111111/aaaaaaaa-0000-0000-0000-000000000001/selfie.jpg'),
   'pemilik boleh menghapus/menimpa foto di foldernya sendiri'
 );
-select throws_ok(
+select lives_ok(
   $$delete from public.catches where catch_date = public.jakarta_today()$$,
-  '42501', null,
-  'pemilik tidak bisa menghapus catch hari ini'
+  'pemilik bisa menghapus catch hari ini'
 );
-select throws_ok(
+select lives_ok(
   $$select public.create_catch('aaaaaaaa-0000-0000-0000-000000000002', 'Milo', 'pet', null, false)$$,
-  'FR001', null,
-  'pemilik tetap tidak bisa catch lagi hari ini'
+  'setelah dihapus, pemilik bisa catch lagi hari ini'
 );
 
 reset role;

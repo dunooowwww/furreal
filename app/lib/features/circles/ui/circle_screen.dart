@@ -11,6 +11,7 @@ import '../../../shared/widgets/busy_button.dart';
 import '../../../shared/widgets/error_text.dart';
 import '../data/circle_repository.dart';
 import '../state/circle_providers.dart';
+import 'invite_share.dart';
 
 /// Buat circle baru atau gabung lewat kode undangan.
 class CircleScreen extends ConsumerStatefulWidget {
@@ -176,6 +177,8 @@ class _CircleScreenState extends ConsumerState<CircleScreen> {
           ),
         ),
         const SizedBox(height: 16),
+        InviteShareButton(circle: circle, filled: true),
+        const SizedBox(height: 8),
         OutlinedButton(
           onPressed: () =>
               Clipboard.setData(ClipboardData(text: circle.inviteCode)),
