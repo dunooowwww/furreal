@@ -23,6 +23,8 @@ import '../features/home/ui/home_screen.dart';
 import 'session.dart';
 import 'shell.dart';
 import 'splash_screen.dart';
+import '../features/friends/ui/friends_screen.dart';
+import '../features/profile/ui/profile_screen.dart';
 
 class Routes {
   static const splash = '/';
@@ -38,6 +40,11 @@ class Routes {
   static const camera = '/camera';
   static const catchResult = '/catch/result';
   static const settings = '/settings';
+  static const profile = '/profile';
+  static const friends = '/profile/friends';
+
+  /// Profil user lain (teman / satu circle).
+  static String user(String id) => '/users/$id';
   static const editProfile = '/settings/profile';
   static const myCircles = '/settings/circles';
   static const feedback = '/settings/feedback';
@@ -129,6 +136,19 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: Routes.settings,
         builder: (context, state) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: Routes.profile,
+        builder: (context, state) => const ProfileScreen(),
+      ),
+      GoRoute(
+        path: Routes.friends,
+        builder: (context, state) => const FriendsScreen(),
+      ),
+      GoRoute(
+        path: '/users/:id',
+        builder: (context, state) =>
+            ProfileScreen(userId: state.pathParameters['id']),
       ),
       GoRoute(
         path: Routes.editProfile,

@@ -18,6 +18,7 @@ import '../../feed/state/feed_providers.dart';
 import '../../notifications/ui/notification_prompt.dart';
 import '../../../shared/widgets/remote_photo.dart';
 import '../../../shared/widgets/user_avatar.dart';
+import '../../friends/state/friend_providers.dart';
 
 /// Beranda: streak, izin notifikasi, kartu daily drop / catch hari ini,
 /// tangkapan kemarin, status circle hari ini.
@@ -33,9 +34,7 @@ class HomeScreen extends ConsumerWidget {
     Future<void> refresh() async {
       ref.invalidate(todayDropProvider);
       ref.invalidate(todayCatchProvider);
-      for (final circle in circles) {
-        ref.invalidate(feedControllerProvider(circle.id));
-      }
+      ref.invalidate(feedControllerProvider);
       await ref.read(todayDropProvider.future);
     }
 
@@ -418,23 +417,29 @@ class _SettingsButton extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final profile = ref.watch(myProfileProvider).value;
+    final incoming = ref.watch(incomingRequestCountProvider);
     return Tooltip(
-      message: 'pengaturan',
+      message: 'profil',
       child: Semantics(
         button: true,
-        label: 'pengaturan',
+        label: 'profil',
         excludeSemantics: true,
         child: InkWell(
-          key: const Key('open-settings'),
+          key: const Key('open-profile'),
           customBorder: const CircleBorder(),
-          onTap: () => context.push(Routes.settings),
+          onTap: () => context.push(Routes.profile),
           child: SizedBox.square(
             dimension: FurrealShape.minTouchTarget,
             child: Center(
-              child: UserAvatar(
-                name: profile?.displayName ?? profile?.username ?? '',
-                avatarPath: profile?.avatarPath,
-                size: FurrealShape.minTouchTarget,
+              child: Badge(
+                isLabelVisible: incoming > 0,
+                smallSize: 10,
+                backgroundColor: const Color(0xFFFF3B30),
+                child: UserAvatar(
+                  name: profile?.displayName ?? profile?.username ?? '',
+                  avatarPath: profile?.avatarPath,
+                  size: FurrealShape.minTouchTarget,
+                ),
               ),
             ),
           ),

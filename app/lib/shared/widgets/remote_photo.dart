@@ -79,3 +79,24 @@ Widget cachedRemoteCutout(BuildContext context, String? url, String cacheKey) {
 final remoteCutoutBuilderProvider = Provider<RemotePhotoBuilder>(
   (ref) => cachedRemoteCutout,
 );
+
+/// Foto utuh (contain) untuk layar penuh: tidak ada bagian yang terpotong.
+Widget cachedRemoteFullPhoto(
+  BuildContext context,
+  String? url,
+  String cacheKey,
+) {
+  if (url == null) return const RemotePhotoPlaceholder(failed: true);
+  return CachedNetworkImage(
+    imageUrl: url,
+    cacheKey: cacheKey,
+    fit: BoxFit.contain,
+    fadeInDuration: const Duration(milliseconds: 150),
+    placeholder: (_, _) => const Center(child: CircularProgressIndicator()),
+    errorWidget: (_, _, _) => const RemotePhotoPlaceholder(failed: true),
+  );
+}
+
+final remoteFullPhotoBuilderProvider = Provider<RemotePhotoBuilder>(
+  (ref) => cachedRemoteFullPhoto,
+);

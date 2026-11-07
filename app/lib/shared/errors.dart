@@ -48,6 +48,8 @@ String friendlyError(Object error) {
       case 'FR006':
         return 'terlalu banyak percobaan masuk pakai username ini. tunggu 15 menit, '
             'atau masuk pakai email.';
+      case 'FR007':
+        return 'pajangan maksimal 3 kartu. lepas satu dulu ya.';
       case 'FR005':
         return 'daily drop belum turun. tunggu notifikasinya ya.';
       case '23505':

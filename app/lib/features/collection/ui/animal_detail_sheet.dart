@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/theme.dart';
 import '../data/collection_models.dart';
 import '../state/collection_providers.dart';
+import '../../../shared/errors.dart';
 import '../../../shared/transitions.dart';
 import '../../../shared/widgets/detail_scaffold.dart';
 import 'animal_card.dart';
@@ -24,15 +25,53 @@ Future<void> showAnimalDetail(
   BuildContext context,
   CollectionAnimal animal, {
   int? number,
+  bool readOnly = false,
 }) {
-  return pushSlide(context, AnimalDetailSheet(animal: animal, number: number));
+  return pushSlide(
+    context,
+    AnimalDetailSheet(animal: animal, number: number, readOnly: readOnly),
+  );
+}
+
+/// Pin / lepas kartu favorit di profil (maks 3).
+Future<void> _togglePin(
+  BuildContext context,
+  WidgetRef ref,
+  CollectionAnimal animal,
+) async {
+  final messenger = ScaffoldMessenger.of(context);
+  try {
+    await ref
+        .read(collectionRepositoryProvider)
+        .setPinned(animal.id, pinned: !animal.pinned);
+    ref.invalidate(collectionProvider);
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          animal.pinned
+              ? '${animal.name} dilepas dari profil.'
+              : '${animal.name} di-pin ke profil.',
+        ),
+      ),
+    );
+  } catch (e) {
+    messenger.showSnackBar(SnackBar(content: Text(friendlyError(e))));
+  }
 }
 
 class AnimalDetailSheet extends ConsumerWidget {
-  const AnimalDetailSheet({super.key, required this.animal, this.number});
+  const AnimalDetailSheet({
+    super.key,
+    required this.animal,
+    this.number,
+    this.readOnly = false,
+  });
 
   final CollectionAnimal animal;
   final int? number;
+
+  /// Kartu orang lain (dari profil): tanpa pin, edit, hapus.
+  final bool readOnly;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -107,33 +146,53 @@ class AnimalDetailSheet extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    key: const Key('animal-edit'),
-                    onPressed: () => showEditAnimalSheet(context, animal),
-                    icon: const Icon(Icons.edit_outlined, size: 18),
-                    label: const Text('edit'),
-                  ),
+            if (!readOnly) ...[
+              const SizedBox(height: 20),
+              FilledButton.icon(
+                key: const Key('animal-pin'),
+                onPressed: () => _togglePin(context, ref, animal),
+                style: FilledButton.styleFrom(
+                  backgroundColor: animal.pinned
+                      ? FurrealColors.surface
+                      : FurrealColors.accent,
+                  foregroundColor: FurrealColors.ink,
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    key: const Key('animal-remove'),
-                    onPressed: () async {
-                      final navigator = Navigator.of(context);
-                      if (await confirmRemoveAnimal(context, ref, animal)) {
-                        navigator.pop();
-                      }
-                    },
-                    icon: const Icon(Icons.delete_outline, size: 18),
-                    label: const Text('hapus'),
-                  ),
+                icon: Icon(
+                  animal.pinned ? Icons.push_pin : Icons.push_pin_outlined,
+                  size: 18,
                 ),
-              ],
-            ),
+                label: Text(
+                  animal.pinned ? 'lepas dari profil' : 'pin ke profil',
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      key: const Key('animal-edit'),
+                      onPressed: () => showEditAnimalSheet(context, animal),
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      label: const Text('edit'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      key: const Key('animal-remove'),
+                      onPressed: () async {
+                        final navigator = Navigator.of(context);
+                        if (await confirmRemoveAnimal(context, ref, animal)) {
+                          navigator.pop();
+                        }
+                      },
+                      icon: const Icon(Icons.delete_outline, size: 18),
+                      label: const Text('hapus'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),

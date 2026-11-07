@@ -4,6 +4,7 @@ import {
   type ActivityBatch,
   activityMessage,
   createSendActivityHandler,
+  friendMessage,
   joinNames,
   type SendActivityDeps,
   streakMessage,
@@ -39,6 +40,15 @@ function setup(
         batch({ token: "tok-bob", catchId: "c2", comments: 1 }),
       ]);
     },
+    claimFriends: () =>
+      Promise.resolve([
+        {
+          token: "tok-dave",
+          actorName: "Dave",
+          kind: "request",
+          actorId: "u-d",
+        },
+      ]),
     claimStreakReminders: () => {
       log.streakClaims++;
       return Promise.resolve([{ token: "tok-carol", streak: 4 }]);
@@ -69,12 +79,16 @@ Deno.test("activity: klaim, kirim per penerima, hapus token mati", async () => {
   assertEquals(await res.json(), {
     status: "sent",
     job: "activity",
-    messages: 2,
-    delivered: 1,
+    messages: 3,
+    delivered: 2,
     invalid: 1,
     failed: 0,
   });
-  assertEquals(log.sent.map((s) => s.token), ["tok-alice", "tok-bob"]);
+  assertEquals(log.sent.map((s) => s.token), [
+    "tok-alice",
+    "tok-bob",
+    "tok-dave",
+  ]);
   assertEquals(log.sent[0].message.data, { type: "activity", catch_id: "c1" });
   assertEquals(log.cleared, [["tok-bob"]]);
   assertEquals(log.streakClaims, 0);
@@ -161,4 +175,26 @@ Deno.test("isi pengingat streak", () => {
   const m = streakMessage({ token: "t", streak: 2 });
   assertEquals(m.channelId, "streak_reminder");
   assertEquals(m.data, { type: "streak_reminder" });
+});
+
+Deno.test("isi notifikasi teman", () => {
+  const req = friendMessage({
+    token: "t",
+    actorName: "Dinda",
+    kind: "request",
+    actorId: "u1",
+  });
+  assertEquals(req.title, "Dinda pengen temenan sama lo");
+  assertEquals(req.channelId, "friends");
+  assertEquals(req.data, { type: "friend", kind: "request", user_id: "u1" });
+  assertEquals(
+    friendMessage({
+      token: "t",
+      actorName: "Dinda",
+      kind: "accepted",
+      actorId: "u1",
+    })
+      .title,
+    "Dinda nerima permintaan teman lo",
+  );
 });

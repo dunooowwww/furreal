@@ -37,7 +37,7 @@ Future<void> openSettings(
         FakeCircleRepository(circles: [kos, lab], members: {'kos': kosMembers}),
     avatarPicker: picker,
   );
-  await tapFinder(tester, find.byTooltip('pengaturan'));
+  await openSettingsFromHome(tester);
 }
 
 void main() {

@@ -209,6 +209,54 @@ void main() {
     ]);
   });
 
+  testWidgets('reaksi baru 😻 🔥 🥺: tampil & bisa ditoggle', (tester) async {
+    final feed = sampleFeed();
+    await openFeed(tester, feed: feed);
+
+    final fire = inCard('d', find.byKey(const Key('fire-d')));
+    expect(fire, findsOneWidget);
+    expect(inCard('d', find.text('🔥')), findsOneWidget);
+    expect(
+      find.descendant(of: fire, matching: find.text('1')),
+      findsNothing,
+      reason: 'jumlah nol disembunyikan',
+    );
+
+    await tapFinder(tester, fire);
+    expect(find.descendant(of: fire, matching: find.text('1')), findsOneWidget);
+    await tapFinder(tester, find.byKey(const Key('aww-d')));
+    await tapFinder(tester, fire);
+    expect(find.descendant(of: fire, matching: find.text('1')), findsNothing);
+
+    expect(feed.reactionCalls.map((c) => (c.type, c.on)).toList(), [
+      (ReactionType.fire, true),
+      (ReactionType.aww, true),
+      (ReactionType.fire, false),
+    ]);
+  });
+
+  test('feed v5: reaction_counts & my_reactions dibaca', () {
+    final item = FeedItem.fromJson({
+      'catch_id': 'c',
+      'user_id': 'u',
+      'created_at': '2026-11-07T03:00:00Z',
+      'like_count': 2,
+      'liked_by_me': true,
+      'reaction_counts': {'like': 2, 'cute': 3, 'fire': 1, 'aneh': 9},
+      'my_reactions': ['like', 'cute'],
+    });
+    expect(item.reactionCount(ReactionType.like), 2);
+    expect(item.reactionCount(ReactionType.cute), 3);
+    expect(item.reactionCount(ReactionType.fire), 1);
+    expect(item.reactionCount(ReactionType.aww), 0);
+    expect(item.reactedByMe(ReactionType.cute), isTrue);
+    expect(item.reactedByMe(ReactionType.fire), isFalse);
+
+    final off = item.withReaction(ReactionType.cute, false);
+    expect(off.reactionCount(ReactionType.cute), 2);
+    expect(off.reactedByMe(ReactionType.cute), isFalse);
+  });
+
   testWidgets('reaksi optimistis: langsung berubah, rollback kalau gagal', (
     tester,
   ) async {

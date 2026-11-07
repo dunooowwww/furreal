@@ -10,6 +10,7 @@ import '../../../shared/widgets/remote_photo.dart';
 import '../../catch_result/data/catch_repository.dart' show AnimalKind;
 import '../data/collection_models.dart';
 import 'animal_detail_sheet.dart' show shortDate;
+import '../../../shared/widgets/framed_photo.dart';
 
 /// Warna pastel kartu per jenis hewan: [light] latar, [mid] bingkai,
 /// [deep] aksen (ikon, nomor).
@@ -468,13 +469,10 @@ class _Art extends ConsumerWidget {
 
     final bg = photo();
     final fg = cutout();
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(compact ? 10 : 16),
-        border: Border.all(color: Colors.white, width: compact ? 2 : 3),
-        color: palette.light,
-      ),
-      clipBehavior: Clip.antiAlias,
+    return FramedPhoto(
+      radius: compact ? 10 : 16,
+      borderWidth: compact ? 2 : 3,
+      background: palette.light,
       child: Stack(
         fit: StackFit.expand,
         children: [

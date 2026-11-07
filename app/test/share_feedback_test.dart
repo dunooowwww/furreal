@@ -150,7 +150,7 @@ void main() {
         circles: FakeCircleRepository(circles: [kos]),
         feedback: repo,
       );
-      await tapFinder(tester, find.byTooltip('pengaturan'));
+      await openSettingsFromHome(tester);
       await tapText(tester, 'kirim saran');
       return repo;
     }

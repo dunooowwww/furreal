@@ -32,6 +32,14 @@ class FriendCatchMessage {
   final String? title;
 }
 
+/// Permintaan teman / permintaan diterima (M18).
+class FriendNoticeMessage {
+  const FriendNoticeMessage({required this.opened, this.title});
+
+  final bool opened;
+  final String? title;
+}
+
 /// Pengingat streak jam 20:00 WIB (M14).
 class StreakReminderMessage {
   const StreakReminderMessage({required this.opened, this.title});
@@ -59,6 +67,8 @@ abstract interface class PushMessaging {
   Stream<FriendCatchMessage> get friendCatches;
 
   Stream<StreakReminderMessage> get streakReminders;
+
+  Stream<FriendNoticeMessage> get friendNotices;
 }
 
 /// Dipakai kalau Firebase tidak tersedia; app tetap jalan tanpa notifikasi.
@@ -86,6 +96,9 @@ class DisabledPushMessaging implements PushMessaging {
 
   @override
   Stream<StreakReminderMessage> get streakReminders => const Stream.empty();
+
+  @override
+  Stream<FriendNoticeMessage> get friendNotices => const Stream.empty();
 }
 
 class FirebasePushMessaging implements PushMessaging {
@@ -106,6 +119,10 @@ class FirebasePushMessaging implements PushMessaging {
         _friendCatches.add(
           FriendCatchMessage(opened: opened, title: m.notification?.title),
         );
+      case 'friend':
+        _friendNotices.add(
+          FriendNoticeMessage(opened: opened, title: m.notification?.title),
+        );
       case 'streak_reminder':
         _streaks.add(
           StreakReminderMessage(opened: opened, title: m.notification?.title),
@@ -117,6 +134,7 @@ class FirebasePushMessaging implements PushMessaging {
   final _drops = StreamController<DropMessage>.broadcast();
   final _friendCatches = StreamController<FriendCatchMessage>.broadcast();
   final _streaks = StreamController<StreakReminderMessage>.broadcast();
+  final _friendNotices = StreamController<FriendNoticeMessage>.broadcast();
 
   static PushPermission _map(NotificationSettings s) =>
       switch (s.authorizationStatus) {
@@ -147,6 +165,9 @@ class FirebasePushMessaging implements PushMessaging {
 
   @override
   Stream<StreakReminderMessage> get streakReminders => _streaks.stream;
+
+  @override
+  Stream<FriendNoticeMessage> get friendNotices => _friendNotices.stream;
 }
 
 /// Simpan token FCM milik user yang login (null = hapus, saat keluar).

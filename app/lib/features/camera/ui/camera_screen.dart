@@ -11,6 +11,7 @@ import '../../daily_drop/state/daily_drop_providers.dart';
 import '../data/captured_photos.dart';
 import '../data/catch_camera.dart';
 import '../state/camera_providers.dart';
+import '../../../shared/widgets/framed_photo.dart';
 
 /// Warna layar kamera gelap (prototype "Kamera").
 class _Dark {
@@ -276,13 +277,10 @@ class _CameraScreenState extends ConsumerState<CameraScreen>
                 left: 16,
                 width: 96,
                 height: 128,
-                child: Container(
+                child: FramedPhoto(
                   key: const Key('first-thumbnail'),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: Colors.white, width: 2),
-                  ),
-                  clipBehavior: Clip.antiAlias,
+                  radius: 18,
+                  borderWidth: 2,
                   child: Image.memory(firstPhoto, fit: BoxFit.cover),
                 ),
               ),

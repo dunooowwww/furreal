@@ -50,6 +50,15 @@ class MainActivity : FlutterActivity() {
         )
         manager.createNotificationChannel(
             NotificationChannel(
+                FRIENDS_CHANNEL,
+                getString(R.string.friends_channel_name),
+                NotificationManager.IMPORTANCE_DEFAULT,
+            ).apply {
+                description = getString(R.string.friends_channel_description)
+            },
+        )
+        manager.createNotificationChannel(
+            NotificationChannel(
                 STREAK_CHANNEL,
                 getString(R.string.streak_channel_name),
                 NotificationManager.IMPORTANCE_DEFAULT,
@@ -64,5 +73,6 @@ class MainActivity : FlutterActivity() {
         const val FRIEND_CATCH_CHANNEL = "friend_catch"
         const val ACTIVITY_CHANNEL = "activity"
         const val STREAK_CHANNEL = "streak_reminder"
+        const val FRIENDS_CHANNEL = "friends"
     }
 }

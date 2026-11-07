@@ -18,6 +18,18 @@ final collectionProvider = FutureProvider<List<CollectionAnimal>>((ref) async {
   return ref.watch(collectionRepositoryProvider).myCollection();
 });
 
+/// Kartu favorit yang dipajang (maks 3), urut waktu dipajang.
+final pinnedAnimalsProvider = Provider<List<CollectionAnimal>>((ref) {
+  final animals = ref.watch(collectionProvider).value ?? const [];
+  return [
+    for (final a in animals)
+      if (a.pinned) a,
+  ]..sort((a, b) => a.pinnedAt!.compareTo(b.pinnedAt!));
+});
+
+/// Batas kartu favorit (sama dengan server).
+const maxPinned = 3;
+
 /// Nomor kartu (#0001 = hewan pertama) per id hewan.
 final collectionNumbersProvider = Provider<Map<String, int>>((ref) {
   final animals = ref.watch(collectionProvider).value ?? const [];

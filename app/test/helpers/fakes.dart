@@ -5,6 +5,8 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:furreal/features/friends/data/friend_repository.dart';
+import 'package:furreal/features/friends/state/friend_providers.dart';
 import 'package:furreal/app/splash_overlay.dart';
 import 'package:furreal/app/app.dart';
 import 'package:furreal/features/account/data/account_repository.dart';
@@ -688,6 +690,27 @@ class FakeCollectionRepository implements CollectionRepository {
         .toList();
   }
 
+  final pinCalls = <(String, bool)>[];
+
+  @override
+  Future<void> setPinned(String animalId, {required bool pinned}) async {
+    final e = error;
+    if (e != null) throw e;
+    pinCalls.add((animalId, pinned));
+    final i = animals.indexWhere((a) => a.id == animalId);
+    if (pinned &&
+        !animals[i].pinned &&
+        animals.where((a) => a.pinned).length >= 3) {
+      throw const PostgrestException(
+        message: 'maksimal 3 kartu favorit',
+        code: 'FR007',
+      );
+    }
+    animals[i] = animals[i].copyWith(
+      pinnedAt: () => pinned ? (animals[i].pinnedAt ?? DateTime.now()) : null,
+    );
+  }
+
   @override
   Future<void> removeAnimal(String animalId) async {
     final e = error;
@@ -847,6 +870,7 @@ class FakePushMessaging implements PushMessaging {
   final drops = StreamController<DropMessage>.broadcast();
   final catches = StreamController<FriendCatchMessage>.broadcast();
   final streaks = StreamController<StreakReminderMessage>.broadcast();
+  final friendNoticesCtl = StreamController<FriendNoticeMessage>.broadcast();
 
   @override
   Future<PushPermission> permission() async => current;
@@ -871,6 +895,9 @@ class FakePushMessaging implements PushMessaging {
 
   @override
   Stream<StreakReminderMessage> get streakReminders => streaks.stream;
+
+  @override
+  Stream<FriendNoticeMessage> get friendNotices => friendNoticesCtl.stream;
 }
 
 class FakePushTokenRepository implements PushTokenRepository {
@@ -915,6 +942,7 @@ Future<void> pumpApp(
   FakeCollectionRepository? collection,
   FakeDailyDropRepository? drop,
   FakePushMessaging? push,
+  FakeFriendRepository? friends,
   FakePushTokenRepository? pushTokens,
   FakeAnalytics? analytics,
   FakeAccountRepository? account,
@@ -978,6 +1006,10 @@ Future<void> pumpApp(
         ),
         remotePhotoBuilderProvider.overrideWithValue(fakeRemotePhoto),
         remoteCutoutBuilderProvider.overrideWithValue(fakeRemotePhoto),
+        remoteFullPhotoBuilderProvider.overrideWithValue(fakeRemotePhoto),
+        friendRepositoryProvider.overrideWithValue(
+          friends ?? FakeFriendRepository(),
+        ),
         cutoutMakerProvider.overrideWithValue(cutoutMaker ?? FakeCutoutMaker()),
         cutoutRepositoryProvider.overrideWithValue(
           cutouts ?? FakeCutoutRepository(),
@@ -1030,4 +1062,89 @@ Future<void> postToCircle(WidgetTester tester) async {
     await tester.tap(done);
     await tester.pumpAndSettle();
   }
+}
+
+/// Teman & profil palsu (M18/M19).
+class FakeFriendRepository implements FriendRepository {
+  FakeFriendRepository({
+    List<FriendUser>? friends,
+    Map<String, FriendUser>? users,
+    Map<String, UserProfile>? profiles,
+    Map<String, List<CollectionAnimal>>? collections,
+    Map<String, List<HistoryCatch>>? catches,
+  }) : friends = friends ?? [],
+       users = users ?? {},
+       profiles = profiles ?? {},
+       collections = collections ?? {},
+       catches = catches ?? {};
+
+  final List<FriendUser> friends;
+
+  /// Username → user (untuk cari).
+  final Map<String, FriendUser> users;
+  final Map<String, UserProfile> profiles;
+  final Map<String, List<CollectionAnimal>> collections;
+  final Map<String, List<HistoryCatch>> catches;
+  final calls = <String>[];
+
+  void _set(String id, FriendRelation r) {
+    final i = friends.indexWhere((f) => f.id == id);
+    final base =
+        (i >= 0 ? friends[i] : null) ??
+        users.values.firstWhere((u) => u.id == id);
+    if (i >= 0) friends.removeAt(i);
+    if (r != FriendRelation.none) friends.add(base.withRelation(r));
+    for (final e in users.entries.toList()) {
+      if (e.value.id == id) users[e.key] = e.value.withRelation(r);
+    }
+  }
+
+  @override
+  Future<FriendUser?> findUser(String username) async {
+    calls.add('find:$username');
+    return users[username.trim().toLowerCase()];
+  }
+
+  @override
+  Future<FriendRelation> sendRequest(String userId) async {
+    calls.add('send:$userId');
+    _set(userId, FriendRelation.outgoing);
+    return FriendRelation.outgoing;
+  }
+
+  @override
+  Future<FriendRelation> respond(String userId, {required bool accept}) async {
+    calls.add('${accept ? 'accept' : 'decline'}:$userId');
+    final r = accept ? FriendRelation.friend : FriendRelation.none;
+    _set(userId, r);
+    return r;
+  }
+
+  @override
+  Future<void> remove(String userId) async {
+    calls.add('remove:$userId');
+    _set(userId, FriendRelation.none);
+  }
+
+  @override
+  Future<List<FriendUser>> myFriends() async => List.of(friends);
+
+  @override
+  Future<UserProfile?> profile(String userId) async => profiles[userId];
+
+  @override
+  Future<List<CollectionAnimal>> collectionOf(String userId) async =>
+      collections[userId] ?? const [];
+
+  @override
+  Future<List<HistoryCatch>> catchesOf(
+    String userId, {
+    DateTime? before,
+  }) async => catches[userId] ?? const [];
+}
+
+/// Beranda → foto profil → profil → ⚙️ pengaturan (M19).
+Future<void> openSettingsFromHome(WidgetTester tester) async {
+  await tapFinder(tester, find.byTooltip('profil'));
+  await tapFinder(tester, find.byKey(const Key('profile-settings')));
 }
