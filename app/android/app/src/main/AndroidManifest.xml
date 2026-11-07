@@ -17,6 +17,9 @@
     <uses-feature android:name="android.hardware.camera.any" android:required="true" />
     <application
         android:label="furreal"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        tools:replace="android:allowBackup"
         android:requestLegacyExternalStorage="true"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
