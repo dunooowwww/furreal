@@ -25,7 +25,7 @@ val keystoreProperties = Properties().apply {
 val hasReleaseKey = !keystoreProperties.isEmpty
 
 android {
-    namespace = "com.dun.furreal"
+    namespace = "com.furreal.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -35,8 +35,9 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.dun.furreal"
+        // Permanen setelah upload pertama ke Play Console (diganti dari
+        // com.dun.furreal sebelum rilis, 7 Nov 2026).
+        applicationId = "com.furreal.app"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         // M11: ML Kit subject segmentation butuh Android 7.0 (API 24).
