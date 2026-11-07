@@ -136,4 +136,18 @@ void main() {
       expect(find.text('catch dihapus.'), findsOneWidget);
     });
   });
+
+  testWidgets('detail riwayat: tombol kembali menutup halaman', (tester) async {
+    final repo = FakeCollectionRepository()
+      ..history = [historyCatch('c1', DateTime.utc(2026, 11, 2))];
+    await pumpHome(tester, collection: repo);
+    await openCollection(tester);
+    await tapFinder(tester, find.byKey(const Key('tab-history')));
+    await tapFinder(tester, find.byKey(const Key('history-c1')));
+    expect(find.byKey(const Key('history-detail')), findsOneWidget);
+
+    await tapFinder(tester, find.byKey(const Key('detail-back')));
+    expect(find.byKey(const Key('history-detail')), findsNothing);
+    expect(find.byKey(const Key('history-c1')), findsOneWidget);
+  });
 }

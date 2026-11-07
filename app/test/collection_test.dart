@@ -378,4 +378,53 @@ void main() {
       expect(find.text('Mochi dihapus dari koleksi.'), findsOneWidget);
     });
   });
+
+  group('navigasi detail', () {
+    testWidgets('detail kartu: tombol kembali menutup halaman', (tester) async {
+      await pumpHome(
+        tester,
+        collection: FakeCollectionRepository(animals: [...collectionSample]),
+      );
+      await openCollection(tester);
+      await tapFinder(tester, find.byKey(const Key('animal-mochi')));
+      expect(find.byKey(const Key('animal-detail')), findsOneWidget);
+
+      await tapFinder(tester, find.byKey(const Key('detail-back')));
+      expect(find.byKey(const Key('animal-detail')), findsNothing);
+      expect(find.byKey(const Key('animal-mochi')), findsOneWidget);
+    });
+
+    testWidgets('scroll yang mulai dari atas kartu tetap menggulir halaman', (
+      tester,
+    ) async {
+      await pumpHome(
+        tester,
+        collection: FakeCollectionRepository(animals: [...collectionSample]),
+      );
+      // HP pendek supaya isi detail lebih panjang dari layar.
+      tester.view.physicalSize = const Size(1080, 1500);
+      await tester.pumpAndSettle();
+      await openCollection(tester);
+      await tapFinder(tester, find.byKey(const Key('animal-mochi')));
+
+      final detail = find.byKey(const Key('animal-detail'));
+      final card = find.descendant(
+        of: detail,
+        matching: find.byKey(const Key('holo-gesture')),
+      );
+      await tester.drag(card, const Offset(0, -200));
+      await tester.pumpAndSettle();
+      final position = tester
+          .state<ScrollableState>(
+            find.descendant(of: detail, matching: find.byType(Scrollable)),
+          )
+          .position;
+      expect(
+        position.maxScrollExtent,
+        greaterThan(0),
+        reason: "isi lebih panjang dari layar",
+      );
+      expect(position.pixels, greaterThan(0));
+    });
+  });
 }
