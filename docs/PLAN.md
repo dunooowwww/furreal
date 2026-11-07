@@ -202,11 +202,11 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
   - Deno 2.9.7 dipasang via winget.
   - Ada `package.json` di folder home user, jadi Deno mencari `node_modules`. Skrip yang meng-import `npm:` dijalankan dengan `--node-modules-dir=none`.
 - **Setup Firebase (manual, belum dilakukan):**
-  1. Buat proyek di console.firebase.google.com, tambah app Android `com.dun.furreal`, unduh `google-services.json` ke `app/android/app/` (di-gitignore).
+  1. Buat proyek di console.firebase.google.com, tambah app Android `com.furreal.app` (dulu `com.dun.furreal`), unduh `google-services.json` ke `app/android/app/` (di-gitignore).
   2. Aktifkan Analytics & Crashlytics di proyek itu.
   3. Project settings → Service accounts → Generate new private key. Isi file JSON-nya (satu baris) ke `FCM_SERVICE_ACCOUNT_JSON` di `supabase/.env` (lokal) atau `npx supabase secrets set` (produksi). Jangan commit.
   4. Uji: `flutter run`, izinkan notifikasi, kunci (`--lock`) lalu turunkan drop (`seed_dev_drop.ts`), lalu notifikasi muncul.
-  5. Event Analytics bisa dicek di DebugView: `adb shell setprop debug.firebase.analytics.app com.dun.furreal`.
+  5. Event Analytics bisa dicek di DebugView: `adb shell setprop debug.firebase.analytics.app com.furreal.app`.
 - **Produksi (M7):**
   - Isi Vault `daily_drop_url` (`https://<ref>.supabase.co/functions/v1/send-daily-drop`) & `daily_drop_secret` (acak panjang).
   - `secrets set DAILY_DROP_SECRET` dengan nilai yang sama.
@@ -286,7 +286,7 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
   4. Google Cloud Console (proyek Firebase yang sama) → APIs & Services:
      - OAuth consent screen: External, nama app furreal, email kontak.
      - Credentials → Create OAuth client ID → **Web application** → catat Client ID + Client Secret.
-     - Credentials → Create OAuth client ID → **Android**: package `com.dun.furreal`, SHA-1 dari `cd app/android && ./gradlew signingReport` (varian release/debug yang dipakai build APK). Tambah lagi untuk kunci upload & Play App Signing saat rilis.
+     - Credentials → Create OAuth client ID → **Android**: package `com.furreal.app`, SHA-1 dari `cd app/android && ./gradlew signingReport` (varian release/debug yang dipakai build APK). Tambah lagi untuk kunci upload & Play App Signing saat rilis.
   5. Supabase → Authentication → Sign In / Providers → Google: nyalakan, isi Client ID + Secret (Web), nyalakan "Skip nonce checks".
   6. `app/.env.prod`: `GOOGLE_WEB_CLIENT_ID=<client id Web>`, lalu build APK ulang.
 
@@ -443,4 +443,5 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
   - Android: `allowBackup="false"` + `data_extraction_rules.xml` supaya sesi login tidak ikut backup cloud / pindah HP.
   - Kebijakan privasi (app + HTML) dilengkapi: caption, potongan ML Kit di HP, notifikasi reaksi/komentar & pengingat streak, saran/laporan bug, gambar share dibuat di HP.
 - **Masih harus dikerjakan user sebelum Play Store:** isi `[EMAIL KONTAK]`, host kebijakan privasi di URL publik, keystore rilis asli, putuskan `applicationId` final (`com.dun.furreal` tidak bisa diganti setelah upload pertama), closed testing ≥12 tester ≥14 hari (akun personal).
+- **Lanjutan (keputusan user):** `applicationId`/namespace jadi `com.furreal.app` (MainActivity pindah ke `kotlin/com/furreal/app/`), email kontak privasi `furrealapp@gmail.com` (app + HTML). Perlu `google-services.json` baru (app Android baru di Firebase) dan OAuth client Android baru di Google Cloud.
 

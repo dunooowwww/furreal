@@ -4,7 +4,7 @@ Urutan dari nol sampai tester bisa memasang app. Centang yang sudah.
 Semua secret (keystore, password, service role key, service account) **tidak pernah** masuk repo.
 
 ## 1. Teks & halaman wajib
-- [ ] Ganti `[EMAIL KONTAK]` di `app/lib/features/account/data/privacy_policy.dart` (`privacyContactEmail`) dan `docs/privacy-policy.html`.
+- [x] Email kontak `furrealapp@gmail.com` di `app/lib/features/account/data/privacy_policy.dart` (`privacyContactEmail`) dan `docs/privacy-policy.html`.
 - [ ] Host `docs/privacy-policy.html` di URL publik (GitHub Pages, Google Sites, Notion, dll). URL ini dipakai Play Console untuk:
   - **Privacy policy**: URL halaman.
   - **Delete account URL**: URL halaman + `#hapus-akun` (permintaan hapus lewat email).

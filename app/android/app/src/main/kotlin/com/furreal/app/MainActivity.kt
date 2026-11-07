@@ -1,4 +1,4 @@
-package com.dun.furreal
+package com.furreal.app
 
 import android.app.NotificationChannel
 import android.app.NotificationManager

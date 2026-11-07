@@ -1,8 +1,8 @@
 // Kebijakan privasi furreal. Teks yang sama ada di `docs/privacy-policy.html`
 // (untuk URL Play Console): ubah keduanya bersamaan.
 
-/// GANTI sebelum rilis: email kontak privasi (juga di Play Console).
-const privacyContactEmail = '[EMAIL KONTAK]';
+/// Email kontak privasi (juga di Play Console).
+const privacyContactEmail = 'furrealapp@gmail.com';
 
 const privacyPolicyUpdated = '7 november 2026';
 
