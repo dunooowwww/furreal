@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../shared/transitions.dart';
 import '../features/account/ui/edit_profile_screen.dart';
 import '../features/account/ui/feedback_screen.dart';
 import '../features/account/ui/privacy_policy_screen.dart';
@@ -151,15 +152,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: Routes.home,
-            builder: (context, state) => const HomeScreen(),
+            pageBuilder: (context, state) => tabPage(state, const HomeScreen()),
           ),
           GoRoute(
             path: Routes.feed,
-            builder: (context, state) => const FeedScreen(),
+            pageBuilder: (context, state) => tabPage(state, const FeedScreen()),
           ),
           GoRoute(
             path: Routes.collection,
-            builder: (context, state) => const CollectionScreen(),
+            pageBuilder: (context, state) =>
+                tabPage(state, const CollectionScreen()),
           ),
         ],
       ),

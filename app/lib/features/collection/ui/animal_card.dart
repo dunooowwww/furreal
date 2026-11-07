@@ -711,12 +711,14 @@ class HoloCardState extends State<HoloCard>
     );
     if (!widget.interactive) return tilted;
 
-    return GestureDetector(
+    // Listener (bukan GestureDetector): kilau mengikuti jari tanpa merebut
+    // gestur, jadi halaman tetap bisa di-scroll walau jari mulai di kartu.
+    return Listener(
       key: const Key('holo-gesture'),
-      onPanDown: (d) => _move(d.localPosition),
-      onPanUpdate: (d) => _move(d.localPosition),
-      onPanEnd: (_) => _release(),
-      onPanCancel: _release,
+      onPointerDown: (e) => _move(e.localPosition),
+      onPointerMove: (e) => _move(e.localPosition),
+      onPointerUp: (_) => _release(),
+      onPointerCancel: (_) => _release(),
       child: tilted,
     );
   }

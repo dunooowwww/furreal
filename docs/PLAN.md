@@ -445,3 +445,10 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
 - **Masih harus dikerjakan user sebelum Play Store:** isi `[EMAIL KONTAK]`, host kebijakan privasi di URL publik, keystore rilis asli, putuskan `applicationId` final (`com.dun.furreal` tidak bisa diganti setelah upload pertama), closed testing ≥12 tester ≥14 hari (akun personal).
 - **Lanjutan (keputusan user):** `applicationId`/namespace jadi `com.furreal.app` (MainActivity pindah ke `kotlin/com/furreal/app/`), email kontak privasi `furrealapp@gmail.com` (app + HTML). Perlu `google-services.json` baru (app Android baru di Firebase) dan OAuth client Android baru di Google Cloud.
 
+### Navigasi & animasi (7 Nov 2026, permintaan user)
+- **Masalah:** detail kartu/riwayat berupa bottom sheet tanpa tombol tutup; kartu holo memakai GestureDetector pan sehingga bisa berebut gestur dengan scroll/tarik-tutup sheet.
+- Detail kartu koleksi & detail riwayat jadi **halaman penuh** (`DetailScaffold`) yang masuk dari kanan (`pushSlide`, navigator utama), dengan tombol kembali (`detail-back`) + back/gestur back Android.
+- Kilau holo memakai `Listener` (bukan GestureDetector): tetap mengikuti jari tanpa merebut gestur scroll.
+- Semua pindah layar: `CupertinoPageTransitionsBuilder` (geser dari kanan, bisa kembali dengan geser dari tepi kiri). Pindah tab beranda/feed/koleksi: pudar + naik sedikit (`tabPage`, 220 ms). Bottom sheet & dialog tetap animasi bawaan.
+- `flutter test` 180/180.
+

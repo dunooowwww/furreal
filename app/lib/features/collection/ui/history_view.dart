@@ -10,6 +10,8 @@ import '../../catch_result/ui/edit_catch_sheet.dart'
 import '../../feed/ui/share_sheet.dart';
 import '../data/collection_models.dart';
 import '../state/collection_providers.dart';
+import '../../../shared/transitions.dart';
+import '../../../shared/widgets/detail_scaffold.dart';
 import 'animal_detail_sheet.dart' show shortDate;
 
 const _monthNames = [
@@ -164,15 +166,8 @@ class _HistoryTile extends ConsumerWidget {
   }
 }
 
-Future<void> showHistoryDetail(BuildContext context, HistoryCatch item) {
-  return showModalBottomSheet<void>(
-    context: context,
-    isScrollControlled: true,
-    useSafeArea: true,
-    showDragHandle: true,
-    builder: (_) => HistoryDetailSheet(item: item),
-  );
-}
+Future<void> showHistoryDetail(BuildContext context, HistoryCatch item) =>
+    pushSlide(context, HistoryDetailSheet(item: item));
 
 class HistoryDetailSheet extends ConsumerWidget {
   const HistoryDetailSheet({super.key, required this.item});
@@ -184,100 +179,103 @@ class HistoryDetailSheet extends ConsumerWidget {
     final photo = ref.watch(remotePhotoBuilderProvider);
     final d = item.catchDate;
     final day = _dayNames[d.weekday - 1];
-    return SingleChildScrollView(
-      key: const Key('history-detail'),
-      padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AspectRatio(
-            aspectRatio: 4 / 5,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(FurrealShape.cardRadius),
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  photo(context, item.animalPhotoUrl, item.animalPhotoPath),
-                  Positioned(
-                    top: 14,
-                    left: 14,
-                    width: 90,
-                    height: 120,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: Colors.white, width: 3),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: photo(
-                        context,
-                        item.selfiePhotoUrl,
-                        item.selfiePhotoPath,
+    return DetailScaffold(
+      title: 'riwayat',
+      child: SingleChildScrollView(
+        key: const Key('history-detail'),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            AspectRatio(
+              aspectRatio: 4 / 5,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(FurrealShape.cardRadius),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    photo(context, item.animalPhotoUrl, item.animalPhotoPath),
+                    Positioned(
+                      top: 14,
+                      left: 14,
+                      width: 90,
+                      height: 120,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.white, width: 3),
+                        ),
+                        clipBehavior: Clip.antiAlias,
+                        child: photo(
+                          context,
+                          item.selfiePhotoUrl,
+                          item.selfiePhotoPath,
+                        ),
                       ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            item.animalName ?? 'tanpa nama',
-            style: FurrealText.display(fontSize: 30),
-          ),
-          Text(
-            [
-              '$day, ${shortDate(d)}',
-              item.animalType,
-              item.timing.label,
-            ].nonNulls.join(' · '),
-            style: const TextStyle(color: FurrealColors.textSecondary),
-          ),
-          if ((item.caption ?? '').isNotEmpty) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             Text(
-              item.caption!,
-              key: const Key('history-caption'),
-              style: const TextStyle(fontSize: 16, height: 1.4),
+              item.animalName ?? 'tanpa nama',
+              style: FurrealText.display(fontSize: 30),
             ),
-          ],
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: FilledButton.icon(
-                  key: const Key('history-share'),
-                  onPressed: () => showShareTargetSheet(
-                    context,
-                    ShareTarget(
-                      animalPhotoPath: item.animalPhotoPath,
-                      selfiePhotoPath: item.selfiePhotoPath,
-                      animalName: item.animalName,
-                      caption: item.caption,
-                      date: item.createdAt,
-                    ),
-                  ),
-                  icon: const Icon(Icons.ios_share, size: 18),
-                  label: const Text('bagikan'),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: OutlinedButton.icon(
-                  key: const Key('history-delete'),
-                  onPressed: () async {
-                    final navigator = Navigator.of(context);
-                    if (await _confirmDelete(context, ref, item)) {
-                      navigator.pop();
-                    }
-                  },
-                  icon: const Icon(Icons.delete_outline, size: 18),
-                  label: const Text('hapus'),
-                ),
+            Text(
+              [
+                '$day, ${shortDate(d)}',
+                item.animalType,
+                item.timing.label,
+              ].nonNulls.join(' · '),
+              style: const TextStyle(color: FurrealColors.textSecondary),
+            ),
+            if ((item.caption ?? '').isNotEmpty) ...[
+              const SizedBox(height: 12),
+              Text(
+                item.caption!,
+                key: const Key('history-caption'),
+                style: const TextStyle(fontSize: 16, height: 1.4),
               ),
             ],
-          ),
-        ],
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: FilledButton.icon(
+                    key: const Key('history-share'),
+                    onPressed: () => showShareTargetSheet(
+                      context,
+                      ShareTarget(
+                        animalPhotoPath: item.animalPhotoPath,
+                        selfiePhotoPath: item.selfiePhotoPath,
+                        animalName: item.animalName,
+                        caption: item.caption,
+                        date: item.createdAt,
+                      ),
+                    ),
+                    icon: const Icon(Icons.ios_share, size: 18),
+                    label: const Text('bagikan'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: OutlinedButton.icon(
+                    key: const Key('history-delete'),
+                    onPressed: () async {
+                      final navigator = Navigator.of(context);
+                      if (await _confirmDelete(context, ref, item)) {
+                        navigator.pop();
+                      }
+                    },
+                    icon: const Icon(Icons.delete_outline, size: 18),
+                    label: const Text('hapus'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
