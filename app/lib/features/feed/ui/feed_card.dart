@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme.dart';
 import '../../../shared/relative_time.dart';
-import '../../../shared/widgets/remote_photo.dart';
+import '../../../shared/widgets/dual_photo.dart';
 import '../../../shared/widgets/user_avatar.dart';
 import '../../daily_drop/data/daily_drop.dart';
 import '../data/feed_models.dart';
@@ -35,7 +35,6 @@ class FeedCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final photo = ref.watch(remotePhotoBuilderProvider);
     final mono = FurrealText.mono(fontSize: 11);
     final secondary = mono.copyWith(color: FurrealColors.textSecondary);
 
@@ -90,31 +89,15 @@ class FeedCard extends ConsumerWidget {
           if (item.locked)
             const _LockedBody()
           else ...[
-            SizedBox(
-              height: 280,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  photo(context, item.animalPhotoUrl, item.animalPhotoPath!),
-                  Positioned(
-                    top: 12,
-                    left: 12,
-                    width: 56,
-                    height: 74,
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                      clipBehavior: Clip.antiAlias,
-                      child: photo(
-                        context,
-                        item.selfiePhotoUrl,
-                        item.selfiePhotoPath!,
-                      ),
-                    ),
-                  ),
-                ],
+            DualPhoto(
+              id: item.catchId,
+              main: PhotoRef(
+                url: item.animalPhotoUrl,
+                path: item.animalPhotoPath!,
+              ),
+              inset: PhotoRef(
+                url: item.selfiePhotoUrl,
+                path: item.selfiePhotoPath!,
               ),
             ),
             Padding(

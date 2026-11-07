@@ -978,6 +978,7 @@ Future<void> pumpApp(
         ),
         remotePhotoBuilderProvider.overrideWithValue(fakeRemotePhoto),
         remoteCutoutBuilderProvider.overrideWithValue(fakeRemotePhoto),
+        remoteFullPhotoBuilderProvider.overrideWithValue(fakeRemotePhoto),
         cutoutMakerProvider.overrideWithValue(cutoutMaker ?? FakeCutoutMaker()),
         cutoutRepositoryProvider.overrideWithValue(
           cutouts ?? FakeCutoutRepository(),

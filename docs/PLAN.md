@@ -452,3 +452,7 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
 - Semua pindah layar: `CupertinoPageTransitionsBuilder` (geser dari kanan, bisa kembali dengan geser dari tepi kiri). Pindah tab beranda/feed/koleksi: pudar + naik sedikit (`tabPage`, 220 ms). Bottom sheet & dialog tetap animasi bawaan.
 - `flutter test` 180/180.
 
+### Foto feed ala BeReal (7 Nov 2026, permintaan user)
+- `DualPhoto` di kartu feed: tap foto kecil → foto hewan & selfie bertukar (pudar 220 ms + getar halus); tahan foto besar → `PhotoViewer` layar penuh hitam (cubit zoom 1–4×, foto kecil bisa ditukar, zoom direset saat tukar, tombol tutup + back).
+- Foto layar penuh memakai `remoteFullPhotoBuilderProvider` (contain, tidak terpotong). Tanpa migrasi. `flutter test` 182/182.
+
