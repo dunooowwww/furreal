@@ -456,3 +456,13 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
 - `DualPhoto` di kartu feed: tap foto kecil → foto hewan & selfie bertukar (pudar 220 ms + getar halus); tahan foto besar → `PhotoViewer` layar penuh hitam (cubit zoom 1–4×, foto kecil bisa ditukar, zoom direset saat tukar, tombol tutup + back).
 - Foto layar penuh memakai `remoteFullPhotoBuilderProvider` (contain, tidak terpotong). Tanpa migrasi. `flutter test` 182/182.
 
+### M17: reaksi baru & kartu favorit (7 Nov 2026, permintaan user)
+- Migrasi `20261112090000_reactions_favorites.sql` (test `18_reactions_favorites_test.sql`, 12):
+  - `reactions.type` + `cute` 😻, `fire` 🔥, `aww` 🥺.
+  - `circle_feed` v5 + `reaction_counts` (jsonb per jenis) & `my_reactions`; kolom lama tetap (APK lama aman).
+  - `animals.pinned_at` + RPC `set_animal_pinned` (maks 3, FR007; terkunci per user supaya pin bersamaan tidak lolos). `remove_animal` ikut melepas pajangan. `my_collection` v4 + `pinned_at`.
+- App: baris reaksi emoji ❤️ 😂 😻 🔥 🥺 (jumlah nol disembunyikan, getar halus, optimistis seperti sebelumnya). Detail kartu: tombol "pajang kartu ini" / "lepas dari pajangan". Koleksi: kotak "📌 PAJANGAN · n/3" di atas filter, tap kartu → detail.
+- Notifikasi reaksi (M14) otomatis berlaku untuk jenis baru.
+- Test: flutter 186/186, pgTAP 344/344, deno 75/75.
+- **Manual setelah merge:** `npx supabase db push --remote`, build APK baru.
+
