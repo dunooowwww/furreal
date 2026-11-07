@@ -68,12 +68,12 @@ Future<Uint8List> composeShareImage({
   canvas.clipRRect(rrect);
   _drawCover(canvas, selfie, selfieRect);
   canvas.restore();
-  canvas.drawRRect(
+  // Bingkai = cincin di DALAM tepi potongan (tepi luarnya sama persis
+  // dengan potongan foto), jadi tebalnya rata dan tidak ada sisa di sudut.
+  canvas.drawDRRect(
     rrect,
-    Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 8
-      ..color = const Color(0xFFFFFFFF),
+    rrect.deflate(8),
+    Paint()..color = const Color(0xFFFFFFFF),
   );
 
   // Watermark furreal (kanan atas).

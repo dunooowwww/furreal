@@ -10,6 +10,7 @@ import {
 import {
   type ActivityBatch,
   createSendActivityHandler,
+  type FriendNotice,
   type StreakReminder,
 } from "./handler.ts";
 
@@ -52,6 +53,22 @@ const handler = createSendActivityHandler({
       reactions: r.reactions,
       comments: r.comments,
       lastComment: r.last_comment,
+    }));
+  },
+
+  async claimFriends() {
+    const { data, error } = await admin.rpc("claim_friend_notifications");
+    if (error) throw error;
+    return ((data ?? []) as {
+      token: string;
+      actor_name: string;
+      kind: "request" | "accepted";
+      actor_id: string;
+    }[]).map((r): FriendNotice => ({
+      token: r.token,
+      actorName: r.actor_name,
+      kind: r.kind,
+      actorId: r.actor_id,
     }));
   },
 

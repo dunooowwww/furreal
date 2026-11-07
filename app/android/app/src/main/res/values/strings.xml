@@ -7,6 +7,8 @@
     <string name="friend_catch_channel_description">kabar waktu teman satu circle posting catch.</string>
     <string name="activity_channel_name">reaksi &amp; komentar</string>
     <string name="activity_channel_description">kabar waktu teman ngereaksi atau komentar di catch lo.</string>
+    <string name="friends_channel_name">teman</string>
+    <string name="friends_channel_description">permintaan teman dan kabar waktu permintaan lo diterima.</string>
     <string name="streak_channel_name">pengingat streak</string>
     <string name="streak_channel_description">diingatkan jam 8 malam kalau streak lo hampir putus.</string>
 </resources>

@@ -5,6 +5,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../catch_result/data/catch_repository.dart' show catchPhotosBucket;
 import 'feed_models.dart';
 
+/// Id "circle" palsu untuk feed teman (M18).
+const friendsFeedId = 'teman';
+
 /// Signed URL foto berlaku 1 jam; feed di-refresh jauh lebih sering.
 const signedUrlTtlSeconds = 3600;
 
@@ -40,10 +43,15 @@ class SupabaseFeedRepository implements FeedRepository {
 
   @override
   Future<List<FeedItem>> todayFeed(String circleId) async {
-    final rows = (await _client.rpc(
-      'circle_feed',
-      params: {'p_circle_id': circleId},
-    ) as List).cast<Map<String, dynamic>>();
+    final rows =
+        (await (circleId == friendsFeedId
+                    ? _client.rpc('friends_feed')
+                    : _client.rpc(
+                        'circle_feed',
+                        params: {'p_circle_id': circleId},
+                      ))
+                as List)
+            .cast<Map<String, dynamic>>();
     if (rows.isEmpty) return const [];
 
     // Catch yang terkunci tidak membawa path foto.
@@ -68,6 +76,14 @@ class SupabaseFeedRepository implements FeedRepository {
 
   @override
   Future<int> memberCount(String circleId) async {
+    if (circleId == friendsFeedId) {
+      // RLS: hanya baris pertemanan saya. +1 = saya sendiri.
+      final rows = await _client
+          .from('friendships')
+          .select('requester_id')
+          .eq('status', 'accepted');
+      return rows.length + 1;
+    }
     final rows = await _client
         .from('circle_members')
         .select('user_id')

@@ -27,6 +27,7 @@ final selectedCircleProvider = NotifierProvider<SelectedCircle, String?>(
 final activeCircleIdProvider = Provider<String?>((ref) {
   final circles = ref.watch(myCirclesProvider).value ?? const [];
   final selected = ref.watch(selectedCircleProvider);
+  if (selected == friendsFeedId && circles.isNotEmpty) return friendsFeedId;
   if (selected != null && circles.any((c) => c.id == selected)) {
     return selected;
   }

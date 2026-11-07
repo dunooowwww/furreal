@@ -452,3 +452,40 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
 - Semua pindah layar: `CupertinoPageTransitionsBuilder` (geser dari kanan, bisa kembali dengan geser dari tepi kiri). Pindah tab beranda/feed/koleksi: pudar + naik sedikit (`tabPage`, 220 ms). Bottom sheet & dialog tetap animasi bawaan.
 - `flutter test` 180/180.
 
+### Foto feed ala BeReal (7 Nov 2026, permintaan user)
+- `DualPhoto` di kartu feed: tap foto kecil → foto hewan & selfie bertukar (pudar 220 ms + getar halus); tahan foto besar → `PhotoViewer` layar penuh hitam (cubit zoom 1–4×, foto kecil bisa ditukar, zoom direset saat tukar, tombol tutup + back).
+- Foto layar penuh memakai `remoteFullPhotoBuilderProvider` (contain, tidak terpotong). Tanpa migrasi. `flutter test` 182/182.
+
+### M17: reaksi baru & kartu favorit (7 Nov 2026, permintaan user)
+- Migrasi `20261112090000_reactions_favorites.sql` (test `18_reactions_favorites_test.sql`, 12):
+  - `reactions.type` + `cute` 😻, `fire` 🔥, `aww` 🥺.
+  - `circle_feed` v5 + `reaction_counts` (jsonb per jenis) & `my_reactions`; kolom lama tetap (APK lama aman).
+  - `animals.pinned_at` + RPC `set_animal_pinned` (maks 3, FR007; terkunci per user supaya pin bersamaan tidak lolos). `remove_animal` ikut melepas pajangan. `my_collection` v4 + `pinned_at`.
+- App: baris reaksi emoji ❤️ 😂 😻 🔥 🥺 (jumlah nol disembunyikan, getar halus, optimistis seperti sebelumnya). Detail kartu: tombol "pajang kartu ini" / "lepas dari pajangan". Koleksi: kotak "📌 PAJANGAN · n/3" di atas filter, tap kartu → detail.
+- Notifikasi reaksi (M14) otomatis berlaku untuk jenis baru.
+- Test: flutter 186/186, pgTAP 344/344, deno 75/75.
+- **Manual setelah merge:** `npx supabase db push --remote`, build APK baru.
+
+### Bug: halaman tab "menumpuk" saat pindah (7 Nov 2026)
+- **Penyebab:** layar feed & koleksi tidak punya latar sendiri (tanpa Scaffold). Transisi tab (pudar + geser 3%) membuat beranda/tab lama tembus di belakang tab baru selama ±0,2 dtk.
+- **Perbaikan:** `tabPage` membungkus halaman dengan latar penuh, menghapus geser, dan halaman baru baru memudar setelah jeda 30% (fade-through, 200 ms). Test `test/app/tab_transition_test.dart` (gagal di kode lama, lulus setelah perbaikan).
+
+### Bug: sisa putih di sudut bingkai selfie (7 Nov 2026)
+- **Penyebab:** bingkai memakai `Container(decoration: border, clipBehavior)`. Container menggeser foto ke dalam setebal bingkai tapi memotongnya di lengkung luar, jadi sudut foto tidak pas dengan lengkung dalam bingkai dan ada potongan putih di sudut. Di gambar share, bingkai digambar setengah di luar setengah di dalam tepi potongan.
+- **Perbaikan:** widget `FramedPhoto` (foto dipotong pas di sudut, bingkai digambar di atas foto lewat `foregroundDecoration`), dipakai di feed, layar penuh, riwayat, layar hasil, thumbnail kamera, dan kartu koleksi. Gambar share: bingkai = cincin `drawDRRect` di dalam tepi potongan. Dicek dengan render foto gelap + zoom sudut.
+
+### M18: teman di luar circle & M19: profil (7 Nov 2026, permintaan user)
+- **Keputusan user:** pins hanya di profil (pajangan di koleksi dihapus); teman = minta + terima; postingan teman di tab "teman" pada pemilih feed (tetap terkunci sebelum catch); profil teman & anggota satu circle bisa dibuka.
+- **DB** `20261113090000_friends_profile.sql` (test `19_friends_profile_test.sql`, 24):
+  - `friendships` (satu baris per pasangan, pending/accepted; hanya lewat RPC, RLS baca milik sendiri). RPC `find_user` (username persis, bukan awalan), `send_friend_request` (kalau dia sudah minta → langsung teman; maks 50 permintaan menunggu, FR009), `respond_friend_request`, `remove_friend`, `my_friends`, `friend_relation`.
+  - **`shares_circle(a, b)` kini = satu circle ATAU berteman**, jadi semua aturan lihat (profil, foto + kunci feed, koleksi, komentar, reaksi, notifikasi "teman udah catch") otomatis berlaku untuk teman. Berteman tidak memasukkan ke circle.
+  - `friends_feed()` (bentuk sama dengan `circle_feed` v5), `user_profile(id)` (streak, hitungan, relasi), `user_collection(id)` (koleksi + pins; catch hari ini tetap terkunci).
+  - Antrean `friend_notifications` (permintaan & diterima) dikirim `send-activity` bersama reaksi/komentar; channel Android `friends`, push `type=friend` → layar teman.
+- **App:**
+  - Foto di beranda → **profil** (titik merah kalau ada permintaan teman), bukan pengaturan. Profil: foto besar + gradasi, 🔥 streak, nama, @username, "n teman · n hewan · n streak terlama", tombol bagikan profil & edit, ikon tambah teman & ⚙️ pengaturan, **pins** (maks 3, slot "+" → pilih kartu), grid "catch lo".
+  - Profil orang lain (tap nama/foto di kartu feed): tombol status teman (tambah / batal minta / terima + tolak / teman ✓ → hapus), pins & catch mereka hanya-lihat. Bukan teman/satu circle → pesan.
+  - Layar teman: cari username, permintaan masuk, teman, terkirim. Detail kartu: "pin ke profil" / "lepas dari profil".
+  - Feed: pemilih circle selalu ada + "teman"; tanpa teman → tombol "tambah teman".
+- Test: flutter 194/194, pgTAP 368/368, deno 76/76.
+- **Manual setelah merge:** `npx supabase db push --remote`, `npx supabase functions deploy send-activity`, build APK baru (channel notifikasi baru).
+

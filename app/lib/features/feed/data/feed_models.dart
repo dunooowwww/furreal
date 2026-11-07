@@ -1,11 +1,19 @@
 import '../../daily_drop/data/daily_drop.dart';
 
 enum ReactionType {
-  like('like'),
-  laugh('laugh');
+  like('like', '❤️', 'suka'),
+  laugh('laugh', '😂', 'lucu'),
+  cute('cute', '😻', 'gemes'),
+  fire('fire', '🔥', 'keren'),
+  aww('aww', '🥺', 'kasian');
 
-  const ReactionType(this.dbValue);
+  const ReactionType(this.dbValue, this.emoji, this.label);
   final String dbValue;
+  final String emoji;
+  final String label;
+
+  static ReactionType? fromDb(String? value) =>
+      values.where((t) => t.dbValue == value).firstOrNull;
 }
 
 /// Satu kartu catch di feed (hasil RPC `circle_feed` + signed URL foto).
@@ -33,6 +41,8 @@ class FeedItem {
     this.avatarPath,
     this.animalPhotoUrl,
     this.selfiePhotoUrl,
+    this.extraCounts = const {},
+    this.extraMine = const {},
   });
 
   factory FeedItem.fromJson(
@@ -70,6 +80,20 @@ class FeedItem {
       avatarPath: json['avatar_path'] as String?,
       animalPhotoUrl: signedUrls[animalPath],
       selfiePhotoUrl: signedUrls[selfiePath],
+      // Feed v5 (M17): reaksi selain suka & lucu.
+      extraCounts: {
+        for (final MapEntry(:key, :value)
+            in ((json['reaction_counts'] as Map<String, dynamic>?) ?? {})
+                .entries)
+          if (ReactionType.fromDb(key) case final t?)
+            if (t != ReactionType.like && t != ReactionType.laugh)
+              t: (value as num).toInt(),
+      },
+      extraMine: {
+        for (final v in (json['my_reactions'] as List?) ?? const [])
+          if (ReactionType.fromDb(v as String?) case final t?)
+            if (t != ReactionType.like && t != ReactionType.laugh) t,
+      },
     );
   }
 
@@ -110,11 +134,21 @@ class FeedItem {
   final String? animalPhotoUrl;
   final String? selfiePhotoUrl;
 
-  bool reactedByMe(ReactionType type) =>
-      type == ReactionType.like ? likedByMe : laughedByMe;
+  /// Hitungan & reaksi saya untuk jenis selain suka & lucu (M17).
+  final Map<ReactionType, int> extraCounts;
+  final Set<ReactionType> extraMine;
 
-  int reactionCount(ReactionType type) =>
-      type == ReactionType.like ? likeCount : laughCount;
+  bool reactedByMe(ReactionType type) => switch (type) {
+    ReactionType.like => likedByMe,
+    ReactionType.laugh => laughedByMe,
+    _ => extraMine.contains(type),
+  };
+
+  int reactionCount(ReactionType type) => switch (type) {
+    ReactionType.like => likeCount,
+    ReactionType.laugh => laughCount,
+    _ => extraCounts[type] ?? 0,
+  };
 
   /// Pasang/lepas reaksi saya, beserta hitungannya.
   FeedItem withReaction(ReactionType type, bool on) {
@@ -125,6 +159,12 @@ class FeedItem {
       laughCount: type == ReactionType.laugh ? laughCount + delta : laughCount,
       likedByMe: type == ReactionType.like ? on : likedByMe,
       laughedByMe: type == ReactionType.laugh ? on : laughedByMe,
+      extraCounts: type == ReactionType.like || type == ReactionType.laugh
+          ? null
+          : {...extraCounts, type: reactionCount(type) + delta},
+      extraMine: type == ReactionType.like || type == ReactionType.laugh
+          ? null
+          : (on ? {...extraMine, type} : ({...extraMine}..remove(type))),
     );
   }
 
@@ -136,6 +176,8 @@ class FeedItem {
     int? commentCount,
     bool? likedByMe,
     bool? laughedByMe,
+    Map<ReactionType, int>? extraCounts,
+    Set<ReactionType>? extraMine,
   }) => FeedItem(
     catchId: catchId,
     userId: userId,
@@ -159,6 +201,8 @@ class FeedItem {
     avatarPath: avatarPath,
     animalPhotoUrl: animalPhotoUrl,
     selfiePhotoUrl: selfiePhotoUrl,
+    extraCounts: extraCounts ?? this.extraCounts,
+    extraMine: extraMine ?? this.extraMine,
   );
 }
 

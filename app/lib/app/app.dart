@@ -11,6 +11,7 @@ import '../features/notifications/state/notification_providers.dart';
 import 'router.dart';
 import 'splash_overlay.dart';
 import 'theme.dart';
+import '../features/friends/state/friend_providers.dart';
 
 class FurrealApp extends ConsumerStatefulWidget {
   const FurrealApp({super.key});
@@ -25,6 +26,7 @@ class _FurrealAppState extends ConsumerState<FurrealApp> {
   StreamSubscription<DropMessage>? _drops;
   StreamSubscription<FriendCatchMessage>? _friendCatches;
   StreamSubscription<StreakReminderMessage>? _streaks;
+  StreamSubscription<FriendNoticeMessage>? _friendNotices;
 
   @override
   void initState() {
@@ -35,6 +37,7 @@ class _FurrealAppState extends ConsumerState<FurrealApp> {
     _drops = push.dropMessages.listen(_onDrop);
     _friendCatches = push.friendCatches.listen(_onFriendCatch);
     _streaks = push.streakReminders.listen(_onStreakReminder);
+    _friendNotices = push.friendNotices.listen(_onFriendNotice);
   }
 
   void _refreshDrop() {
@@ -48,6 +51,25 @@ class _FurrealAppState extends ConsumerState<FurrealApp> {
     if (message == DropMessage.foreground) {
       _messenger.currentState?.showSnackBar(
         const SnackBar(content: Text('daily drop udah turun. waktunya catch!')),
+      );
+    }
+  }
+
+  /// Permintaan teman / diterima: segarkan daftar teman; ketuk → layar teman.
+  void _onFriendNotice(FriendNoticeMessage message) {
+    ref.invalidate(myFriendsProvider);
+    ref.invalidate(feedControllerProvider);
+    if (message.opened) {
+      ref.read(routerProvider).push(Routes.friends);
+    } else {
+      _messenger.currentState?.showSnackBar(
+        SnackBar(
+          content: Text(message.title ?? 'ada kabar dari teman'),
+          action: SnackBarAction(
+            label: 'lihat',
+            onPressed: () => ref.read(routerProvider).push(Routes.friends),
+          ),
+        ),
       );
     }
   }
@@ -94,6 +116,7 @@ class _FurrealAppState extends ConsumerState<FurrealApp> {
     _drops?.cancel();
     _friendCatches?.cancel();
     _streaks?.cancel();
+    _friendNotices?.cancel();
     _lifecycle.dispose();
     super.dispose();
   }
