@@ -688,6 +688,27 @@ class FakeCollectionRepository implements CollectionRepository {
         .toList();
   }
 
+  final pinCalls = <(String, bool)>[];
+
+  @override
+  Future<void> setPinned(String animalId, {required bool pinned}) async {
+    final e = error;
+    if (e != null) throw e;
+    pinCalls.add((animalId, pinned));
+    final i = animals.indexWhere((a) => a.id == animalId);
+    if (pinned &&
+        !animals[i].pinned &&
+        animals.where((a) => a.pinned).length >= 3) {
+      throw const PostgrestException(
+        message: 'maksimal 3 kartu favorit',
+        code: 'FR007',
+      );
+    }
+    animals[i] = animals[i].copyWith(
+      pinnedAt: () => pinned ? (animals[i].pinnedAt ?? DateTime.now()) : null,
+    );
+  }
+
   @override
   Future<void> removeAnimal(String animalId) async {
     final e = error;

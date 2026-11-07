@@ -30,6 +30,10 @@ abstract interface class CollectionRepository {
   /// Hapus hewan dari koleksi; catch & fotonya tetap ada (M15).
   Future<void> removeAnimal(String animalId);
 
+  /// Pajang / lepas kartu favorit (M17). PostgrestException FR007 kalau
+  /// sudah ada 3 kartu dipajang.
+  Future<void> setPinned(String animalId, {required bool pinned});
+
   /// Riwayat catch sendiri, terbaru dulu, [limit] per halaman. [before] =
   /// tanggal catch terakhir halaman sebelumnya.
   Future<List<HistoryCatch>> myCatches({DateTime? before, int limit});
@@ -115,6 +119,13 @@ class SupabaseCollectionRepository implements CollectionRepository {
     ]);
     return [for (final r in rows) HistoryCatch.fromJson(r, signedUrls: urls)];
   }
+
+  @override
+  Future<void> setPinned(String animalId, {required bool pinned}) =>
+      _client.rpc<void>(
+        'set_animal_pinned',
+        params: {'p_animal_id': animalId, 'p_pinned': pinned},
+      );
 
   @override
   Future<void> removeAnimal(String animalId) =>

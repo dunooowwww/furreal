@@ -20,6 +20,7 @@ class CollectionAnimal {
     this.cutoutAttempted = false,
     this.lastCatchDate,
     this.lastAreaLabel,
+    this.pinnedAt,
   });
 
   factory CollectionAnimal.fromJson(
@@ -48,6 +49,10 @@ class CollectionAnimal {
         _ => null,
       },
       lastAreaLabel: json['last_area_label'] as String?,
+      pinnedAt: switch (json['pinned_at']) {
+        final String d => DateTime.parse(d),
+        _ => null,
+      },
     );
   }
 
@@ -75,11 +80,16 @@ class CollectionAnimal {
   final DateTime? lastCatchDate;
   final String? lastAreaLabel;
 
+  /// Dipajang di atas koleksi (kartu favorit, maks 3; M17).
+  final DateTime? pinnedAt;
+  bool get pinned => pinnedAt != null;
+
   CollectionAnimal copyWith({
     String? name,
     AnimalKind? kind,
     String? Function()? animalType,
     String? Function()? lastPersonality,
+    DateTime? Function()? pinnedAt,
   }) => CollectionAnimal(
     id: id,
     name: name ?? this.name,
@@ -99,6 +109,7 @@ class CollectionAnimal {
     cutoutAttempted: cutoutAttempted,
     lastCatchDate: lastCatchDate,
     lastAreaLabel: lastAreaLabel,
+    pinnedAt: pinnedAt == null ? this.pinnedAt : pinnedAt(),
   );
 }
 

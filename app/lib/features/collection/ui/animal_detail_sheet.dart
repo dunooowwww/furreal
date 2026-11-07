@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../app/theme.dart';
 import '../data/collection_models.dart';
 import '../state/collection_providers.dart';
+import '../../../shared/errors.dart';
 import '../../../shared/transitions.dart';
 import '../../../shared/widgets/detail_scaffold.dart';
 import 'animal_card.dart';
@@ -26,6 +27,32 @@ Future<void> showAnimalDetail(
   int? number,
 }) {
   return pushSlide(context, AnimalDetailSheet(animal: animal, number: number));
+}
+
+/// Pajang / lepas kartu favorit (maks 3).
+Future<void> _togglePin(
+  BuildContext context,
+  WidgetRef ref,
+  CollectionAnimal animal,
+) async {
+  final messenger = ScaffoldMessenger.of(context);
+  try {
+    await ref
+        .read(collectionRepositoryProvider)
+        .setPinned(animal.id, pinned: !animal.pinned);
+    ref.invalidate(collectionProvider);
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          animal.pinned
+              ? '${animal.name} dilepas dari pajangan.'
+              : '${animal.name} dipajang di atas koleksi.',
+        ),
+      ),
+    );
+  } catch (e) {
+    messenger.showSnackBar(SnackBar(content: Text(friendlyError(e))));
+  }
 }
 
 class AnimalDetailSheet extends ConsumerWidget {
@@ -108,6 +135,24 @@ class AnimalDetailSheet extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 20),
+            FilledButton.icon(
+              key: const Key('animal-pin'),
+              onPressed: () => _togglePin(context, ref, animal),
+              style: FilledButton.styleFrom(
+                backgroundColor: animal.pinned
+                    ? FurrealColors.surface
+                    : FurrealColors.accent,
+                foregroundColor: FurrealColors.ink,
+              ),
+              icon: Icon(
+                animal.pinned ? Icons.push_pin : Icons.push_pin_outlined,
+                size: 18,
+              ),
+              label: Text(
+                animal.pinned ? 'lepas dari pajangan' : 'pajang kartu ini',
+              ),
+            ),
+            const SizedBox(height: 8),
             Row(
               children: [
                 Expanded(
