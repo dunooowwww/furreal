@@ -2,7 +2,7 @@
 
 > Dokumen ini adalah spesifikasi teknis untuk membangun MVP furreal.
 > Baca bagian yang relevan dengan milestone yang sedang dikerjakan saja.
-> Versi produk: PRD v1.8 · Diperbarui: 9 Nov 2026
+> Versi produk: PRD v2.0 · Diperbarui: 9 Nov 2026
 
 ---
 
@@ -232,6 +232,8 @@ Kerjakan **satu milestone per sesi**. Setiap milestone selesai = test lulus + `f
 | M15 | Edit & hapus kartu koleksi (dari feedback) | Dari detail koleksi: edit nama, peliharaan/liar, jenis, kepribadian; hapus hewan dari koleksi dengan konfirmasi (catch & foto tetap), RLS/test lulus |
 | M16 | Splash animasi & riwayat catch (dari feedback) | Splash animasi ±1,5 dtk saat app dibuka (router tetap jalan di bawahnya), tab riwayat di koleksi berisi catch sendiri per hari dengan detail foto + selfie + caption |
 | M17 | Reaksi baru & kartu favorit (dari feedback) | Reaksi 😻 🔥 🥺 di samping ❤️ 😂, pajang maks 3 kartu favorit di atas koleksi, RLS/test lulus |
+| M18 | Teman di luar circle (dari feedback) | Cari username, minta + terima, tab feed "teman" (terkunci sebelum catch), teman bisa lihat catch/koleksi/foto seperti satu circle, notifikasi permintaan, RLS/test lulus |
+| M19 | Profil ala BeReal (dari feedback) | Foto beranda → profil (bukan pengaturan): header foto, streak, statistik, pins maks 3 kartu, grid catch; profil teman/satu circle hanya-lihat; pengaturan lewat ⚙️ |
 
 ## 8. Kebutuhan non-fungsional
 

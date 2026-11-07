@@ -474,3 +474,18 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
 - **Penyebab:** bingkai memakai `Container(decoration: border, clipBehavior)`. Container menggeser foto ke dalam setebal bingkai tapi memotongnya di lengkung luar, jadi sudut foto tidak pas dengan lengkung dalam bingkai dan ada potongan putih di sudut. Di gambar share, bingkai digambar setengah di luar setengah di dalam tepi potongan.
 - **Perbaikan:** widget `FramedPhoto` (foto dipotong pas di sudut, bingkai digambar di atas foto lewat `foregroundDecoration`), dipakai di feed, layar penuh, riwayat, layar hasil, thumbnail kamera, dan kartu koleksi. Gambar share: bingkai = cincin `drawDRRect` di dalam tepi potongan. Dicek dengan render foto gelap + zoom sudut.
 
+### M18: teman di luar circle & M19: profil (7 Nov 2026, permintaan user)
+- **Keputusan user:** pins hanya di profil (pajangan di koleksi dihapus); teman = minta + terima; postingan teman di tab "teman" pada pemilih feed (tetap terkunci sebelum catch); profil teman & anggota satu circle bisa dibuka.
+- **DB** `20261113090000_friends_profile.sql` (test `19_friends_profile_test.sql`, 24):
+  - `friendships` (satu baris per pasangan, pending/accepted; hanya lewat RPC, RLS baca milik sendiri). RPC `find_user` (username persis, bukan awalan), `send_friend_request` (kalau dia sudah minta → langsung teman; maks 50 permintaan menunggu, FR009), `respond_friend_request`, `remove_friend`, `my_friends`, `friend_relation`.
+  - **`shares_circle(a, b)` kini = satu circle ATAU berteman**, jadi semua aturan lihat (profil, foto + kunci feed, koleksi, komentar, reaksi, notifikasi "teman udah catch") otomatis berlaku untuk teman. Berteman tidak memasukkan ke circle.
+  - `friends_feed()` (bentuk sama dengan `circle_feed` v5), `user_profile(id)` (streak, hitungan, relasi), `user_collection(id)` (koleksi + pins; catch hari ini tetap terkunci).
+  - Antrean `friend_notifications` (permintaan & diterima) dikirim `send-activity` bersama reaksi/komentar; channel Android `friends`, push `type=friend` → layar teman.
+- **App:**
+  - Foto di beranda → **profil** (titik merah kalau ada permintaan teman), bukan pengaturan. Profil: foto besar + gradasi, 🔥 streak, nama, @username, "n teman · n hewan · n streak terlama", tombol bagikan profil & edit, ikon tambah teman & ⚙️ pengaturan, **pins** (maks 3, slot "+" → pilih kartu), grid "catch lo".
+  - Profil orang lain (tap nama/foto di kartu feed): tombol status teman (tambah / batal minta / terima + tolak / teman ✓ → hapus), pins & catch mereka hanya-lihat. Bukan teman/satu circle → pesan.
+  - Layar teman: cari username, permintaan masuk, teman, terkirim. Detail kartu: "pin ke profil" / "lepas dari profil".
+  - Feed: pemilih circle selalu ada + "teman"; tanpa teman → tombol "tambah teman".
+- Test: flutter 194/194, pgTAP 368/368, deno 76/76.
+- **Manual setelah merge:** `npx supabase db push --remote`, `npx supabase functions deploy send-activity`, build APK baru (channel notifikasi baru).
+
