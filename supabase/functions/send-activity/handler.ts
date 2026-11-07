@@ -16,6 +16,14 @@ export interface ActivityBatch {
   lastComment: string | null;
 }
 
+/** Satu baris claim_friend_notifications() (M18). */
+export interface FriendNotice {
+  token: string;
+  actorName: string;
+  kind: "request" | "accepted";
+  actorId: string;
+}
+
 export interface StreakReminder {
   token: string;
   streak: number;
@@ -26,6 +34,7 @@ export interface SendActivityDeps {
   /** Env DAILY_DROP_SECRET; sama dengan Vault daily_drop_secret. */
   secret: string | undefined;
   claimActivity(): Promise<ActivityBatch[]>;
+  claimFriends(): Promise<FriendNotice[]>;
   claimStreakReminders(): Promise<StreakReminder[]>;
   clearTokens(tokens: string[]): Promise<void>;
   /** Pengirim FCM, atau null kalau FCM_SERVICE_ACCOUNT_JSON belum diisi. */
@@ -80,6 +89,20 @@ export function activityMessage(batch: ActivityBatch): FcmMessage {
   };
 }
 
+export function friendMessage(notice: FriendNotice): FcmMessage {
+  return {
+    title: notice.kind === "request"
+      ? `${notice.actorName} pengen temenan sama lo`
+      : `${notice.actorName} nerima permintaan teman lo`,
+    body: notice.kind === "request"
+      ? "buka furreal buat terima atau tolak."
+      : "sekarang kalian bisa lihat catch satu sama lain.",
+    channelId: "friends",
+    ttlSeconds: 24 * 60 * 60,
+    data: { type: "friend", kind: notice.kind, user_id: notice.actorId },
+  };
+}
+
 export function streakMessage(reminder: StreakReminder): FcmMessage {
   return {
     title: `streak ${reminder.streak} hari lo hampir putus!`,
@@ -128,10 +151,16 @@ export function createSendActivityHandler(deps: SendActivityDeps) {
     let messages: { token: string; message: FcmMessage }[];
     try {
       messages = job === "activity"
-        ? (await deps.claimActivity()).map((b) => ({
-          token: b.token,
-          message: activityMessage(b),
-        }))
+        ? [
+          ...(await deps.claimActivity()).map((b) => ({
+            token: b.token,
+            message: activityMessage(b),
+          })),
+          ...(await deps.claimFriends()).map((n) => ({
+            token: n.token,
+            message: friendMessage(n),
+          })),
+        ]
         : (await deps.claimStreakReminders()).map((r) => ({
           token: r.token,
           message: streakMessage(r),
