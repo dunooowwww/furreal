@@ -155,7 +155,7 @@ void main() {
     testWidgets('bagikan dari pengaturan circle', (tester) async {
       final sharer = FakeCatchSharer();
       await pumpHome(tester, sharer: sharer);
-      await tapFinder(tester, find.byTooltip('pengaturan'));
+      await openSettingsFromHome(tester);
       await tapText(tester, 'circle lo');
       await tapFinder(tester, find.byKey(const Key('invite-kos')));
       expect(sharer.sharedTexts.single, contains('KSM234'));

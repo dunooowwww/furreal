@@ -92,7 +92,6 @@ class CollectionScreen extends ConsumerWidget {
   ) {
     final types = animals.map((a) => a.animalType).whereType<String>().toSet();
     final numbers = ref.watch(collectionNumbersProvider);
-    final pinned = ref.watch(pinnedAnimalsProvider);
     final shown = [
       for (final a in animals)
         if (filter == null || a.kind == filter) a,
@@ -129,10 +128,6 @@ class CollectionScreen extends ConsumerWidget {
             ),
           ],
         ),
-        if (pinned.isNotEmpty) ...[
-          const SizedBox(height: 18),
-          _Showcase(pinned: pinned, numbers: numbers),
-        ],
         const SizedBox(height: 18),
         Wrap(
           spacing: 8,
@@ -284,67 +279,6 @@ class _AnimalCard extends StatelessWidget {
           data: AnimalCardData.fromAnimal(animal, number: number),
           compact: true,
         ),
-      ),
-    );
-  }
-}
-
-/// Pajangan: maks 3 kartu favorit di atas koleksi (M17).
-class _Showcase extends StatelessWidget {
-  const _Showcase({required this.pinned, required this.numbers});
-
-  final List<CollectionAnimal> pinned;
-  final Map<String, int> numbers;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      key: const Key('showcase'),
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
-      decoration: BoxDecoration(
-        color: FurrealColors.surface,
-        borderRadius: BorderRadius.circular(FurrealShape.cardRadius),
-        border: Border.all(
-          color: FurrealColors.ink,
-          width: FurrealShape.borderWidth,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '📌 PAJANGAN · ${pinned.length}/$maxPinned',
-            style: FurrealText.mono(fontSize: 11).copyWith(letterSpacing: 0.5),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (var i = 0; i < maxPinned; i++) ...[
-                if (i > 0) const SizedBox(width: 8),
-                Expanded(
-                  child: i < pinned.length
-                      ? GestureDetector(
-                          key: Key('showcase-${pinned[i].id}'),
-                          onTap: () => showAnimalDetail(
-                            context,
-                            pinned[i],
-                            number: numbers[pinned[i].id],
-                          ),
-                          child: AnimalCard(
-                            data: AnimalCardData.fromAnimal(
-                              pinned[i],
-                              number: numbers[pinned[i].id],
-                            ),
-                            compact: true,
-                          ),
-                        )
-                      : const SizedBox.shrink(),
-                ),
-              ],
-            ],
-          ),
-        ],
       ),
     );
   }

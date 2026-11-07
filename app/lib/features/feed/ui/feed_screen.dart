@@ -13,6 +13,7 @@ import '../../circles/state/circle_providers.dart';
 import '../../daily_drop/data/daily_drop.dart';
 import '../../daily_drop/state/daily_drop_providers.dart';
 import '../data/feed_models.dart';
+import '../data/feed_repository.dart';
 import '../state/feed_providers.dart';
 import 'comments_sheet.dart';
 import 'feed_card.dart';
@@ -68,7 +69,10 @@ class FeedScreen extends ConsumerWidget {
     if (circleId == null) {
       return const Center(child: CircularProgressIndicator());
     }
-    final circle = circles.firstWhere((c) => c.id == circleId);
+    final isFriends = circleId == friendsFeedId;
+    final circle = isFriends
+        ? const Circle(id: friendsFeedId, name: 'teman', inviteCode: '')
+        : circles.firstWhere((c) => c.id == circleId);
     final feed = ref.watch(feedControllerProvider(circleId));
     final today = ref.watch(todayCatchProvider).value;
     final caughtToday = today != null;
@@ -122,7 +126,10 @@ class FeedScreen extends ConsumerWidget {
                 ],
                 ...switch (feed) {
                   AsyncData(:final value) when value.items.isEmpty => [
-                    _EmptyFeed(caughtToday: caughtToday),
+                    _EmptyFeed(
+                      caughtToday: caughtToday,
+                      noFriends: isFriends && value.memberCount <= 1,
+                    ),
                   ],
                   AsyncData(:final value) => [
                     for (final item in value.items) ...[
@@ -195,10 +202,8 @@ class _Header extends ConsumerWidget {
             circle.name,
             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
           ),
-          if (circles.length > 1) ...[
-            const SizedBox(width: 6),
-            const Icon(Icons.expand_more, size: 16),
-          ],
+          const SizedBox(width: 6),
+          const Icon(Icons.expand_more, size: 16),
         ],
       ),
     );
@@ -221,20 +226,29 @@ class _Header extends ConsumerWidget {
               Expanded(
                 child: Text('feed', style: FurrealText.display(fontSize: 30)),
               ),
-              if (circles.length > 1)
-                PopupMenuButton<String>(
-                  key: const Key('circle-picker'),
-                  tooltip: 'pilih circle',
-                  onSelected: (id) =>
-                      ref.read(selectedCircleProvider.notifier).select(id),
-                  itemBuilder: (_) => [
-                    for (final c in circles)
-                      PopupMenuItem(value: c.id, child: Text(c.name)),
-                  ],
-                  child: pill,
-                )
-              else
-                pill,
+              PopupMenuButton<String>(
+                key: const Key('circle-picker'),
+                tooltip: 'pilih circle atau teman',
+                onSelected: (id) =>
+                    ref.read(selectedCircleProvider.notifier).select(id),
+                itemBuilder: (_) => [
+                  for (final c in circles)
+                    PopupMenuItem(value: c.id, child: Text(c.name)),
+                  const PopupMenuDivider(),
+                  const PopupMenuItem(
+                    key: Key('pick-friends'),
+                    value: friendsFeedId,
+                    child: Row(
+                      children: [
+                        Icon(Icons.people_outline, size: 18),
+                        SizedBox(width: 8),
+                        Text('teman'),
+                      ],
+                    ),
+                  ),
+                ],
+                child: pill,
+              ),
             ],
           ),
           const SizedBox(height: 4),
@@ -301,9 +315,12 @@ class _NotCaughtBanner extends ConsumerWidget {
 }
 
 class _EmptyFeed extends StatelessWidget {
-  const _EmptyFeed({required this.caughtToday});
+  const _EmptyFeed({required this.caughtToday, this.noFriends = false});
 
   final bool caughtToday;
+
+  /// Feed teman tapi belum punya teman: arahkan ke layar teman.
+  final bool noFriends;
 
   @override
   Widget build(BuildContext context) {
@@ -313,19 +330,40 @@ class _EmptyFeed extends StatelessWidget {
         children: [
           const Icon(Icons.pets, size: 40, color: FurrealColors.textSecondary),
           const SizedBox(height: 12),
-          Text(
-            'belum ada yang catch hari ini',
-            textAlign: TextAlign.center,
-            style: FurrealText.display(fontSize: 22),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            caughtToday
-                ? 'tunggu teman-teman lo nyusul ya.'
-                : 'jadi yang pertama, sebelum keduluan!',
-            textAlign: TextAlign.center,
-            style: const TextStyle(color: FurrealColors.textSecondary),
-          ),
+          if (noFriends) ...[
+            Text(
+              'belum ada teman',
+              textAlign: TextAlign.center,
+              style: FurrealText.display(fontSize: 22),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'tambah teman lewat username, nanti catch mereka muncul di sini.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: FurrealColors.textSecondary),
+            ),
+            const SizedBox(height: 12),
+            FilledButton.icon(
+              key: const Key('feed-add-friends'),
+              onPressed: () => context.push(Routes.friends),
+              icon: const Icon(Icons.person_add_alt_1, size: 18),
+              label: const Text('tambah teman'),
+            ),
+          ] else ...[
+            Text(
+              'belum ada yang catch hari ini',
+              textAlign: TextAlign.center,
+              style: FurrealText.display(fontSize: 22),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              caughtToday
+                  ? 'tunggu teman-teman lo nyusul ya.'
+                  : 'jadi yang pertama, sebelum keduluan!',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: FurrealColors.textSecondary),
+            ),
+          ],
         ],
       ),
     );

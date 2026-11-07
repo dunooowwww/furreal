@@ -112,7 +112,7 @@ void main() {
         circles: FakeCircleRepository(circles: [lab]),
         account: account,
       );
-      await tapFinder(tester, find.byTooltip('pengaturan'));
+      await openSettingsFromHome(tester);
       expect(find.text('@bob'), findsOneWidget);
       return account;
     }

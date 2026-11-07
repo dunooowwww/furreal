@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../app/theme.dart';
 import '../../../shared/errors.dart';
-import '../../circles/state/circle_providers.dart';
 import '../../collection/state/collection_providers.dart';
 import '../../feed/state/feed_providers.dart';
 import '../data/catch_repository.dart';
@@ -70,9 +69,7 @@ void refreshAfterCatchChange(WidgetRef ref) {
   for (final p in catchDerivedProviders) {
     ref.invalidate(p);
   }
-  for (final circle in ref.read(myCirclesProvider).value ?? const []) {
-    ref.invalidate(feedControllerProvider(circle.id));
-  }
+  ref.invalidate(feedControllerProvider);
 }
 
 class EditCatchSheet extends ConsumerStatefulWidget {

@@ -109,7 +109,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(tokens.saved, ['tok-hp', 'tok-baru']);
 
-      await tapFinder(tester, find.byTooltip('pengaturan'));
+      await openSettingsFromHome(tester);
       await tapText(tester, 'keluar');
       expect(tokens.saved.last, isNull, reason: 'token dilepas sebelum keluar');
       expect(auth.userId, isNull);

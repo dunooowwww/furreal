@@ -88,7 +88,7 @@ class _HistoryList extends ConsumerWidget {
             childAspectRatio: 3 / 4,
             children: [
               for (final c in items)
-                _HistoryTile(
+                HistoryTile(
                   item: c,
                   onTap: () => showHistoryDetail(context, c),
                 ),
@@ -108,8 +108,8 @@ class _HistoryList extends ConsumerWidget {
   }
 }
 
-class _HistoryTile extends ConsumerWidget {
-  const _HistoryTile({required this.item, required this.onTap});
+class HistoryTile extends ConsumerWidget {
+  const HistoryTile({super.key, required this.item, required this.onTap});
 
   final HistoryCatch item;
   final VoidCallback onTap;
@@ -164,13 +164,23 @@ class _HistoryTile extends ConsumerWidget {
   }
 }
 
-Future<void> showHistoryDetail(BuildContext context, HistoryCatch item) =>
-    pushSlide(context, HistoryDetailSheet(item: item));
+Future<void> showHistoryDetail(
+  BuildContext context,
+  HistoryCatch item, {
+  bool readOnly = false,
+}) => pushSlide(context, HistoryDetailSheet(item: item, readOnly: readOnly));
 
 class HistoryDetailSheet extends ConsumerWidget {
-  const HistoryDetailSheet({super.key, required this.item});
+  const HistoryDetailSheet({
+    super.key,
+    required this.item,
+    this.readOnly = false,
+  });
 
   final HistoryCatch item;
+
+  /// Catch orang lain (dari profil): tanpa bagikan & hapus.
+  final bool readOnly;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -233,42 +243,44 @@ class HistoryDetailSheet extends ConsumerWidget {
                 style: const TextStyle(fontSize: 16, height: 1.4),
               ),
             ],
-            const SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: FilledButton.icon(
-                    key: const Key('history-share'),
-                    onPressed: () => showShareTargetSheet(
-                      context,
-                      ShareTarget(
-                        animalPhotoPath: item.animalPhotoPath,
-                        selfiePhotoPath: item.selfiePhotoPath,
-                        animalName: item.animalName,
-                        caption: item.caption,
-                        date: item.createdAt,
+            if (!readOnly) ...[
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: FilledButton.icon(
+                      key: const Key('history-share'),
+                      onPressed: () => showShareTargetSheet(
+                        context,
+                        ShareTarget(
+                          animalPhotoPath: item.animalPhotoPath,
+                          selfiePhotoPath: item.selfiePhotoPath,
+                          animalName: item.animalName,
+                          caption: item.caption,
+                          date: item.createdAt,
+                        ),
                       ),
+                      icon: const Icon(Icons.ios_share, size: 18),
+                      label: const Text('bagikan'),
                     ),
-                    icon: const Icon(Icons.ios_share, size: 18),
-                    label: const Text('bagikan'),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    key: const Key('history-delete'),
-                    onPressed: () async {
-                      final navigator = Navigator.of(context);
-                      if (await _confirmDelete(context, ref, item)) {
-                        navigator.pop();
-                      }
-                    },
-                    icon: const Icon(Icons.delete_outline, size: 18),
-                    label: const Text('hapus'),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      key: const Key('history-delete'),
+                      onPressed: () async {
+                        final navigator = Navigator.of(context);
+                        if (await _confirmDelete(context, ref, item)) {
+                          navigator.pop();
+                        }
+                      },
+                      icon: const Icon(Icons.delete_outline, size: 18),
+                      label: const Text('hapus'),
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+            ],
           ],
         ),
       ),

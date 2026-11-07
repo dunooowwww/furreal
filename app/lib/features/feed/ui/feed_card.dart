@@ -9,6 +9,10 @@ import '../../../shared/widgets/user_avatar.dart';
 import '../../daily_drop/data/daily_drop.dart';
 import '../data/feed_models.dart';
 
+import 'package:go_router/go_router.dart';
+
+import '../../../app/router.dart';
+
 /// Kartu catch di feed (prototype "Feed circle").
 class FeedCard extends ConsumerWidget {
   const FeedCard({
@@ -49,24 +53,38 @@ class FeedCard extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
             child: Row(
               children: [
-                UserAvatar(name: item.displayName, avatarPath: item.avatarPath),
-                const SizedBox(width: 10),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.displayName,
-                        style: const TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
+                  child: InkWell(
+                    key: Key('open-user-${item.catchId}'),
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () => context.push(Routes.user(item.userId)),
+                    child: Row(
+                      children: [
+                        UserAvatar(
+                          name: item.displayName,
+                          avatarPath: item.avatarPath,
                         ),
-                      ),
-                      Text(
-                        relativeTime(item.createdAt, now: now),
-                        style: secondary,
-                      ),
-                    ],
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                item.displayName,
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              Text(
+                                relativeTime(item.createdAt, now: now),
+                                style: secondary,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 _TimelinessChip(item: item),

@@ -25,11 +25,15 @@ Future<void> showAnimalDetail(
   BuildContext context,
   CollectionAnimal animal, {
   int? number,
+  bool readOnly = false,
 }) {
-  return pushSlide(context, AnimalDetailSheet(animal: animal, number: number));
+  return pushSlide(
+    context,
+    AnimalDetailSheet(animal: animal, number: number, readOnly: readOnly),
+  );
 }
 
-/// Pajang / lepas kartu favorit (maks 3).
+/// Pin / lepas kartu favorit di profil (maks 3).
 Future<void> _togglePin(
   BuildContext context,
   WidgetRef ref,
@@ -45,8 +49,8 @@ Future<void> _togglePin(
       SnackBar(
         content: Text(
           animal.pinned
-              ? '${animal.name} dilepas dari pajangan.'
-              : '${animal.name} dipajang di atas koleksi.',
+              ? '${animal.name} dilepas dari profil.'
+              : '${animal.name} di-pin ke profil.',
         ),
       ),
     );
@@ -56,10 +60,18 @@ Future<void> _togglePin(
 }
 
 class AnimalDetailSheet extends ConsumerWidget {
-  const AnimalDetailSheet({super.key, required this.animal, this.number});
+  const AnimalDetailSheet({
+    super.key,
+    required this.animal,
+    this.number,
+    this.readOnly = false,
+  });
 
   final CollectionAnimal animal;
   final int? number;
+
+  /// Kartu orang lain (dari profil): tanpa pin, edit, hapus.
+  final bool readOnly;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -134,51 +146,53 @@ class AnimalDetailSheet extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 20),
-            FilledButton.icon(
-              key: const Key('animal-pin'),
-              onPressed: () => _togglePin(context, ref, animal),
-              style: FilledButton.styleFrom(
-                backgroundColor: animal.pinned
-                    ? FurrealColors.surface
-                    : FurrealColors.accent,
-                foregroundColor: FurrealColors.ink,
-              ),
-              icon: Icon(
-                animal.pinned ? Icons.push_pin : Icons.push_pin_outlined,
-                size: 18,
-              ),
-              label: Text(
-                animal.pinned ? 'lepas dari pajangan' : 'pajang kartu ini',
-              ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    key: const Key('animal-edit'),
-                    onPressed: () => showEditAnimalSheet(context, animal),
-                    icon: const Icon(Icons.edit_outlined, size: 18),
-                    label: const Text('edit'),
-                  ),
+            if (!readOnly) ...[
+              const SizedBox(height: 20),
+              FilledButton.icon(
+                key: const Key('animal-pin'),
+                onPressed: () => _togglePin(context, ref, animal),
+                style: FilledButton.styleFrom(
+                  backgroundColor: animal.pinned
+                      ? FurrealColors.surface
+                      : FurrealColors.accent,
+                  foregroundColor: FurrealColors.ink,
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    key: const Key('animal-remove'),
-                    onPressed: () async {
-                      final navigator = Navigator.of(context);
-                      if (await confirmRemoveAnimal(context, ref, animal)) {
-                        navigator.pop();
-                      }
-                    },
-                    icon: const Icon(Icons.delete_outline, size: 18),
-                    label: const Text('hapus'),
-                  ),
+                icon: Icon(
+                  animal.pinned ? Icons.push_pin : Icons.push_pin_outlined,
+                  size: 18,
                 ),
-              ],
-            ),
+                label: Text(
+                  animal.pinned ? 'lepas dari profil' : 'pin ke profil',
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      key: const Key('animal-edit'),
+                      onPressed: () => showEditAnimalSheet(context, animal),
+                      icon: const Icon(Icons.edit_outlined, size: 18),
+                      label: const Text('edit'),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      key: const Key('animal-remove'),
+                      onPressed: () async {
+                        final navigator = Navigator.of(context);
+                        if (await confirmRemoveAnimal(context, ref, animal)) {
+                          navigator.pop();
+                        }
+                      },
+                      icon: const Icon(Icons.delete_outline, size: 18),
+                      label: const Text('hapus'),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),
