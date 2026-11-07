@@ -4,7 +4,7 @@
 /// GANTI sebelum rilis: email kontak privasi (juga di Play Console).
 const privacyContactEmail = '[EMAIL KONTAK]';
 
-const privacyPolicyUpdated = '14 oktober 2026';
+const privacyPolicyUpdated = '7 november 2026';
 
 class PolicySection {
   const PolicySection(this.title, this.paragraphs);
@@ -31,12 +31,20 @@ const privacyPolicy = <PolicySection>[
     '• foto profil (opsional): lo pilih sendiri dari galeri; diperkecil dan '
         'data lokasinya (EXIF) dibuang di HP sebelum di-upload.',
     '• isi catch: nama, jenis, dan kartu kepribadian hewan, peliharaan/liar, '
-        'komentar, dan reaksi.',
+        'caption, komentar, dan reaksi. catch, nama, dan kepribadian bisa lo '
+        'ubah atau hapus kapan saja.',
+    '• potongan hewan untuk kartu koleksi: dibuat di HP-mu (ML Kit, tanpa '
+        'kirim foto ke server lain), lalu disimpan bersama foto catch.',
     '• label area perkiraan (mis. "sekitar Depok, Sleman"). lokasi GPS diubah '
         'jadi label di HP-mu; koordinat tidak pernah dikirim atau disimpan. '
         'label ini bisa disembunyikan per catch.',
-    '• token notifikasi: buat ngirim notifikasi daily drop dan kabar waktu '
-        'teman satu circle posting catch ke HP-mu.',
+    '• token notifikasi: buat ngirim notifikasi daily drop, kabar waktu '
+        'teman satu circle posting catch, reaksi & komentar di catch-mu, dan '
+        'pengingat streak ke HP-mu.',
+    '• saran & laporan bug (opsional): isi pesan yang lo kirim lewat '
+        'pengaturan → kirim saran, beserta versi app.',
+    '• gambar yang lo simpan atau bagikan dari app dibuat di HP-mu; kami '
+        'tidak tahu ke mana lo membagikannya.',
     '• data pemakaian & crash: event seperti "catch dibuat", "reaksi", '
         '"gabung circle" (Firebase Analytics) dan laporan crash (Firebase '
         'Crashlytics), tanpa email atau username.',

@@ -435,3 +435,12 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
 - **Lingkungan test (sesi cloud):** Flutter 3.47.7 dari storage.googleapis.com, Deno 2.9.6 dari paket npm `deno`, `postgresql-16-pgtap` + `postgresql-16-cron` via apt; skema auth/storage/Vault dan `pg_net` ditiru.
 - **Manual setelah merge:** `npx supabase db push` (tidak ada Edge Function yang berubah), build APK baru.
 - **Digabung dengan M11 (5 Nov):** kunci foto terposting dulu mengunci semua file di folder catch, termasuk `cutout.png` yang di-upload setelah posting. Migrasi `20261105120000_cutout_after_audit.sql` mempersempit `is_posted_catch_photo` ke `animal.jpg` dan `selfie.jpg`, jadi potongan bisa di-upload ulang (retry/backfill). Test audit dipindah ke `12_audit_hardening_test.sql` (nomor 11 dipakai M11).
+
+### Audit pra-rilis Play Store (7 Nov 2026)
+- **Diperiksa:** secret di repo & riwayat git (bersih; kunci di `fcm_test.ts` dibuat saat test), `.gitignore` (env, google-services.json, keystore, key.properties), RLS & hak kolom semua tabel (token FCM/email tidak terbaca user lain), fungsi security definer (semua `search_path = ''`), Edge Function (auth JWT/secret, foto AI dari folder pemanggil, batas AI 5/hari), login password (bcrypt, waktu jawab sama, kunci 10 gagal/15 menit), manifest Android (target SDK 36, hanya launcher yang diekspor, tanpa RECORD_AUDIO).
+- **Temuan & perbaikan:**
+  - Migrasi audit Daffa (`20261027090000`, PR #18) lebih tua dari M12–M15. Di produksi yang sudah menerima M12, `db push --include-all` memasangnya belakangan dan membuat `create_catch` 8 argumen sebagai overload kedua (EXECUTE ke PUBLIC). `20261111090000_audit_followup.sql` membuangnya + mencabut EXECUTE fungsi trigger. Diuji dengan urutan berurutan dan urutan produksi (332/332). Test `17_audit_followup_test.sql`.
+  - Android: `allowBackup="false"` + `data_extraction_rules.xml` supaya sesi login tidak ikut backup cloud / pindah HP.
+  - Kebijakan privasi (app + HTML) dilengkapi: caption, potongan ML Kit di HP, notifikasi reaksi/komentar & pengingat streak, saran/laporan bug, gambar share dibuat di HP.
+- **Masih harus dikerjakan user sebelum Play Store:** isi `[EMAIL KONTAK]`, host kebijakan privasi di URL publik, keystore rilis asli, putuskan `applicationId` final (`com.dun.furreal` tidak bisa diganti setelah upload pertama), closed testing ≥12 tester ≥14 hari (akun personal).
+

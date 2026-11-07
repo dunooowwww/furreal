@@ -13,6 +13,7 @@ Semua secret (keystore, password, service role key, service account) **tidak per
 ## 2. Supabase produksi
 - [ ] Buat project di supabase.com (region Singapore), lalu `npx supabase link --project-ref <ref>`.
 - [ ] `npx supabase db push` (semua migrasi; `pg_cron` & `pg_net` dibuat oleh migrasi M6).
+  - Database yang sudah pernah di-push sebelum 6 Nov 2026: migrasi audit `20261027090000` & `20261105120000` bertanggal lebih tua dari migrasi terakhir di remote, jadi pakai `npx supabase db push --remote --include-all`. Migrasi `20261111090000_audit_followup.sql` membuang overload `create_catch` lama yang muncul karena urutan itu.
 - [ ] Deploy function: `npx supabase functions deploy identify-animal send-daily-drop delete-account notify-catch send-activity`.
 - [ ] Secrets: `npx supabase secrets set AI_PROVIDER=... AI_MODEL=... AI_API_KEY=... DAILY_DROP_SECRET=<acak-panjang> FCM_SERVICE_ACCOUNT_JSON='<json satu baris>'`.
 - [ ] Vault (SQL editor), dengan nilai `DAILY_DROP_SECRET` yang sama:
