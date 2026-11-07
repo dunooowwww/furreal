@@ -470,3 +470,7 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
 - **Penyebab:** layar feed & koleksi tidak punya latar sendiri (tanpa Scaffold). Transisi tab (pudar + geser 3%) membuat beranda/tab lama tembus di belakang tab baru selama ±0,2 dtk.
 - **Perbaikan:** `tabPage` membungkus halaman dengan latar penuh, menghapus geser, dan halaman baru baru memudar setelah jeda 30% (fade-through, 200 ms). Test `test/app/tab_transition_test.dart` (gagal di kode lama, lulus setelah perbaikan).
 
+### Bug: sisa putih di sudut bingkai selfie (7 Nov 2026)
+- **Penyebab:** bingkai memakai `Container(decoration: border, clipBehavior)`. Container menggeser foto ke dalam setebal bingkai tapi memotongnya di lengkung luar, jadi sudut foto tidak pas dengan lengkung dalam bingkai dan ada potongan putih di sudut. Di gambar share, bingkai digambar setengah di luar setengah di dalam tepi potongan.
+- **Perbaikan:** widget `FramedPhoto` (foto dipotong pas di sudut, bingkai digambar di atas foto lewat `foregroundDecoration`), dipakai di feed, layar penuh, riwayat, layar hasil, thumbnail kamera, dan kartu koleksi. Gambar share: bingkai = cincin `drawDRRect` di dalam tepi potongan. Dicek dengan render foto gelap + zoom sudut.
+

@@ -21,6 +21,7 @@ import '../../collection/ui/animal_card.dart';
 import '../../collection/state/collection_providers.dart';
 import '../../feed/state/feed_providers.dart';
 import '../state/catch_providers.dart';
+import '../../../shared/widgets/framed_photo.dart';
 
 enum _Phase { uploading, identifying, uploadFailed, ready }
 
@@ -813,12 +814,9 @@ class _Photos extends StatelessWidget {
             left: 12,
             width: 60,
             height: 80,
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white, width: 2),
-              ),
-              clipBehavior: Clip.antiAlias,
+            child: FramedPhoto(
+              radius: 12,
+              borderWidth: 2,
               child: Image.memory(
                 photos.selfie,
                 key: const Key('result-selfie-photo'),

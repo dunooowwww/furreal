@@ -13,6 +13,7 @@ import '../state/collection_providers.dart';
 import '../../../shared/transitions.dart';
 import '../../../shared/widgets/detail_scaffold.dart';
 import 'animal_detail_sheet.dart' show shortDate;
+import '../../../shared/widgets/framed_photo.dart';
 
 const _monthNames = [
   'januari', 'februari', 'maret', 'april', 'mei', 'juni', //
@@ -130,12 +131,9 @@ class _HistoryTile extends ConsumerWidget {
               left: 6,
               width: 26,
               height: 34,
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: Colors.white, width: 1.5),
-                ),
-                clipBehavior: Clip.antiAlias,
+              child: FramedPhoto(
+                radius: 6,
+                borderWidth: 1.5,
                 child: photo(
                   context,
                   item.selfiePhotoUrl,
@@ -200,12 +198,9 @@ class HistoryDetailSheet extends ConsumerWidget {
                       left: 14,
                       width: 90,
                       height: 120,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: Colors.white, width: 3),
-                        ),
-                        clipBehavior: Clip.antiAlias,
+                      child: FramedPhoto(
+                        radius: 16,
+                        borderWidth: 3,
                         child: photo(
                           context,
                           item.selfiePhotoUrl,

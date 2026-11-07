@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'remote_photo.dart';
+import 'framed_photo.dart';
 
 /// Satu foto catch: signed URL + path storage (kunci cache).
 class PhotoRef {
@@ -75,12 +76,9 @@ class _DualPhotoState extends ConsumerState<DualPhoto> {
             child: GestureDetector(
               key: Key('photo-inset-${widget.id}'),
               onTap: _swap,
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white, width: 2),
-                ),
-                clipBehavior: Clip.antiAlias,
+              child: FramedPhoto(
+                radius: 12,
+                borderWidth: 2,
                 child: fade(_small),
               ),
             ),
@@ -179,15 +177,14 @@ class _PhotoViewerState extends ConsumerState<PhotoViewer> {
                           _zoom.value = Matrix4.identity();
                         });
                       },
-                      child: Container(
+                      child: SizedBox(
                         width: 72,
                         height: 96,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.white, width: 2),
+                        child: FramedPhoto(
+                          radius: 12,
+                          borderWidth: 2,
+                          child: thumb(context, _small.url, _small.path),
                         ),
-                        clipBehavior: Clip.antiAlias,
-                        child: thumb(context, _small.url, _small.path),
                       ),
                     ),
                   ],
