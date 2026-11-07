@@ -466,3 +466,7 @@ Satu milestone per sesi (lihat `docs/PRD.md` §7). Centang setelah test lulus + 
 - Test: flutter 186/186, pgTAP 344/344, deno 75/75.
 - **Manual setelah merge:** `npx supabase db push --remote`, build APK baru.
 
+### Bug: halaman tab "menumpuk" saat pindah (7 Nov 2026)
+- **Penyebab:** layar feed & koleksi tidak punya latar sendiri (tanpa Scaffold). Transisi tab (pudar + geser 3%) membuat beranda/tab lama tembus di belakang tab baru selama ±0,2 dtk.
+- **Perbaikan:** `tabPage` membungkus halaman dengan latar penuh, menghapus geser, dan halaman baru baru memudar setelah jeda 30% (fade-through, 200 ms). Test `test/app/tab_transition_test.dart` (gagal di kode lama, lulus setelah perbaikan).
+

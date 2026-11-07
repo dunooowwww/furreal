@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../app/theme.dart';
+
 /// Durasi transisi pindah layar.
 const pageTransitionDuration = Duration(milliseconds: 300);
 
@@ -26,23 +28,19 @@ Future<T?> pushSlide<T>(BuildContext context, Widget page) {
   );
 }
 
-/// Pindah tab (beranda / feed / koleksi): memudar + naik sedikit.
+/// Pindah tab (beranda / feed / koleksi): halaman baru (berlatar penuh)
+/// memudar masuk setelah jeda singkat. Latar wajib: layar feed & koleksi
+/// transparan, tanpa itu halaman lama tembus dan terlihat menumpuk.
 Page<void> tabPage(GoRouterState state, Widget child) => CustomTransitionPage(
   key: state.pageKey,
-  transitionDuration: const Duration(milliseconds: 220),
-  reverseTransitionDuration: const Duration(milliseconds: 220),
-  child: child,
-  transitionsBuilder: (_, animation, _, child) {
-    final curved = CurvedAnimation(parent: animation, curve: Curves.easeOut);
-    return FadeTransition(
-      opacity: curved,
-      child: SlideTransition(
-        position: Tween(
-          begin: const Offset(0, 0.03),
-          end: Offset.zero,
-        ).animate(curved),
-        child: child,
-      ),
-    );
-  },
+  transitionDuration: const Duration(milliseconds: 200),
+  reverseTransitionDuration: const Duration(milliseconds: 200),
+  child: ColoredBox(color: FurrealColors.background, child: child),
+  transitionsBuilder: (_, animation, _, child) => FadeTransition(
+    opacity: CurvedAnimation(
+      parent: animation,
+      curve: const Interval(0.3, 1, curve: Curves.easeOut),
+    ),
+    child: child,
+  ),
 );
